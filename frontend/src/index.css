@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fon və səth */
+  --color-cream: #f7f0e6;
+  --color-panel: #fffdfa;
+  --color-blush: #f1e2d6;
+
+  /* Mətn */
+  --color-ink: #201a16;
+  --color-muted: #857468;
+
+  /* Aksent — dərin burgundy ailəsi */
+  --color-burgundy: #5c1a2e;
+  --color-burgundy-light: #8a2c44;
+  --color-burgundy-dark: #3d1120;
+  --color-gold: #b08948;
+
+  --color-border: #e8dccb;
+  --color-success: #3f7d5c;
+  --color-danger: #b23a3a;
+
+  --font-display: "Fraunces", serif;
+  --font-body: "Inter", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
+@keyframes pulse-once {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.animate-pulse-once {
+  animation: pulse-once 0.35s ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-toast-in {
+  animation: toast-in 0.25s ease-out;
+}
