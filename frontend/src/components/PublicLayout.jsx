@@ -10,6 +10,7 @@ import Toast from './Toast'
 import TableActions from './TableActions'
 import LanguageSwitcher from './LanguageSwitcher'
 import BottomNav from './BottomNav'
+import OfflineBanner from './OfflineBanner'
 import { applyTheme, resetTheme, parseTheme } from '../lib/theme'
 import { resolveUploadUrl } from '../lib/api'
 
@@ -52,6 +53,7 @@ function PublicLayout() {
   return (
     <div className="min-h-screen bg-cream text-ink font-body">
      <div className="max-w-lg mx-auto relative min-h-screen bg-cream sm:shadow-[0_0_60px_-30px_rgba(32,26,22,0.4)]">
+      <OfflineBanner />
       {!isSubPage && (
         <header className="px-5 pt-6 pb-2 flex items-center justify-between gap-3">
           <div className="min-w-0">

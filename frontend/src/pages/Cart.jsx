@@ -51,6 +51,10 @@ function Cart() {
   const blocked = unavailableIds.length > 0
 
   async function placeOrder() {
+    if (!navigator.onLine) {
+      showToast(t('offline_order'), 'error')
+      return
+    }
     setSubmitting(true)
     try {
       const order = await ordersApi.create({

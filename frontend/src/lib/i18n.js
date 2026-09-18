@@ -72,6 +72,8 @@ const DICTIONARY = {
     load_error_title: 'Menyu yüklənmədi',
     load_error_body: 'Bağlantını yoxlayıb yenidən cəhd edin',
     retry: 'Yenidən cəhd et',
+    offline_banner: 'Offline rejim — menyu yaddaşdan göstərilir',
+    offline_order: 'İnternet yoxdur — sifariş göndərilə bilmir',
   },
   en: {
     search_placeholder: 'Search the menu...',
@@ -136,6 +138,8 @@ const DICTIONARY = {
     load_error_title: 'Could not load the menu',
     load_error_body: 'Check your connection and try again',
     retry: 'Try again',
+    offline_banner: 'Offline mode — showing the saved menu',
+    offline_order: 'No internet — the order cannot be sent',
   },
   ru: {
     search_placeholder: 'Поиск по меню...',
@@ -200,6 +204,8 @@ const DICTIONARY = {
     load_error_title: 'Не удалось загрузить меню',
     load_error_body: 'Проверьте соединение и попробуйте снова',
     retry: 'Повторить',
+    offline_banner: 'Офлайн-режим — показано сохранённое меню',
+    offline_order: 'Нет интернета — заказ не может быть отправлен',
   },
 }
 

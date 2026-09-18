@@ -1,0 +1,136 @@
+const request = require('supertest');
+const { cookieFor, fakePool } = require('./helpers');
+
+jest.mock('../src/config/db', () => {
+  const sql = jest.requireActual('mssql');
+  const { fakePool } = require('./helpers');
+  return { sql, poolPromise: Promise.resolve(fakePool) };
+});
+jest.mock('../src/services/auditService', () => ({ list: jest.fn().mockResolvedValue([]), log: jest.fn() }));
+jest.mock('../src/services/adminService', () => ({ getDashboard: jest.fn().mockResolvedValue({ ok: true }) }));
+
+const app = require('../src/app');
+
+describe('health', () => {
+  it('DB cavab verəndə 200 qaytarır', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+  });
+
+  it('naməlum endpoint 404 (JSON) qaytarır, stack trace göstərmir', async () => {
+    const res = await request(app).get('/api/yoxdur');
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'Endpoint tapılmadı' });
+  });
+
+  it('təhlükəsizlik başlıqlarını təyin edir', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+});
+
+describe('autentifikasiya və rol icazələri', () => {
+  it.each(['/api/orders', '/api/staff', '/api/audit-logs', '/api/admin/dashboard', '/api/promos', '/api/tables'])(
+    'girişsiz %s -> 401',
+    async (path) => {
+      const res = await request(app).get(path);
+      expect(res.status).toBe(401);
+    },
+  );
+
+  it('KITCHEN rolu dashboard, promo, işçilər və bildirişlərə çıxış edə bilmir (403)', async () => {
+    const cookie = cookieFor('KITCHEN');
+    for (const path of ['/api/admin/dashboard', '/api/promos', '/api/staff', '/api/notifications', '/api/audit-logs']) {
+      const res = await request(app).get(path).set('Cookie', cookie);
+      expect(res.status).toBe(403);
+    }
+  });
+
+  it('WAITER rolu işçi və audit səhifələrinə çıxış edə bilmir', async () => {
+    const cookie = cookieFor('WAITER');
+    expect((await request(app).get('/api/staff').set('Cookie', cookie)).status).toBe(403);
+    expect((await request(app).get('/api/audit-logs').set('Cookie', cookie)).status).toBe(403);
+  });
+
+  it('MANAGER işçi idarəsinə çıxış edə bilmir, audit-ə edə bilir', async () => {
+    const cookie = cookieFor('MANAGER');
+    expect((await request(app).get('/api/staff').set('Cookie', cookie)).status).toBe(403);
+    expect((await request(app).get('/api/audit-logs').set('Cookie', cookie)).status).toBe(200);
+  });
+
+  it('OWNER dashboard-a çıxış edə bilir', async () => {
+    const res = await request(app).get('/api/admin/dashboard').set('Cookie', cookieFor('OWNER'));
+    expect(res.status).toBe(200);
+  });
+
+  it('etibarsız token 401 qaytarır', async () => {
+    const res = await request(app).get('/api/orders').set('Cookie', ['qrmenu_token=saxta']);
+    expect(res.status).toBe(401);
+  });
+
+  it('sifariş statusunu yalnız icazəli rol dəyişə bilər (müştəri -> 401)', async () => {
+    const res = await request(app).put('/api/orders/1').send({ status: 'READY' });
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('sifariş yaradılması — giriş yoxlaması (müştəri, girişsiz)', () => {
+  const valid = { customer_name: 'Ali', phone: '+994501112233', items: [{ product_id: 1, quantity: 1 }] };
+
+  it('ad tələb olunur', async () => {
+    const res = await request(app).post('/api/orders').send({ ...valid, customer_name: '  ' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Müştəri adı/);
+  });
+
+  it('telefon düzgün olmalıdır', async () => {
+    const res = await request(app).post('/api/orders').send({ ...valid, phone: 'abc' });
+    expect(res.status).toBe(400);
+  });
+
+  it('boş məhsul siyahısı rədd edilir', async () => {
+    const res = await request(app).post('/api/orders').send({ ...valid, items: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it('mənfi/kəsr miqdar rədd edilir', async () => {
+    for (const quantity of [0, -2, 1.5]) {
+      const res = await request(app).post('/api/orders').send({ ...valid, items: [{ product_id: 1, quantity }] });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it('sifariş detalını token olmadan oxumaq mümkün deyil (ID təxmini)', async () => {
+    const res = await request(app).get('/api/orders/abc');
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('admin əməliyyatlarının validasiyası', () => {
+  it('kateqoriya slug-ı yalnız kiçik hərf/rəqəm/tire ola bilər', async () => {
+    const res = await request(app).post('/api/categories').set('Cookie', cookieFor('OWNER')).send({ name: 'X', slug: 'Bad Slug!' });
+    expect(res.status).toBe(400);
+  });
+
+  it('məhsul qiyməti mənfi ola bilməz', async () => {
+    const res = await request(app).post('/api/products').set('Cookie', cookieFor('OWNER')).send({ name: 'X', price: -1, category_id: 1 });
+    expect(res.status).toBe(400);
+  });
+
+  it('promo faiz 100-dən böyük ola bilməz', async () => {
+    const res = await request(app).post('/api/promos').set('Cookie', cookieFor('OWNER')).send({ code: 'BAD', discount_type: 'PERCENT', discount_value: 150 });
+    expect(res.status).toBe(400);
+  });
+
+  it('WAITER məhsul yarada bilməz (403)', async () => {
+    const res = await request(app).post('/api/products').set('Cookie', cookieFor('WAITER')).send({ name: 'X', price: 1, category_id: 1 });
+    expect(res.status).toBe(403);
+  });
+
+  it('masa skanı token tələb edir', async () => {
+    const res = await request(app).post('/api/tables/table_001/scan').send({});
+    expect(res.status).toBe(400);
+  });
+});

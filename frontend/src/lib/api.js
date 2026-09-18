@@ -7,7 +7,14 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    // Zəif internet: yalnız təhlükəsiz (GET) sorğuları şəbəkə xətasında 2 dəfə təkrar cəhd et.
+    const config = error.config
+    if (config && config.method === 'get' && !error.response && (config.__retry || 0) < 2) {
+      config.__retry = (config.__retry || 0) + 1
+      await new Promise((r) => setTimeout(r, 400 * 2 ** config.__retry))
+      return apiClient(config)
+    }
     const isAuthCall = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/me')
     const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
     if (error.response?.status === 401 && isAdminPath && !isAuthCall) {

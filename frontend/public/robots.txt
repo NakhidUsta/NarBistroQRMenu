@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /menyu
+Disallow: /admin
+Disallow: /kitchen
+Disallow: /cart
+Disallow: /order/
+
+# Deploy zamanı DOMAIN.com-u real domenlə əvəz edin:
+Sitemap: https://DOMAIN.com/sitemap.xml

@@ -52,4 +52,4 @@ async function updateRestaurant(body) {
   return restaurant;
 }
 
-module.exports = { getRestaurant, updateRestaurant, FONTS };
+module.exports = { getRestaurant, updateRestaurant, sanitizeTheme, FONTS };
