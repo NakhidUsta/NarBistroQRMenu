@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useMenuStore } from '../store/menuStore'
-import { useCartStore } from '../store/cartStore'
 import { useRestaurantStore } from '../store/restaurantStore'
 import { useTableSessionStore } from '../store/tableSessionStore'
 import { publicSocket } from '../lib/socket'
@@ -10,29 +9,7 @@ import { useT, useLocalize } from '../lib/i18n'
 import Toast from './Toast'
 import TableActions from './TableActions'
 import LanguageSwitcher from './LanguageSwitcher'
-
-function CartFab() {
-  const count = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0))
-  const location = useLocation()
-  const t = useT()
-  if (!count || location.pathname === '/cart') return null
-
-  return (
-    <Link
-      to="/cart"
-      className="fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-burgundy text-cream rounded-full pl-4 pr-5 py-3.5 shadow-[0_14px_30px_-10px_rgba(92,26,46,0.55)] hover:-translate-y-0.5 transition-transform"
-    >
-      <span className="relative">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 3h2l.4 2M7 13h10l3-8H6.4M7 13L5.4 5M7 13l-2.3 4.6A1 1 0 0 0 5.6 19H18" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="9" cy="21" r="1" fill="currentColor" />
-          <circle cx="18" cy="21" r="1" fill="currentColor" />
-        </svg>
-      </span>
-      <span className="font-semibold text-[14px]">{t('cart')} ({count})</span>
-    </Link>
-  )
-}
+import BottomNav from './BottomNav'
 
 function PublicLayout() {
   const location = useLocation()
@@ -57,8 +34,14 @@ function PublicLayout() {
 
   const isSubPage = location.pathname !== '/menyu' && location.pathname !== '/'
 
+  useEffect(() => {
+    const name = localize(restaurant, 'name')
+    if (name) document.title = `${name} — Menu`
+  }, [restaurant, localize])
+
   return (
     <div className="min-h-screen bg-cream text-ink font-body">
+     <div className="max-w-lg mx-auto relative min-h-screen bg-cream sm:shadow-[0_0_60px_-30px_rgba(32,26,22,0.4)]">
       {!isSubPage && (
         <header className="px-5 pt-6 pb-2 flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -79,8 +62,9 @@ function PublicLayout() {
       )}
       {!isSubPage && <TableActions />}
       <Outlet />
-      <CartFab />
+      <BottomNav />
       <Toast />
+     </div>
     </div>
   )
 }

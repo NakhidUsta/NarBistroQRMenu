@@ -4,6 +4,8 @@ import Menu from './pages/Menu'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
 import OrderStatus from './pages/OrderStatus'
+import Favorites from './pages/Favorites'
+import MyOrders from './pages/MyOrders'
 import NotFound from './pages/NotFound'
 
 import Login from './admin/Login'
@@ -27,6 +29,8 @@ function App() {
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/order/:id" element={<OrderStatus />} />
+        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/orders" element={<MyOrders />} />
       </Route>
 
       <Route path="/admin/login" element={<Login />} />

@@ -24,8 +24,4 @@ export const useNotificationStore = create((set, get) => ({
     await notificationsApi.markAllRead()
     set({ items: get().items.map((n) => ({ ...n, isRead: true })) })
   },
-
-  get unreadCount() {
-    return get().items.filter((n) => !n.isRead).length
-  },
 }))

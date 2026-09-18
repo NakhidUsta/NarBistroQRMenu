@@ -47,14 +47,26 @@ export const useCartStore = create(
         set({ items: [] })
       },
 
-      get total() {
-        return get().items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+      // Menyudakı canlı qiymətlə səbətdəki qiyməti uyğunlaşdırır; dəyişiklik olubsa true qaytarır.
+      syncPrices(products) {
+        let changed = false
+        const items = get().items.map((i) => {
+          const p = products.find((x) => x.id === i.product_id)
+          if (p && Number(p.price) !== i.price) {
+            changed = true
+            return { ...i, price: Number(p.price) }
+          }
+          return i
+        })
+        if (changed) set({ items })
+        return changed
       },
 
-      get count() {
-        return get().items.reduce((sum, i) => sum + i.quantity, 0)
+      removeMany(productIds) {
+        set({ items: get().items.filter((i) => !productIds.includes(i.product_id)) })
       },
+
     }),
-    { name: 'qrmenu_cart' },
+    { name: 'qrmenu_cart', partialize: (state) => ({ items: state.items }) },
   ),
 )

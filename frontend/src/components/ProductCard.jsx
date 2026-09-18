@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { resolveUploadUrl } from '../lib/api'
 import { useT, useLocalize } from '../lib/i18n'
 import Badge from './Badge'
+import FavoriteButton from './FavoriteButton'
 
 function ProductCard({ product }) {
   const unavailable = !product.is_available
@@ -31,7 +32,10 @@ function ProductCard({ product }) {
         )}
       </div>
       <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <h3 className="font-display text-[17px] font-semibold text-ink truncate">{name}</h3>
+        <div className="flex items-start justify-between gap-1">
+          <h3 className="font-display text-[17px] font-semibold text-ink truncate">{name}</h3>
+          <FavoriteButton productId={product.id} className="-mt-1 -mr-1 text-muted shrink-0" />
+        </div>
         {description && (
           <p className="text-[12.5px] text-muted leading-snug line-clamp-2 mt-0.5">{description}</p>
         )}
