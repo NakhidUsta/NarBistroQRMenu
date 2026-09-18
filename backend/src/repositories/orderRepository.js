@@ -1,4 +1,5 @@
 const { sql } = require('../config/db');
+const { TZ } = require('../config/tz');
 
 async function findProductPrice(transaction, productId) {
   const result = await new sql.Request(transaction)
@@ -118,15 +119,33 @@ async function findById(pool, id) {
   return { ...order, items: itemsResult.recordset, history: historyResult.recordset };
 }
 
-async function findAll(pool, { status } = {}) {
-  const request = pool.request();
-  let query = 'SELECT * FROM orders';
+async function findAll(pool, { status, q, date, limit = 200 } = {}) {
+  const request = pool.request().input('limit', sql.Int, limit);
+  const where = [];
   if (status) {
-    query += ' WHERE status = @status';
+    where.push('o.status = @status');
     request.input('status', sql.NVarChar(20), status);
   }
-  query += ' ORDER BY created_at DESC';
-  const result = await request.query(query);
+  if (date) {
+    where.push(`CAST(DATEADD(HOUR, ${TZ}, o.created_at) AS DATE) = @date`);
+    request.input('date', sql.Date, date);
+  }
+  if (q) {
+    const conds = ['o.customer_name LIKE @q', 'o.phone LIKE @q', 't.label LIKE @q'];
+    request.input('q', sql.NVarChar(102), `%${q}%`);
+    const id = Number(q.replace(/^#/, ''));
+    if (Number.isInteger(id) && id > 0) {
+      conds.push('o.id = @qid');
+      request.input('qid', sql.Int, id);
+    }
+    where.push(`(${conds.join(' OR ')})`);
+  }
+  const result = await request.query(`
+    SELECT TOP (@limit) o.*
+    FROM orders o LEFT JOIN restaurant_tables t ON t.id = o.table_id
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    ORDER BY o.created_at DESC
+  `);
   const orders = result.recordset;
   if (!orders.length) return orders;
 

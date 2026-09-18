@@ -31,4 +31,12 @@ async function markAllRead() {
   await notificationRepository.markAllRead();
 }
 
-module.exports = { create, list, markRead, markAllRead };
+async function remove(id) {
+  if (!(await notificationRepository.remove(id))) throw new AppError(404, 'Bildiriş tapılmadı');
+}
+
+async function removeAllRead() {
+  await notificationRepository.removeAllRead();
+}
+
+module.exports = { create, list, markRead, markAllRead, remove, removeAllRead };

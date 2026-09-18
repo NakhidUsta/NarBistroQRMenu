@@ -72,6 +72,8 @@ export const notificationsApi = {
   list: () => unwrap(apiClient.get('/notifications')),
   markRead: (id) => unwrap(apiClient.patch(`/notifications/${id}/read`)),
   markAllRead: () => apiClient.patch('/notifications/read-all'),
+  remove: (id) => apiClient.delete(`/notifications/${id}`),
+  clearRead: () => apiClient.delete('/notifications/read'),
 }
 
 export const ordersApi = {

@@ -1,7 +1,6 @@
 const { sql, poolPromise } = require('../config/db');
 
-// DB-də vaxtlar UTC saxlanılır; gün sərhədlərini restoranın yerli vaxtına görə hesablayırıq.
-const TZ = Number.parseInt(process.env.TZ_OFFSET_HOURS ?? '4', 10) || 0;
+const { TZ } = require('../config/tz');
 const LOCAL = `DATEADD(HOUR, ${TZ}, o.created_at)`;
 const RANGE = `CAST(${LOCAL} AS DATE) BETWEEN @from AND @to`;
 

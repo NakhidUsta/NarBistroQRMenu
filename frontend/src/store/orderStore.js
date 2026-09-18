@@ -3,11 +3,14 @@ import { ordersApi } from '../lib/api'
 
 export const useOrderStore = create((set, get) => ({
   orders: [], // admin lövhəsi üçün
+  filters: {}, // aktiv axtarış/filtr — canlı yenilənmədə saxlanılır
   currentOrder: null, // müştəri izləmə səhifəsi üçün
 
+  // params verilməsə cari filtrlərlə yenidən yükləyir (socket hadisələrində filtr itməsin deyə).
   async fetchOrders(params) {
-    const orders = await ordersApi.list(params)
-    set({ orders })
+    const filters = params ?? get().filters
+    const orders = await ordersApi.list(filters)
+    set({ orders, filters })
   },
 
   async fetchOrder(id, token) {

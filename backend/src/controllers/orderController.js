@@ -28,7 +28,11 @@ exports.getOrderById =asyncHandler(async (req, res) => {
 });
 
 exports.getAllOrders = asyncHandler(async (req, res) => {
-  res.json(await orderService.listOrders({ status: req.query.status }));
+  const { status, q, date } = req.query;
+  if (status && !validateStatus(status)) throw new AppError(400, 'Yanlış status filtri');
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new AppError(400, 'Tarix YYYY-MM-DD formatında olmalıdır');
+  const search = q ? String(q).trim().slice(0, 100) : undefined;
+  res.json(await orderService.listOrders({ status, date, q: search || undefined }));
 });
 
 exports.updateOrderStatus = asyncHandler(async (req, res) => {

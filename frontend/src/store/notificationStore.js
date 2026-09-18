@@ -20,6 +20,16 @@ export const useNotificationStore = create((set, get) => ({
     set({ items: get().items.map((n) => (n.id === id ? { ...n, isRead: true } : n)) })
   },
 
+  async remove(id) {
+    await notificationsApi.remove(id)
+    set({ items: get().items.filter((n) => n.id !== id) })
+  },
+
+  async clearRead() {
+    await notificationsApi.clearRead()
+    set({ items: get().items.filter((n) => !n.isRead) })
+  },
+
   async markAllRead() {
     await notificationsApi.markAllRead()
     set({ items: get().items.map((n) => ({ ...n, isRead: true })) })

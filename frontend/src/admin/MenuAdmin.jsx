@@ -19,6 +19,7 @@ function MenuAdmin() {
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
   const showToast = useUiStore((s) => s.showToast)
 
   async function load() {
@@ -83,8 +84,19 @@ function MenuAdmin() {
           <h1 className="font-display text-[24px] font-semibold">Menyu</h1>
           <Button onClick={startNew}>+ Yeni məhsul</Button>
         </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Məhsul axtar (ad, kateqoriya)"
+          className="w-full mb-4 bg-panel border border-border rounded-full px-4 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-burgundy/30"
+        />
         <div className="flex flex-col gap-3">
-          {products.map((p) => (
+          {products.filter((p) => {
+            const s = search.trim().toLowerCase()
+            if (!s) return true
+            const cat = categories.find((c) => c.id === p.category_id)?.name || ''
+            return [p.name, p.name_en, p.name_ru, cat].some((v) => v && v.toLowerCase().includes(s))
+          }).map((p) => (
             <div key={p.id} className={`flex gap-4 bg-panel rounded-2xl p-3 border border-border/60 ${!p.is_available ? 'opacity-60' : ''}`}>
               <img src={resolveUploadUrl(p.image_url)} alt="" className="w-16 h-16 rounded-xl object-cover bg-blush" />
               <div className="flex-1 min-w-0">

@@ -108,6 +108,30 @@ describe('sifariş yaradılması — giriş yoxlaması (müştəri, girişsiz)',
   });
 });
 
+describe('sifariş siyahısı filtrləri və səbət quote', () => {
+  it('yanlış status/tarix filtri 400', async () => {
+    const cookie = cookieFor('WAITER');
+    expect((await request(app).get('/api/orders?status=BAD').set('Cookie', cookie)).status).toBe(400);
+    expect((await request(app).get('/api/orders?date=2026-13-x').set('Cookie', cookie)).status).toBe(400);
+  });
+
+  it('boş səbətin quote-u 400', async () => {
+    expect((await request(app).post('/api/orders/quote').send({ items: [] })).status).toBe(400);
+    expect((await request(app).post('/api/orders/quote').send({ items: [{ product_id: 1, quantity: 0 }] })).status).toBe(400);
+  });
+
+  it('restoran haqları: ƏDV 100%-dən böyük ola bilməz, mənfi çatdırılma rədd edilir', async () => {
+    const cookie = cookieFor('OWNER');
+    expect((await request(app).put('/api/restaurant').set('Cookie', cookie).send({ name: 'X', vat_percent: 150 })).status).toBe(400);
+    expect((await request(app).put('/api/restaurant').set('Cookie', cookie).send({ name: 'X', delivery_fee: -1 })).status).toBe(400);
+  });
+
+  it('bildiriş silmə yalnız OWNER/MANAGER/WAITER üçün (KITCHEN -> 403)', async () => {
+    expect((await request(app).delete('/api/notifications/1').set('Cookie', cookieFor('KITCHEN'))).status).toBe(403);
+    expect((await request(app).delete('/api/notifications/1')).status).toBe(401);
+  });
+});
+
 describe('admin əməliyyatlarının validasiyası', () => {
   it('kateqoriya slug-ı yalnız kiçik hərf/rəqəm/tire ola bilər', async () => {
     const res = await request(app).post('/api/categories').set('Cookie', cookieFor('OWNER')).send({ name: 'X', slug: 'Bad Slug!' });

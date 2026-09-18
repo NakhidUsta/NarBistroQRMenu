@@ -39,4 +39,15 @@ async function markAllRead() {
   await pool.request().query('UPDATE notifications SET is_read = 1 WHERE is_read = 0');
 }
 
-module.exports = { create, findAll, markRead, markAllRead };
+async function remove(id) {
+  const pool = await poolPromise;
+  const result = await pool.request().input('id', sql.Int, id).query('DELETE FROM notifications WHERE id = @id');
+  return result.rowsAffected[0] > 0;
+}
+
+async function removeAllRead() {
+  const pool = await poolPromise;
+  await pool.request().query('DELETE FROM notifications WHERE is_read = 1');
+}
+
+module.exports = { create, findAll, markRead, markAllRead, remove, removeAllRead };

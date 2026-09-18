@@ -27,7 +27,11 @@ function NotificationBell() {
   const fetchAll = useNotificationStore((s) => s.fetchAll)
   const markRead = useNotificationStore((s) => s.markRead)
   const markAllRead = useNotificationStore((s) => s.markAllRead)
+  const remove = useNotificationStore((s) => s.remove)
+  const clearRead = useNotificationStore((s) => s.clearRead)
+  const [filter, setFilter] = useState('all')
   const unread = items.filter((n) => !n.isRead).length
+  const visible = items.filter((n) => (filter === 'unread' ? !n.isRead : filter === 'all' ? true : n.type === filter))
 
   useEffect(() => {
     fetchAll()
@@ -70,13 +74,25 @@ function NotificationBell() {
               </button>
             )}
           </div>
-          <div className="max-h-96 overflow-y-auto">
-            {items.length === 0 && <p className="text-[12.5px] text-muted px-4 py-6 text-center">Hələ bildiriş yoxdur</p>}
-            {items.map((n) => (
+          <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-border">
+            {[['all', 'Hamısı'], ['unread', 'Oxunmamış'], ['order_created', 'Sifariş'], ['call_waiter', 'Ofisiant'], ['request_bill', 'Hesab']].map(([v, l]) => (
               <button
-                key={n.id}
+                key={v}
+                onClick={() => setFilter(v)}
+                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${filter === v ? 'bg-ink text-cream border-ink' : 'text-muted border-border'}`}
+              >
+                {l}
+              </button>
+            ))}
+            <button onClick={clearRead} className="ml-auto text-[10.5px] font-semibold text-danger">Oxunmuşları sil</button>
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {visible.length === 0 && <p className="text-[12.5px] text-muted px-4 py-6 text-center">{items.length ? 'Bu filtrə uyğun bildiriş yoxdur' : 'Hələ bildiriş yoxdur'}</p>}
+            {visible.map((n) => (
+              <div key={n.id} className="relative group">
+              <button
                 onClick={() => handleItemClick(n)}
-                className={`w-full text-left px-4 py-3 border-b border-border/60 last:border-0 hover:bg-blush/40 flex gap-2.5 ${
+                className={`w-full text-left px-4 py-3 border-b border-border/60 group-last:border-0 hover:bg-blush/40 flex gap-2.5 ${
                   !n.isRead ? 'bg-gold/10' : ''
                 }`}
               >
@@ -88,6 +104,14 @@ function NotificationBell() {
                 </span>
                 {!n.isRead && <span className="w-2 h-2 rounded-full bg-burgundy mt-1.5 shrink-0" />}
               </button>
+              <button
+                aria-label="Sil"
+                onClick={() => remove(n.id)}
+                className="absolute top-2 right-2 w-5 h-5 rounded-full text-[11px] text-muted hover:text-danger hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ✕
+              </button>
+              </div>
             ))}
           </div>
         </div>

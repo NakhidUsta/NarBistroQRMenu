@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useOrderStore } from '../store/orderStore'
 import { useUiStore } from '../store/uiStore'
+
+const FILTER_STATUSES = ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'COMPLETED', 'CANCELLED']
 
 const STATUS_FLOW = ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'COMPLETED']
 const STATUS_LABELS = {
@@ -19,9 +21,19 @@ function OrdersAdmin() {
   const changeStatus = useOrderStore((s) => s.changeStatus)
   const showToast = useUiStore((s) => s.showToast)
 
+  const [q, setQ] = useState('')
+  const [status, setStatus] = useState('')
+  const [date, setDate] = useState('')
+  const debounce = useRef(null)
+
+  // Filtr dəyişəndə (axtarış mətni üçün qısa gecikmə ilə) serverdən yenidən yüklə
   useEffect(() => {
-    fetchOrders()
-  }, [])
+    clearTimeout(debounce.current)
+    debounce.current = setTimeout(() => {
+      fetchOrders({ ...(q.trim() && { q: q.trim() }), ...(status && { status }), ...(date && { date }) })
+    }, q ? 300 : 0)
+    return () => clearTimeout(debounce.current)
+  }, [q, status, date])
 
   async function advance(order) {
     const idx = STATUS_FLOW.indexOf(order.status)
@@ -29,6 +41,7 @@ function OrdersAdmin() {
     if (!next) return
     try {
       await changeStatus(order.id, next)
+      if (status) fetchOrders()
     } catch (err) {
       showToast(err.response?.data?.error || 'Status yenilənmədi', 'error')
     }
@@ -37,11 +50,47 @@ function OrdersAdmin() {
   async function cancel(order) {
     if (!confirm('Sifarişi ləğv etmək istədiyinizə əminsiniz?')) return
     await changeStatus(order.id, 'CANCELLED')
+    if (status) fetchOrders()
   }
+
+  const filtered = q || status || date
 
   return (
     <div>
-      <h1 className="font-display text-[24px] font-semibold mb-5">Sifarişlər</h1>
+      <h1 className="font-display text-[24px] font-semibold mb-4">Sifarişlər</h1>
+
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Axtar: sifariş №, masa, müştəri, telefon"
+          className="flex-1 min-w-[220px] bg-panel border border-border rounded-full px-4 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-burgundy/30"
+        />
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="bg-panel border border-border rounded-full px-3 py-2 text-[13px]"
+        />
+        {filtered && (
+          <button onClick={() => { setQ(''); setStatus(''); setDate('') }} className="text-[12.5px] font-semibold text-burgundy px-2">
+            Təmizlə
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5 mb-5">
+        {['', ...FILTER_STATUSES].map((s) => (
+          <button
+            key={s || 'all'}
+            onClick={() => setStatus(s)}
+            className={`px-3 py-1 rounded-full text-[11.5px] font-semibold border ${
+              status === s ? 'bg-ink text-cream border-ink' : 'bg-panel text-muted border-border'
+            }`}
+          >
+            {s ? STATUS_LABELS[s] : 'Hamısı'}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-col gap-3">
         {orders.map((order) => {
           const idx = STATUS_FLOW.indexOf(order.status)
@@ -52,7 +101,10 @@ function OrdersAdmin() {
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="w-14 shrink-0">
                   <p className="font-display text-[18px] font-bold text-burgundy">#{order.id}</p>
-                  <p className="text-[11px] text-muted">{new Date(order.created_at).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-[11px] text-muted">
+                    {new Date(order.created_at).toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' })}{' '}
+                    {new Date(order.created_at).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
                 <div className="flex-1 min-w-[140px]">
                   <p className="font-semibold text-[14px]">{order.customer_name}</p>
@@ -92,7 +144,7 @@ function OrdersAdmin() {
             </div>
           )
         })}
-        {orders.length === 0 && <p className="text-muted text-[13.5px]">Hələ sifariş yoxdur</p>}
+        {orders.length === 0 && <p className="text-muted text-[13.5px]">{filtered ? 'Bu filtrə uyğun sifariş tapılmadı' : 'Hələ sifariş yoxdur'}</p>}
       </div>
     </div>
   )

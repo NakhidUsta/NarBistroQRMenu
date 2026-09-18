@@ -31,7 +31,7 @@ function KitchenDisplay() {
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
-    fetchOrders()
+    fetchOrders({})
     const tick = setInterval(() => setNow(Date.now()), 30000)
     return () => clearInterval(tick)
   }, [])
