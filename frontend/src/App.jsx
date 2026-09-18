@@ -21,6 +21,10 @@ import Settings from './admin/Settings'
 import StaffAdmin from './admin/StaffAdmin'
 import AuditLogsAdmin from './admin/AuditLogsAdmin'
 import KitchenDisplay from './admin/KitchenDisplay'
+import ReviewsAdmin from './admin/ReviewsAdmin'
+import CustomersAdmin from './admin/CustomersAdmin'
+import InventoryAdmin from './admin/InventoryAdmin'
+import ReportsAdmin from './admin/ReportsAdmin'
 
 function App() {
   return (
@@ -43,6 +47,10 @@ function App() {
       <Route path="/admin" element={<ProtectedAdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="reviews" element={<ReviewsAdmin />} />
+          <Route path="customers" element={<CustomersAdmin />} />
+          <Route path="inventory" element={<InventoryAdmin />} />
+          <Route path="reports" element={<ReportsAdmin />} />
           <Route path="staff" element={<StaffAdmin />} />
           <Route path="audit" element={<AuditLogsAdmin />} />
           <Route path="dashboard" element={<Dashboard />} />

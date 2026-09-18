@@ -5,6 +5,7 @@ import { publicSocket } from '../lib/socket'
 import { useT } from '../lib/i18n'
 import Button from '../components/Button'
 import PriceBreakdown from '../components/PriceBreakdown'
+import ReviewForm from '../components/ReviewForm'
 
 const STEP_KEYS = [
   { key: 'NEW', labelKey: 'order_status_new' },
@@ -91,6 +92,8 @@ function OrderStatus() {
           <PriceBreakdown data={order} />
         </div>
       </div>
+
+      <ReviewForm orderId={order.id} token={token} status={order.status} />
 
       <Button to="/menyu" variant="outline" className="w-full">{t('back_to_menu')}</Button>
     </div>

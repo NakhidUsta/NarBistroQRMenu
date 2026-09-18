@@ -14,6 +14,7 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
   const admin = await adminCtx.newPage()
   const customer = await customerCtx.newPage()
   let productId
+  let orderId
 
   try {
     // 1. Admin panelə daxil ol
@@ -64,7 +65,7 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     await customer.getByRole('button', { name: 'Sifarişi təsdiqlə' }).click()
     await customer.getByRole('button', { name: 'Təsdiqlə', exact: true }).click()
     await expect(customer).toHaveURL(/\/order\/\d+/)
-    const orderId = Number(customer.url().match(/\/order\/(\d+)/)[1])
+    orderId = Number(customer.url().match(/\/order\/(\d+)/)[1])
 
     // 11. Admin panelində sifariş dərhal görünür (refresh yoxdur)
     const card = admin.locator('div.rounded-2xl', { hasText: `#${orderId}` }).filter({ hasText: NAME }).first()
@@ -106,9 +107,9 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     await expect(anonPage.getByText('Masa —')).toHaveCount(0)
     await anon.close()
 
-    // Təmizlik: sifarişi ləğv et
-    await adminCtx.request.put(`${API}/orders/${orderId}`, { data: { status: 'CANCELLED' } })
   } finally {
+    // Təmizlik (test uğursuz olsa da): sifarişi ləğv et, məhsulu sil
+    if (orderId) await adminCtx.request.put(`${API}/orders/${orderId}`, { data: { status: 'CANCELLED' } })
     if (productId) await adminCtx.request.delete(`${API}/products/${productId}`)
     await adminCtx.close()
     await customerCtx.close()

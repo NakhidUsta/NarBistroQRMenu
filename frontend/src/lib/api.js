@@ -84,6 +84,29 @@ export const ordersApi = {
   updateStatus: (id, status, note) => unwrap(apiClient.put(`/orders/${id}`, { status, note })),
 }
 
+export const reviewsApi = {
+  publicList: () => unwrap(apiClient.get('/reviews/public')),
+  orderStatus: (orderId, token) => unwrap(apiClient.get(`/reviews/order/${orderId}`, { params: { token } })),
+  create: (orderId, token, body) => unwrap(apiClient.post(`/reviews/order/${orderId}`, { ...body, token })),
+  list: () => unwrap(apiClient.get('/reviews')),
+  setApproved: (id, is_approved) => unwrap(apiClient.patch(`/reviews/${id}`, { is_approved })),
+  remove: (id) => apiClient.delete(`/reviews/${id}`),
+}
+
+export const insightsApi = {
+  customers: (q) => unwrap(apiClient.get('/insights/customers', { params: q ? { q } : {} })),
+  inventory: () => unwrap(apiClient.get('/insights/inventory')),
+  async downloadCsv(kind, from, to) {
+    const res = await apiClient.get(`/insights/reports/${kind}.csv`, { params: { from, to }, responseType: 'blob' })
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${kind}_${from}_${to}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+}
+
 export const staffApi = {
   list: () => unwrap(apiClient.get('/staff')),
   create: (body) => unwrap(apiClient.post('/staff', body)),

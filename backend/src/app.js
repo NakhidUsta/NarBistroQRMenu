@@ -19,6 +19,8 @@ const promoRoutes = require('./routes/promos');
 const auditRoutes = require('./routes/audit');
 const staffRoutes = require('./routes/staff');
 const uploadRoutes = require('./routes/upload');
+const reviewRoutes = require('./routes/reviews');
+const insightRoutes = require('./routes/insights');
 
 const app = express();
 const SLOW_REQUEST_MS = 1000;
@@ -99,6 +101,8 @@ app.use('/api/audit-logs', auditRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/insights', insightRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint tapılmadı' });

@@ -77,6 +77,11 @@ const DICTIONARY = {
     service_fee: 'Servis haqqı',
     vat: 'ƏDV',
     delivery_fee: 'Çatdırılma',
+    rate_order: 'Sifarişi qiymətləndirin',
+    review_placeholder: 'Fikrinizi yazın (istəyə bağlı)',
+    submit_review: 'Rəy göndər',
+    review_thanks: 'Rəyiniz üçün təşəkkür edirik! Moderasiyadan sonra dərc olunacaq.',
+    reviews_title: 'Qonaq rəyləri',
   },
   en: {
     search_placeholder: 'Search the menu...',
@@ -146,6 +151,11 @@ const DICTIONARY = {
     service_fee: 'Service fee',
     vat: 'VAT',
     delivery_fee: 'Delivery',
+    rate_order: 'Rate your order',
+    review_placeholder: 'Write your feedback (optional)',
+    submit_review: 'Send review',
+    review_thanks: 'Thank you for your feedback! It will appear after moderation.',
+    reviews_title: 'Guest reviews',
   },
   ru: {
     search_placeholder: 'Поиск по меню...',
@@ -215,6 +225,11 @@ const DICTIONARY = {
     service_fee: 'Сервисный сбор',
     vat: 'НДС',
     delivery_fee: 'Доставка',
+    rate_order: 'Оцените заказ',
+    review_placeholder: 'Напишите отзыв (необязательно)',
+    submit_review: 'Отправить отзыв',
+    review_thanks: 'Спасибо за отзыв! Он появится после модерации.',
+    reviews_title: 'Отзывы гостей',
   },
 }
 

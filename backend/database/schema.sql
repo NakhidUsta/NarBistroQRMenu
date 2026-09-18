@@ -8,6 +8,7 @@ GO
 
 -- ============ CƏDVƏLLƏR ============
 
+IF OBJECT_ID('reviews', 'U') IS NOT NULL DROP TABLE reviews;
 IF OBJECT_ID('promo_usage', 'U') IS NOT NULL DROP TABLE promo_usage;
 IF OBJECT_ID('stock_movements', 'U') IS NOT NULL DROP TABLE stock_movements;
 IF OBJECT_ID('order_status_history', 'U') IS NOT NULL DROP TABLE order_status_history;
@@ -189,6 +190,19 @@ CREATE TABLE order_status_history (
     changed_by INT NULL FOREIGN KEY REFERENCES admin_users(id),
     note       NVARCHAR(300) NULL,
     created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+GO
+
+CREATE TABLE reviews (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    restaurant_id INT NOT NULL FOREIGN KEY REFERENCES restaurants(id),
+    order_id      INT NOT NULL FOREIGN KEY REFERENCES orders(id) ON DELETE CASCADE,
+    customer_name NVARCHAR(120) NOT NULL,
+    rating        INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment       NVARCHAR(1000) NULL,
+    is_approved   BIT NOT NULL DEFAULT 0,
+    created_at    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_reviews_order UNIQUE (order_id)
 );
 GO
 

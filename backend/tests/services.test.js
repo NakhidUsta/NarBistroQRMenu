@@ -16,6 +16,8 @@ jest.mock('../src/repositories/orderRepository');
 jest.mock('../src/repositories/tableRepository');
 jest.mock('../src/repositories/adminUserRepository');
 jest.mock('../src/repositories/restaurantRepository');
+jest.mock('../src/repositories/reviewRepository');
+jest.mock('../src/repositories/insightRepository');
 jest.mock('../src/services/notificationService', () => ({ create: jest.fn().mockResolvedValue({}) }));
 jest.mock('../src/sockets/emit', () => ({
   emitOrderCreated: jest.fn(), emitOrderStatusUpdated: jest.fn(), emitProductUpdated: jest.fn(),
@@ -33,6 +35,60 @@ const orderService = require('../src/services/orderService');
 const pricingService = require('../src/services/pricingService');
 const restaurantRepository = require('../src/repositories/restaurantRepository');
 const tableRepository = require('../src/repositories/tableRepository');
+
+describe('CSV ixracı', () => {
+  const insightService = require('../src/services/insightService');
+  const insightRepository = require('../src/repositories/insightRepository');
+
+  it('formula inyeksiyasını neytrallaşdırır, telefon nömrəsinə toxunmur', () => {
+    expect(insightService.csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
+    expect(insightService.csvCell('@SUM(A1)')).toBe(`"'@SUM(A1)"`);
+    expect(insightService.csvCell('+cmd|calc')).toBe(`"'+cmd|calc"`);
+    expect(insightService.csvCell('+994 50 111 22 33')).toBe('"+994 50 111 22 33"');
+    expect(insightService.csvCell(-5)).toBe('"-5"');
+    expect(insightService.csvCell(null)).toBe('');
+  });
+
+  it('BOM və başlıq sətri ilə CSV qurur, dırnaq/vergülü qoruyur', async () => {
+    insightRepository.exportProductSales.mockResolvedValue([{ id: 1, name: 'Ət, "şef"', category: 'Əsas', quantity: 2, revenue: 48 }]);
+    const csv = await insightService.productsCsv({ from: '2026-09-01', to: '2026-09-30' });
+    expect(csv.startsWith('﻿"ID","Məhsul"')).toBe(true);
+    expect(csv).toContain('"Ət, ""şef"""');
+  });
+
+  it('tarix aralığı yanlışdırsa 400', async () => {
+    await expect(insightService.ordersCsv({ from: '2026-09-30', to: '2026-09-01' })).rejects.toMatchObject({ status: 400 });
+    await expect(insightService.ordersCsv({})).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe('reviewService', () => {
+  const reviewService = require('../src/services/reviewService');
+  const reviewRepository = require('../src/repositories/reviewRepository');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    reviewRepository.findByOrder.mockResolvedValue(null);
+    reviewRepository.create.mockImplementation(async (r) => r);
+    orderRepository.findById.mockResolvedValue({ id: 5, access_token: 'tok', status: 'DELIVERED', customer_name: 'Ali' });
+  });
+
+  it('düzgün token və hazır sifarişlə rəy yaradılır (təsdiqsiz)', async () => {
+    const r = await reviewService.createForOrder(5, 'tok', { rating: 5, comment: '  əla  ' });
+    expect(r).toMatchObject({ order_id: 5, rating: 5, comment: 'əla', customer_name: 'Ali' });
+  });
+
+  it('yanlış token, yanlış reytinq, hələ hazır olmayan və təkrar rəy rədd edilir', async () => {
+    await expect(reviewService.createForOrder(5, 'yanlis', { rating: 5 })).rejects.toMatchObject({ status: 404 });
+    await expect(reviewService.createForOrder(5, 'tok', { rating: 6 })).rejects.toMatchObject({ status: 400 });
+    await expect(reviewService.createForOrder(5, 'tok', { rating: 2.5 })).rejects.toMatchObject({ status: 400 });
+    orderRepository.findById.mockResolvedValue({ id: 5, access_token: 'tok', status: 'NEW' });
+    await expect(reviewService.createForOrder(5, 'tok', { rating: 5 })).rejects.toMatchObject({ status: 400 });
+    orderRepository.findById.mockResolvedValue({ id: 5, access_token: 'tok', status: 'DELIVERED' });
+    reviewRepository.findByOrder.mockResolvedValue({ id: 1 });
+    await expect(reviewService.createForOrder(5, 'tok', { rating: 5 })).rejects.toMatchObject({ status: 409 });
+  });
+});
 
 describe('pricingService.compute (bütün pul hesablaması backend-də)', () => {
   it('haqsız hal: yalnız ara cəmi', () => {

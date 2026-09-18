@@ -11,6 +11,7 @@ import TableActions from './TableActions'
 import LanguageSwitcher from './LanguageSwitcher'
 import BottomNav from './BottomNav'
 import OfflineBanner from './OfflineBanner'
+import ReviewsSection from './ReviewsSection'
 import { applyTheme, resetTheme, parseTheme } from '../lib/theme'
 import { resolveUploadUrl } from '../lib/api'
 
@@ -91,6 +92,7 @@ function PublicLayout() {
       )}
       {!isSubPage && <TableActions />}
       <Outlet />
+      {!isSubPage && <ReviewsSection />}
       {!isSubPage && restaurant && (
         <footer className="px-5 pt-8 pb-28 text-center text-[12px] text-muted">
           {theme.footer_text && <p className="text-[13px] text-ink/80 mb-2">{theme.footer_text}</p>}
