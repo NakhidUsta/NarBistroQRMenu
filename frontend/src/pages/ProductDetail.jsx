@@ -128,7 +128,7 @@ function ProductDetail() {
           <button
             type="button"
             onClick={handleAdd}
-            className={`flex-1 bg-ink text-cream rounded-full py-3.5 font-semibold text-[14.5px] transition-transform ${pulse ? 'animate-pulse-once' : ''}`}
+            className={`flex-1 bg-btn text-cream rounded-full py-3.5 font-semibold text-[14.5px] transition-transform ${pulse ? 'animate-pulse-once' : ''}`}
           >
             {t('add_to_order')} — {(Number(product.price) * quantity).toFixed(2)} ₼
           </button>

@@ -4,6 +4,48 @@ import { useUiStore } from '../store/uiStore'
 import Button from '../components/Button'
 import ImageUploadField from './ImageUploadField'
 import TranslationTabs from './TranslationTabs'
+import { parseTheme, DEFAULT_THEME, FONT_OPTIONS } from '../lib/theme'
+
+const fieldCls = 'w-full bg-cream border border-border rounded-lg px-3 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-burgundy/30'
+
+// Dizayn parametrləri form.theme-də JSON kimi saxlanılır; dəyişiklik saxla-dan sonra canlı sayta yayılır.
+function ThemeEditor({ form, setForm }) {
+  const theme = { ...DEFAULT_THEME, ...parseTheme(form.theme) }
+  const set = (patch) => setForm({ ...form, theme: JSON.stringify({ ...theme, ...patch }) })
+
+  return (
+    <div className="border border-border rounded-xl p-4 bg-cream/50 flex flex-col gap-3">
+      <h3 className="font-semibold text-[14px]">Dizayn</h3>
+      <div className="grid grid-cols-3 gap-3">
+        {[['primary', 'Əsas rəng'], ['background', 'Fon rəngi'], ['button', 'Düymə rəngi']].map(([key, label]) => (
+          <div key={key}>
+            <label className="text-[11.5px] font-semibold text-muted mb-1 block">{label}</label>
+            <div className="flex items-center gap-2 bg-panel border border-border rounded-lg px-2 py-1.5">
+              <input type="color" value={theme[key]} onChange={(e) => set({ [key]: e.target.value })} className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent p-0" />
+              <span className="text-[11.5px] font-mono text-muted">{theme[key]}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div>
+        <label className="text-[11.5px] font-semibold text-muted mb-1 block">Başlıq şrifti</label>
+        <select value={theme.font} onChange={(e) => set({ font: e.target.value })} className={fieldCls} style={{ fontFamily: `"${theme.font}", serif` }}>
+          {FONT_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+        </select>
+      </div>
+      <ImageUploadField label="Hero şəkli (ana səhifə)" value={theme.hero_image_url} onChange={(url) => set({ hero_image_url: url })} />
+      {[['hero_title', 'Hero başlığı'], ['hero_subtitle', 'Hero alt mətni'], ['banner_text', 'Banner mətni (aksiya/elan)'], ['footer_text', 'Footer mətni']].map(([key, label]) => (
+        <div key={key}>
+          <label className="text-[11.5px] font-semibold text-muted mb-1 block">{label}</label>
+          <input value={theme[key] || ''} onChange={(e) => set({ [key]: e.target.value })} className={fieldCls} />
+        </div>
+      ))}
+      <button type="button" onClick={() => setForm({ ...form, theme: null })} className="text-[12px] font-semibold text-danger self-start">
+        Defolt dizayna qayıt
+      </button>
+    </div>
+  )
+}
 
 function InstagramBioLink() {
   const showToast = useUiStore((s) => s.showToast)
@@ -99,6 +141,8 @@ function Settings() {
           form={form}
           setForm={setForm}
         />
+
+        <ThemeEditor form={form} setForm={setForm} />
 
         <label className="flex items-center gap-2 text-[13px] font-semibold">
           <input

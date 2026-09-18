@@ -2,6 +2,7 @@ import { publicSocket, adminSocket } from './socket'
 import { useMenuStore } from '../store/menuStore'
 import { useOrderStore } from '../store/orderStore'
 import { useNotificationStore } from '../store/notificationStore'
+import { useRestaurantStore } from '../store/restaurantStore'
 import { playAlert, browserNotify } from './alerts'
 
 let publicBound = false
@@ -19,6 +20,9 @@ export function bindPublicSocket() {
   })
   publicSocket.on('order-status-updated', (order) => {
     useOrderStore.getState().updateOrder(order)
+  })
+  publicSocket.on('restaurant-updated', (restaurant) => {
+    useRestaurantStore.setState({ restaurant })
   })
 }
 

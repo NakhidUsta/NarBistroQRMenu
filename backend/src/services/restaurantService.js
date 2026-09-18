@@ -1,7 +1,43 @@
 const restaurantRepository = require('../repositories/restaurantRepository');
 const AppError = require('../utils/AppError');
+const { emitRestaurantUpdated } = require('../sockets/emit');
 
 const DEFAULT_RESTAURANT_ID = 1;
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const FONTS = ['Fraunces', 'Playfair Display', 'Cormorant Garamond', 'DM Serif Display', 'Inter'];
+const COLOR_KEYS = ['primary', 'background', 'button'];
+const TEXT_KEYS = { hero_image_url: 500, hero_title: 120, hero_subtitle: 240, banner_text: 200, footer_text: 400 };
+
+// Tema JSON-u yalnız icazə verilən açarlarla və təhlükəsiz dəyərlərlə saxlanılır
+// (rəng — HEX, font — siyahıdan, mətn — uzunluq limiti) ki, CSS/HTML inyeksiyası mümkün olmasın.
+function sanitizeTheme(input) {
+  if (input == null || input === '') return null;
+  let theme = input;
+  if (typeof input === 'string') {
+    try {
+      theme = JSON.parse(input);
+    } catch {
+      throw new AppError(400, 'Tema JSON formatında olmalıdır');
+    }
+  }
+  if (typeof theme !== 'object' || Array.isArray(theme)) throw new AppError(400, 'Tema obyekt olmalıdır');
+
+  const clean = {};
+  for (const key of COLOR_KEYS) {
+    if (theme[key]) {
+      if (!HEX.test(theme[key])) throw new AppError(400, `${key} rəngi #RRGGBB formatında olmalıdır`);
+      clean[key] = theme[key];
+    }
+  }
+  if (theme.font) {
+    if (!FONTS.includes(theme.font)) throw new AppError(400, 'Font siyahıdan seçilməlidir');
+    clean.font = theme.font;
+  }
+  for (const [key, max] of Object.entries(TEXT_KEYS)) {
+    if (theme[key]) clean[key] = String(theme[key]).slice(0, max);
+  }
+  return JSON.stringify(clean);
+}
 
 async function getRestaurant() {
   const restaurant = await restaurantRepository.find(DEFAULT_RESTAURANT_ID);
@@ -10,9 +46,10 @@ async function getRestaurant() {
 }
 
 async function updateRestaurant(body) {
-  const restaurant = await restaurantRepository.update(DEFAULT_RESTAURANT_ID, body);
+  const restaurant = await restaurantRepository.update(DEFAULT_RESTAURANT_ID, { ...body, theme: sanitizeTheme(body.theme) });
   if (!restaurant) throw new AppError(404, 'Restoran tapılmadı');
+  emitRestaurantUpdated(restaurant);
   return restaurant;
 }
 
-module.exports = { getRestaurant, updateRestaurant };
+module.exports = { getRestaurant, updateRestaurant, FONTS };

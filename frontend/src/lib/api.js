@@ -92,7 +92,7 @@ export const authApi = {
 }
 
 export const adminApi = {
-  dashboard: () => unwrap(apiClient.get('/admin/dashboard')),
+  dashboard: (params) => unwrap(apiClient.get('/admin/dashboard', { params })),
 }
 
 export const uploadApi = {

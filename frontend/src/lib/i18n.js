@@ -69,6 +69,9 @@ const DICTIONARY = {
     cancel: 'Ləğv et',
     confirm: 'Təsdiqlə',
     remove_unavailable: 'Mövcud olmayanları çıxar',
+    load_error_title: 'Menyu yüklənmədi',
+    load_error_body: 'Bağlantını yoxlayıb yenidən cəhd edin',
+    retry: 'Yenidən cəhd et',
   },
   en: {
     search_placeholder: 'Search the menu...',
@@ -130,6 +133,9 @@ const DICTIONARY = {
     cancel: 'Cancel',
     confirm: 'Confirm',
     remove_unavailable: 'Remove unavailable items',
+    load_error_title: 'Could not load the menu',
+    load_error_body: 'Check your connection and try again',
+    retry: 'Try again',
   },
   ru: {
     search_placeholder: 'Поиск по меню...',
@@ -191,6 +197,9 @@ const DICTIONARY = {
     cancel: 'Отмена',
     confirm: 'Подтвердить',
     remove_unavailable: 'Удалить недоступные',
+    load_error_title: 'Не удалось загрузить меню',
+    load_error_body: 'Проверьте соединение и попробуйте снова',
+    retry: 'Повторить',
   },
 }
 

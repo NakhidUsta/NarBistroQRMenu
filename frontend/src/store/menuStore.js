@@ -8,11 +8,15 @@ export const useMenuStore = create((set, get) => ({
 
   async fetchAll(params) {
     set({ status: 'loading' })
-    const [categories, products] = await Promise.all([
-      categoriesApi.list(),
-      productsApi.list(params),
-    ])
-    set({ categories, products, status: 'ready' })
+    try {
+      const [categories, products] = await Promise.all([
+        categoriesApi.list(),
+        productsApi.list(params),
+      ])
+      set({ categories, products, status: 'ready' })
+    } catch {
+      set({ status: 'error' })
+    }
   },
 
   upsertProduct(product, action) {

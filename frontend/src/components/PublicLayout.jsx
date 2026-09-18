@@ -10,6 +10,8 @@ import Toast from './Toast'
 import TableActions from './TableActions'
 import LanguageSwitcher from './LanguageSwitcher'
 import BottomNav from './BottomNav'
+import { applyTheme, resetTheme, parseTheme } from '../lib/theme'
+import { resolveUploadUrl } from '../lib/api'
 
 function PublicLayout() {
   const location = useLocation()
@@ -33,6 +35,14 @@ function PublicLayout() {
   }, [])
 
   const isSubPage = location.pathname !== '/menyu' && location.pathname !== '/'
+
+  const theme = parseTheme(restaurant?.theme)
+
+  useEffect(() => {
+    applyTheme(restaurant?.theme)
+  }, [restaurant?.theme])
+
+  useEffect(() => () => resetTheme(), [])
 
   useEffect(() => {
     const name = localize(restaurant, 'name')
@@ -60,8 +70,40 @@ function PublicLayout() {
           </div>
         </header>
       )}
+      {!isSubPage && theme.hero_image_url && (
+        <div className="px-5 mb-4">
+          <div className="relative rounded-3xl overflow-hidden h-40">
+            <img src={resolveUploadUrl(theme.hero_image_url)} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/15 to-transparent" />
+            <div className="absolute bottom-4 left-5 right-5 text-cream">
+              {theme.hero_title && <p className="font-display text-[22px] font-semibold leading-tight">{theme.hero_title}</p>}
+              {theme.hero_subtitle && <p className="text-[12.5px] opacity-90 mt-0.5">{theme.hero_subtitle}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+      {!isSubPage && theme.banner_text && (
+        <div className="mx-5 mb-4 bg-gold/20 border border-gold/40 rounded-xl px-4 py-2.5 text-center text-[12.5px] font-semibold text-ink">
+          {theme.banner_text}
+        </div>
+      )}
       {!isSubPage && <TableActions />}
       <Outlet />
+      {!isSubPage && restaurant && (
+        <footer className="px-5 pt-8 pb-28 text-center text-[12px] text-muted">
+          {theme.footer_text && <p className="text-[13px] text-ink/80 mb-2">{theme.footer_text}</p>}
+          {restaurant.address && <p>{restaurant.address}</p>}
+          {restaurant.working_hours && <p>{restaurant.working_hours}</p>}
+          <p className="mt-1 flex justify-center gap-3 flex-wrap font-semibold text-burgundy">
+            {restaurant.phone && <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>}
+            {restaurant.whatsapp && <a href={`https://wa.me/${restaurant.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>}
+            {restaurant.instagram_link && <a href={restaurant.instagram_link} target="_blank" rel="noreferrer">Instagram</a>}
+            {restaurant.facebook_link && <a href={restaurant.facebook_link} target="_blank" rel="noreferrer">Facebook</a>}
+            {restaurant.tiktok_link && <a href={restaurant.tiktok_link} target="_blank" rel="noreferrer">TikTok</a>}
+            {restaurant.google_maps_link && <a href={restaurant.google_maps_link} target="_blank" rel="noreferrer">Xəritə</a>}
+          </p>
+        </footer>
+      )}
       <BottomNav />
       <Toast />
      </div>

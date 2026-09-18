@@ -43,6 +43,7 @@ CREATE TABLE restaurants (
     name_ru                NVARCHAR(120) NULL,
     about_text_en          NVARCHAR(MAX) NULL,
     about_text_ru          NVARCHAR(MAX) NULL,
+    theme                  NVARCHAR(MAX) NULL, -- JSON: rənglər, font, hero, banner, footer
     created_at             DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 const variants = {
-  primary: 'bg-ink text-cream hover:bg-burgundy-dark',
+  primary: 'bg-btn text-cream hover:bg-burgundy-dark',
   accent: 'bg-burgundy text-cream hover:bg-burgundy-dark',
   outline: 'border-[1.5px] border-ink/70 text-ink hover:border-ink',
   ghost: 'text-ink/70 hover:text-ink',

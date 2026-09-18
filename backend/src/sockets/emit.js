@@ -37,6 +37,10 @@ function emitOrderStatusUpdated(order) {
   getIO().to(`order:${order.id}`).emit('order-status-updated', order);
 }
 
+function emitRestaurantUpdated(restaurant) {
+  getIO().emit('restaurant-updated', restaurant);
+}
+
 function emitNotificationCreated(notification) {
   getIO().of('/admin').to('admin').emit('notification-created', notification);
 }
@@ -49,5 +53,6 @@ module.exports = {
   emitTableUpdated,
   emitOrderCreated,
   emitOrderStatusUpdated,
+  emitRestaurantUpdated,
   emitNotificationCreated,
 };

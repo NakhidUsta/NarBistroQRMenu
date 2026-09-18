@@ -44,7 +44,7 @@ function Menu() {
   }, [products, activeCategory, query, localize])
 
   return (
-    <div className="pb-28">
+    <div className="pb-2">
       <div className="px-5 mb-4">
         <div className="relative">
           <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -81,6 +81,19 @@ function Menu() {
               </div>
             ))}
           </>
+        )}
+        {status === 'error' && (
+          <div className="text-center py-16">
+            <p className="font-display text-lg text-ink mb-1">{t('load_error_title')}</p>
+            <p className="text-[13px] text-muted mb-4">{t('load_error_body')}</p>
+            <button
+              type="button"
+              onClick={() => useMenuStore.getState().fetchAll()}
+              className="bg-btn text-cream rounded-full px-6 py-2.5 text-[13.5px] font-semibold"
+            >
+              {t('retry')}
+            </button>
+          </div>
         )}
         {status === 'ready' && filtered.length === 0 && (
           <div className="text-center py-16">
