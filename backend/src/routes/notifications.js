@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notificationController');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, authorize } = require('../middleware/auth');
 
-router.get('/', requireAdmin, notificationController.getAllNotifications);
-router.patch('/:id/read', requireAdmin, notificationController.markRead);
-router.patch('/read-all', requireAdmin, notificationController.markAllRead);
+const staffRoles = authorize('OWNER', 'MANAGER', 'WAITER');
+router.get('/', requireAdmin, staffRoles, notificationController.getAllNotifications);
+router.patch('/read-all', requireAdmin, staffRoles, notificationController.markAllRead);
+router.patch('/:id/read', requireAdmin, staffRoles, notificationController.markRead);
 
 module.exports = router;

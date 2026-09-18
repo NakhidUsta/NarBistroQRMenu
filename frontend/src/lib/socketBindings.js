@@ -2,6 +2,7 @@ import { publicSocket, adminSocket } from './socket'
 import { useMenuStore } from '../store/menuStore'
 import { useOrderStore } from '../store/orderStore'
 import { useNotificationStore } from '../store/notificationStore'
+import { playAlert, browserNotify } from './alerts'
 
 let publicBound = false
 let adminBound = false
@@ -31,8 +32,9 @@ export function bindAdminSocket() {
   adminSocket.on('category-updated', ({ category, action }) => {
     useMenuStore.getState().upsertCategory(category, action)
   })
-  adminSocket.on('order-created', (order) => {
-    useOrderStore.getState().addOrder(order)
+  // Yeni sifarişin məhsul adları/masa etiketi siyahı sorğusunda gəlir — ona görə yenidən yükləyirik.
+  adminSocket.on('order-created', () => {
+    useOrderStore.getState().fetchOrders().catch(() => {})
   })
   adminSocket.on('order-status-updated', (order) => {
     useOrderStore.getState().updateOrder(order)
@@ -43,5 +45,7 @@ export function bindAdminSocket() {
   // Bildirişin özü backend-də artıq bazaya yazılıb (id/created_at daxil) — olduğu kimi əlavə edirik.
   adminSocket.on('notification-created', (notification) => {
     useNotificationStore.getState().push(notification)
+    playAlert()
+    browserNotify(notification.title, notification.body || '')
   })
 }

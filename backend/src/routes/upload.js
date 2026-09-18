@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const uploadController = require('../controllers/uploadController');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, authorize } = require('../middleware/auth');
 
 const uploadDir = path.join(__dirname, '..', '..', 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -28,7 +28,7 @@ const upload = multer({
   },
 });
 
-router.post('/', requireAdmin, (req, res, next) => {
+router.post('/', requireAdmin, authorize('OWNER', 'MANAGER'), (req, res, next) => {
   upload.single('image')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {

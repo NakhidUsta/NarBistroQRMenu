@@ -123,7 +123,23 @@ async function findAll(pool, { status } = {}) {
   }
   query += ' ORDER BY created_at DESC';
   const result = await request.query(query);
-  return result.recordset;
+  const orders = result.recordset;
+  if (!orders.length) return orders;
+
+  // Sifariş siyahısında (admin lövhəsi, mətbəx ekranı) məhsullar və masa adı da lazımdır.
+  const ids = orders.map((o) => Number(o.id)).join(',');
+  const itemsResult = await pool.request().query(`
+    SELECT oi.order_id, oi.product_id, p.name, oi.quantity, oi.price_at_order
+    FROM order_items oi LEFT JOIN products p ON p.id = oi.product_id
+    WHERE oi.order_id IN (${ids})
+  `);
+  const tablesResult = await pool.request().query('SELECT id, label FROM restaurant_tables');
+  const tableLabels = new Map(tablesResult.recordset.map((t) => [t.id, t.label]));
+  return orders.map((o) => ({
+    ...o,
+    table_label: o.table_id ? tableLabels.get(o.table_id) || null : null,
+    items: itemsResult.recordset.filter((i) => i.order_id === o.id),
+  }));
 }
 
 module.exports = {

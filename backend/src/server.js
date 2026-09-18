@@ -18,6 +18,8 @@ const orderRoutes = require('./routes/orders');
 const adminRoutes = require('./routes/admin');
 const notificationRoutes = require('./routes/notifications');
 const promoRoutes = require('./routes/promos');
+const auditRoutes = require('./routes/audit');
+const staffRoutes = require('./routes/staff');
 const uploadRoutes = require('./routes/upload');
 
 const app = express();
@@ -67,6 +69,8 @@ app.use('/api/tables', tableRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/promos', promoRoutes);
+app.use('/api/audit-logs', auditRoutes);
+app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 

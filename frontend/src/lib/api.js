@@ -74,6 +74,17 @@ export const ordersApi = {
   updateStatus: (id, status, note) => unwrap(apiClient.put(`/orders/${id}`, { status, note })),
 }
 
+export const staffApi = {
+  list: () => unwrap(apiClient.get('/staff')),
+  create: (body) => unwrap(apiClient.post('/staff', body)),
+  update: (id, body) => unwrap(apiClient.put(`/staff/${id}`, body)),
+  remove: (id) => apiClient.delete(`/staff/${id}`),
+}
+
+export const auditApi = {
+  list: (params) => unwrap(apiClient.get('/audit-logs', { params })),
+}
+
 export const authApi = {
   login: (email, password) => unwrap(apiClient.post('/auth/login', { email, password })),
   logout: () => unwrap(apiClient.post('/auth/logout')),

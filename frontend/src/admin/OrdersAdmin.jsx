@@ -56,13 +56,22 @@ function OrdersAdmin() {
                 </div>
                 <div className="flex-1 min-w-[140px]">
                   <p className="font-semibold text-[14px]">{order.customer_name}</p>
-                  <p className="text-[12px] text-muted">{order.phone} {order.table_id ? `· Masa #${order.table_id}` : '· Masasız'}</p>
+                  <p className="text-[12px] text-muted">{order.phone} · <span className="font-semibold text-burgundy">{order.table_label || 'Masasız'}</span></p>
                 </div>
                 <p className="font-display text-[16px] font-bold shrink-0">{Number(order.total).toFixed(2)} ₼</p>
                 <span className={`shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-bold ${STATUS_COLORS[order.status]}`}>
                   {STATUS_LABELS[order.status]}
                 </span>
               </div>
+              {(order.items?.length > 0 || order.note) && (
+                <div className="border-t border-border/60 pt-2.5 text-[12.5px]">
+                  {order.items?.map((i, idx) => (
+                    <p key={idx}><span className="font-bold">{i.quantity}×</span> {i.name} <span className="text-muted">({Number(i.price_at_order).toFixed(2)} ₼)</span></p>
+                  ))}
+                  {order.note && <p className="mt-1.5 bg-gold/20 rounded-md px-2 py-1">📝 {order.note}</p>}
+                  {Number(order.discount) > 0 && <p className="mt-1 text-success font-semibold">Promo {order.promo_code}: −{Number(order.discount).toFixed(2)} ₼</p>}
+                </div>
+              )}
               {!isFinal && (
                 <div className="flex gap-2 justify-end border-t border-border/60 pt-3">
                   {nextLabel && (

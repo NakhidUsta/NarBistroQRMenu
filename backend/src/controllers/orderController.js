@@ -1,4 +1,5 @@
 const orderService = require('../services/orderService');
+const auditService = require('../services/auditService');
 const { validateCreateOrderBody, validateStatus, validateId, VALID_STATUSES } = require('../validators/orderValidator');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
@@ -24,5 +25,8 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
   const { status, note } = req.body;
   if (!validateId(id)) throw new AppError(400, 'Yanlış sifariş ID-si');
   if (!validateStatus(status)) throw new AppError(400, `status bunlardan biri olmalıdır: ${VALID_STATUSES.join(', ')}`);
-  res.json(await orderService.updateStatus(id, status, req.admin?.id, note));
+  const before = await orderService.getOrder(id, { isAdmin: true });
+  const order = await orderService.updateStatus(id, status, req.admin?.id, note);
+  await auditService.log(req, 'order.status', 'orders', id, { status: before.status }, { status: order.status });
+  res.json(order);
 });

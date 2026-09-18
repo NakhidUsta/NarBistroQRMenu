@@ -18,6 +18,9 @@ import TablesAdmin from './admin/TablesAdmin'
 import OrdersAdmin from './admin/OrdersAdmin'
 import PromotionsAdmin from './admin/PromotionsAdmin'
 import Settings from './admin/Settings'
+import StaffAdmin from './admin/StaffAdmin'
+import AuditLogsAdmin from './admin/AuditLogsAdmin'
+import KitchenDisplay from './admin/KitchenDisplay'
 
 function App() {
   return (
@@ -34,9 +37,14 @@ function App() {
       </Route>
 
       <Route path="/admin/login" element={<Login />} />
+      <Route element={<ProtectedAdminRoute />}>
+        <Route path="/kitchen" element={<KitchenDisplay />} />
+      </Route>
       <Route path="/admin" element={<ProtectedAdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="staff" element={<StaffAdmin />} />
+          <Route path="audit" element={<AuditLogsAdmin />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="orders" element={<OrdersAdmin />} />
           <Route path="menu" element={<MenuAdmin />} />

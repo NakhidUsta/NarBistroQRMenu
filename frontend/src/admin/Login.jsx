@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import Button from '../components/Button'
+import { homeFor } from './AdminLayout'
 
 function Login() {
   const navigate = useNavigate()
@@ -16,8 +17,8 @@ function Login() {
     setSubmitting(true)
     setError('')
     try {
-      await login(email, password)
-      navigate('/admin/dashboard')
+      const admin = await login(email, password)
+      navigate(homeFor(admin.role))
     } catch (err) {
       setError(err.response?.data?.error || 'Giriş uğursuz oldu')
     } finally {
