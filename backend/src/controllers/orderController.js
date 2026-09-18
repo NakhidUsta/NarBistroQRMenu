@@ -10,7 +10,18 @@ exports.createOrder = asyncHandler(async (req, res) => {
   res.status(201).json(await orderService.createOrder(req.body));
 });
 
-exports.getOrderById = asyncHandler(async (req, res) => {
+exports.quoteOrder = asyncHandler(async (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) throw new AppError(400, 'Səbət boşdur');
+  for (const item of items) {
+    if (!Number.isInteger(item.product_id) || !Number.isInteger(Number(item.quantity)) || Number(item.quantity) <= 0) {
+      throw new AppError(400, 'Hər element düzgün product_id və quantity daşımalıdır');
+    }
+  }
+  res.json(await orderService.quote(req.body));
+});
+
+exports.getOrderById =asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   if (!validateId(id)) throw new AppError(400, 'Yanlış sifariş ID-si');
   res.json(await orderService.getOrder(id, { isAdmin: !!req.admin, token: req.query.token }));

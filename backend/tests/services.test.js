@@ -30,6 +30,30 @@ const promoService = require('../src/services/promoService');
 const restaurantService = require('../src/services/restaurantService');
 const staffService = require('../src/services/staffService');
 const orderService = require('../src/services/orderService');
+const pricingService = require('../src/services/pricingService');
+const restaurantRepository = require('../src/repositories/restaurantRepository');
+const tableRepository = require('../src/repositories/tableRepository');
+
+describe('pricingService.compute (bütün pul hesablaması backend-də)', () => {
+  it('haqsız hal: yalnız ara cəmi', () => {
+    expect(pricingService.compute({ subtotal: 50 })).toEqual({ subtotal: 50, discount: 0, service_fee: 0, vat: 0, delivery_fee: 0, total: 50 });
+  });
+
+  it('servis haqqı endirimli baza üzərindən, ƏDV isə baza+servis üzərindən', () => {
+    const r = pricingService.compute({ subtotal: 100, discount: 10, serviceFeePercent: 10, vatPercent: 18 });
+    expect(r).toMatchObject({ service_fee: 9, vat: 17.82, total: 116.82 });
+  });
+
+  it('çatdırılma haqqı yalnız takeaway-də tətbiq olunur', () => {
+    expect(pricingService.compute({ subtotal: 20, deliveryFee: 3, isTakeaway: true }).total).toBe(23);
+    expect(pricingService.compute({ subtotal: 20, deliveryFee: 3, isTakeaway: false }).total).toBe(20);
+  });
+
+  it('endirim ara cəmi aşa bilməz, kəsr yuvarlaqlaşdırılır', () => {
+    expect(pricingService.compute({ subtotal: 5, discount: 99 }).total).toBe(0);
+    expect(pricingService.compute({ subtotal: 0.1 + 0.2, vatPercent: 18 }).total).toBe(0.35);
+  });
+});
 
 const promo = (over = {}) => ({
   id: 1, code: 'X', is_active: true, discount_type: 'PERCENT', discount_value: 10,
@@ -188,6 +212,43 @@ describe('orderService.createOrder', () => {
     promoRepository.findByCodeTx.mockResolvedValue(null);
     await expect(orderService.createOrder({ ...base, promo_code: 'YOX' })).rejects.toMatchObject({ status: 400 });
     expect(orderRepository.insertOrder).not.toHaveBeenCalled();
+  });
+
+  it('ƏDV/servis/çatdırılma haqları sifarişə yazılır (masasız = takeaway)', async () => {
+    restaurantRepository.find.mockResolvedValue({ vat_percent: 18, service_fee_percent: 10, delivery_fee: 3, currency: 'AZN' });
+    const order = await orderService.createOrder(base);
+    expect(order).toMatchObject({ subtotal: 57, service_fee: 5.7, vat: 11.29, delivery_fee: 3, total: 76.99 });
+    restaurantRepository.find.mockResolvedValue(undefined);
+  });
+
+  it('masa ilə sifarişdə çatdırılma haqqı yoxdur', async () => {
+    restaurantRepository.find.mockResolvedValue({ delivery_fee: 3 });
+    tableRepository.findByCode.mockResolvedValue({ id: 1, code: 't1', label: 'Masa 1', is_active: true });
+    const order = await orderService.createOrder({ ...base, table_code: 't1' });
+    expect(order.delivery_fee).toBe(0);
+    expect(order.total).toBe(57);
+    restaurantRepository.find.mockResolvedValue(undefined);
+  });
+
+  it('təkrarlanan məhsul sətirləri birləşdirilir', async () => {
+    await orderService.createOrder({ ...base, items: [{ product_id: 1, quantity: 1 }, { product_id: 1, quantity: 2 }] });
+    expect(orderRepository.insertOrderItem).toHaveBeenCalledTimes(1);
+    expect(orderRepository.insertOrderItem).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ product_id: 1, quantity: 3 }));
+  });
+
+  it('quote: sifariş yaratmadan cari qiymətlərlə yekunu qaytarır, promo xətasını 400 atmadan bildirir', async () => {
+    promoRepository.findByCodeTx.mockResolvedValue(null);
+    const q = await orderService.quote({ items, promo_code: 'YOX' });
+    expect(q.total).toBe(57);
+    expect(q.promo_error).toMatch(/Promo kod/);
+    expect(orderRepository.insertOrder).not.toHaveBeenCalled();
+  });
+
+  it('quote: mövcud olmayan məhsul yekuna daxil edilmir və available=false işarələnir', async () => {
+    orderRepository.findProductPrice.mockImplementation(async (tx, id) => ({ id, price: 10, is_available: id !== 2, track_inventory: false }));
+    const q = await orderService.quote({ items });
+    expect(q.total).toBe(20);
+    expect(q.items.find((i) => i.product_id === 2).available).toBe(false);
   });
 
   it('sifariş detalı yalnız düzgün token ilə açılır', async () => {

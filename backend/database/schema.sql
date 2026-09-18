@@ -44,6 +44,10 @@ CREATE TABLE restaurants (
     about_text_en          NVARCHAR(MAX) NULL,
     about_text_ru          NVARCHAR(MAX) NULL,
     theme                  NVARCHAR(MAX) NULL, -- JSON: rənglər, font, hero, banner, footer
+    vat_percent            DECIMAL(5, 2) NOT NULL DEFAULT 0,
+    service_fee_percent    DECIMAL(5, 2) NOT NULL DEFAULT 0,
+    delivery_fee           DECIMAL(10, 2) NOT NULL DEFAULT 0, -- yalnız masasız (takeaway) sifarişlərə
+    currency               NVARCHAR(3) NOT NULL DEFAULT N'AZN',
     created_at             DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
@@ -156,6 +160,10 @@ CREATE TABLE orders (
                      CHECK (status IN (N'NEW', N'CONFIRMED', N'PREPARING', N'READY', N'DELIVERED', N'COMPLETED', N'CANCELLED')),
     subtotal         DECIMAL(10, 2) NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
     discount         DECIMAL(10, 2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
+    vat              DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    service_fee      DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    delivery_fee     DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    currency         NVARCHAR(3) NOT NULL DEFAULT N'AZN',
     total            DECIMAL(10, 2) NOT NULL DEFAULT 0 CHECK (total >= 0),
     promo_code_id    INT NULL FOREIGN KEY REFERENCES promo_codes(id),
     promo_code       NVARCHAR(30) NULL,

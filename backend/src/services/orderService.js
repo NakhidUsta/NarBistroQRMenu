@@ -4,13 +4,62 @@ const orderRepository = require('../repositories/orderRepository');
 const tableRepository = require('../repositories/tableRepository');
 const promoRepository = require('../repositories/promoRepository');
 const notificationService = require('./notificationService');
+const restaurantRepository = require('../repositories/restaurantRepository');
 const promoService = require('./promoService');
+const pricingService = require('./pricingService');
 const AppError = require('../utils/AppError');
 const { emitOrderCreated, emitOrderStatusUpdated, emitProductUpdated } = require('../sockets/emit');
 
 const DEFAULT_RESTAURANT_ID = 1;
 
-async function createOrder({ table_code, customer_name, phone, note, items, promo_code }) {
+// Eyni məhsulun təkrarlanan sətirlərini birləşdirir (PDF 3.6 — duplicate item merging).
+function mergeItems(items) {
+  const map = new Map();
+  for (const it of items) {
+    map.set(it.product_id, (map.get(it.product_id) || 0) + Number(it.quantity));
+  }
+  return [...map].map(([product_id, quantity]) => ({ product_id, quantity }));
+}
+
+// Səbətin cari (DB) qiymətləri ilə tam hesablanmış önizləməsi — sifariş yaratmadan.
+// Frontend heç vaxt yekun məbləğin mənbəyi deyil; bu endpoint checkout-dan əvvəl göstərmək üçündür.
+async function quote({ table_code, items, promo_code }) {
+  const pool = await poolPromise;
+  let table = null;
+  if (table_code) {
+    table = await tableRepository.findByCode(table_code);
+    if (!table || !table.is_active) throw new AppError(400, 'Masa tapılmadı və ya aktiv deyil');
+  }
+
+  let subtotal = 0;
+  const lines = [];
+  for (const item of mergeItems(items)) {
+    const product = await orderRepository.findProductPrice(pool, item.product_id);
+    const price = product ? Number(product.price) : 0;
+    const available = !!product && !!product.is_available;
+    const inStock = !product?.track_inventory || (product.stock_quantity ?? 0) >= item.quantity;
+    if (available && inStock) subtotal += price * item.quantity;
+    lines.push({ product_id: item.product_id, quantity: item.quantity, price, available: available && inStock });
+  }
+
+  let discount = 0;
+  let promo_error = null;
+  if (promo_code && subtotal > 0) {
+    try {
+      discount = (await promoService.validateAndCompute(pool, promo_code.trim().toUpperCase(), subtotal)).discount;
+    } catch (err) {
+      if (!(err instanceof AppError)) throw err;
+      promo_error = err.message;
+    }
+  }
+
+  const settings = pricingService.settingsFrom(await restaurantRepository.find(DEFAULT_RESTAURANT_ID));
+  const breakdown = pricingService.compute({ subtotal, discount, ...settings, isTakeaway: !table });
+  return { ...breakdown, currency: settings.currency, items: lines, promo_error };
+}
+
+async function createOrder({ table_code, customer_name, phone, note, items: rawItems, promo_code }) {
+  const items = mergeItems(rawItems);
   const pool = await poolPromise;
   let table = null;
   if (table_code) {
@@ -49,7 +98,9 @@ async function createOrder({ table_code, customer_name, phone, note, items, prom
       promo = result.promo;
       discount = result.discount;
     }
-    const total = Math.max(0, subtotal - discount);
+    const settings = pricingService.settingsFrom(await restaurantRepository.find(DEFAULT_RESTAURANT_ID));
+    const pricing = pricingService.compute({ subtotal, discount, ...settings, isTakeaway: !table });
+    const total = pricing.total;
 
     const order = await orderRepository.insertOrder(transaction, {
       restaurant_id: DEFAULT_RESTAURANT_ID,
@@ -58,8 +109,12 @@ async function createOrder({ table_code, customer_name, phone, note, items, prom
       customer_name,
       phone,
       note,
-      subtotal,
-      discount,
+      subtotal: pricing.subtotal,
+      discount: pricing.discount,
+      vat: pricing.vat,
+      service_fee: pricing.service_fee,
+      delivery_fee: pricing.delivery_fee,
+      currency: settings.currency,
       total,
       promo_code_id: promo?.id,
       promo_code: promo?.code,
@@ -160,4 +215,4 @@ async function updateStatus(id, status, adminId, note) {
   }
 }
 
-module.exports = { createOrder, getOrder, listOrders, updateStatus };
+module.exports = { createOrder, quote, getOrder, listOrders, updateStatus };

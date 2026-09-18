@@ -36,7 +36,7 @@ async function insertStockMovementTx(transaction, { product_id, change_qty, reas
 
 async function insertOrder(transaction, {
   restaurant_id, table_id, table_session_id, customer_name, phone, note,
-  subtotal, discount, total, promo_code_id, promo_code, access_token,
+  subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token,
 }) {
   const result = await new sql.Request(transaction)
     .input('restaurant_id', sql.Int, restaurant_id)
@@ -47,14 +47,18 @@ async function insertOrder(transaction, {
     .input('note', sql.NVarChar(300), note || null)
     .input('subtotal', sql.Decimal(10, 2), subtotal)
     .input('discount', sql.Decimal(10, 2), discount || 0)
+    .input('vat', sql.Decimal(10, 2), vat || 0)
+    .input('service_fee', sql.Decimal(10, 2), service_fee || 0)
+    .input('delivery_fee', sql.Decimal(10, 2), delivery_fee || 0)
+    .input('currency', sql.NVarChar(3), currency || 'AZN')
     .input('total', sql.Decimal(10, 2), total)
     .input('promo_code_id', sql.Int, promo_code_id || null)
     .input('promo_code', sql.NVarChar(30), promo_code || null)
     .input('access_token', sql.NVarChar(64), access_token)
     .query(`
-      INSERT INTO orders (restaurant_id, table_id, table_session_id, customer_name, phone, note, subtotal, discount, total, promo_code_id, promo_code, access_token)
+      INSERT INTO orders (restaurant_id, table_id, table_session_id, customer_name, phone, note, subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token)
       OUTPUT INSERTED.*
-      VALUES (@restaurant_id, @table_id, @table_session_id, @customer_name, @phone, @note, @subtotal, @discount, @total, @promo_code_id, @promo_code, @access_token)
+      VALUES (@restaurant_id, @table_id, @table_session_id, @customer_name, @phone, @note, @subtotal, @discount, @vat, @service_fee, @delivery_fee, @currency, @total, @promo_code_id, @promo_code, @access_token)
     `);
   return result.recordset[0];
 }

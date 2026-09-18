@@ -9,6 +9,7 @@ import { useUiStore } from '../store/uiStore'
 import { ordersApi, resolveUploadUrl } from '../lib/api'
 import { useT } from '../lib/i18n'
 import Button from '../components/Button'
+import PriceBreakdown from '../components/PriceBreakdown'
 
 const inputCls =
   'w-full bg-panel border border-border rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-burgundy/30'
@@ -49,6 +50,29 @@ function Cart() {
 
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
   const blocked = unavailableIds.length > 0
+
+  // Yekun hesab (endirim, servis, ƏDV, çatdırılma) backend-dən gəlir; yerli cəm yalnız yüklənənə qədər ehtiyat kimi göstərilir.
+  const [quote, setQuote] = useState(null)
+  const quoteKey = JSON.stringify([items.map((i) => [i.product_id, i.quantity]), form.promo_code.trim(), table?.code])
+  useEffect(() => {
+    if (!items.length) return undefined
+    let stale = false
+    const timer = setTimeout(() => {
+      ordersApi
+        .quote({
+          table_code: table?.code,
+          promo_code: form.promo_code.trim() || undefined,
+          items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+        })
+        .then((q) => !stale && setQuote(q))
+        .catch(() => !stale && setQuote(null))
+    }, 350)
+    return () => {
+      stale = true
+      clearTimeout(timer)
+    }
+  }, [quoteKey])
+  const summary = quote || { subtotal: total, discount: 0, service_fee: 0, vat: 0, delivery_fee: 0, total }
 
   async function placeOrder() {
     if (!navigator.onLine) {
@@ -156,9 +180,8 @@ function Cart() {
 
       {!confirming ? (
         <>
-          <div className="flex items-center justify-between py-4 border-t border-border mb-4">
-            <span className="text-[15px] font-semibold text-ink">{t('total')}</span>
-            <span className="font-display text-[20px] font-bold text-burgundy">{total.toFixed(2)} ₼</span>
+          <div className="py-4 border-t border-border mb-4">
+            <PriceBreakdown data={summary} />
           </div>
           {canOrder ? (
             <Button className="w-full" disabled={blocked} onClick={() => setConfirming(true)}>
@@ -187,11 +210,14 @@ function Cart() {
           <div>
             <label className="text-[12.5px] font-semibold text-muted mb-1 block">{t('promo_label')}</label>
             <input value={form.promo_code} onChange={(e) => setForm({ ...form, promo_code: e.target.value.toUpperCase() })} className={`${inputCls} uppercase`} placeholder="Məs: XOSGEL10" />
+            {quote?.promo_error && <p className="text-[12px] text-danger font-semibold mt-1">{quote.promo_error}</p>}
+            {quote && !quote.promo_error && form.promo_code.trim() && Number(quote.discount) > 0 && (
+              <p className="text-[12px] text-success font-semibold mt-1">−{Number(quote.discount).toFixed(2)} ₼</p>
+            )}
           </div>
 
-          <div className="flex items-center justify-between py-3 mt-1 border-t border-border">
-            <span className="text-[15px] font-semibold text-ink">{t('total')}</span>
-            <span className="font-display text-[20px] font-bold text-burgundy">{total.toFixed(2)} ₼</span>
+          <div className="py-3 mt-1 border-t border-border">
+            <PriceBreakdown data={summary} />
           </div>
 
           <Button type="submit" variant="accent" disabled={submitting || blocked} className="w-full">
@@ -215,9 +241,8 @@ function Cart() {
                 </div>
               ))}
             </div>
-            <div className="flex justify-between border-t border-border pt-3 mb-5">
-              <span className="font-semibold">{t('total')}</span>
-              <span className="font-display font-bold text-burgundy">{total.toFixed(2)} ₼</span>
+            <div className="border-t border-border pt-3 mb-5">
+              <PriceBreakdown data={summary} />
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setShowModal(false)} disabled={submitting}>

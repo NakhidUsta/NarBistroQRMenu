@@ -74,6 +74,9 @@ const DICTIONARY = {
     retry: 'Yenidən cəhd et',
     offline_banner: 'Offline rejim — menyu yaddaşdan göstərilir',
     offline_order: 'İnternet yoxdur — sifariş göndərilə bilmir',
+    service_fee: 'Servis haqqı',
+    vat: 'ƏDV',
+    delivery_fee: 'Çatdırılma',
   },
   en: {
     search_placeholder: 'Search the menu...',
@@ -140,6 +143,9 @@ const DICTIONARY = {
     retry: 'Try again',
     offline_banner: 'Offline mode — showing the saved menu',
     offline_order: 'No internet — the order cannot be sent',
+    service_fee: 'Service fee',
+    vat: 'VAT',
+    delivery_fee: 'Delivery',
   },
   ru: {
     search_placeholder: 'Поиск по меню...',
@@ -206,6 +212,9 @@ const DICTIONARY = {
     retry: 'Повторить',
     offline_banner: 'Офлайн-режим — показано сохранённое меню',
     offline_order: 'Нет интернета — заказ не может быть отправлен',
+    service_fee: 'Сервисный сбор',
+    vat: 'НДС',
+    delivery_fee: 'Доставка',
   },
 }
 

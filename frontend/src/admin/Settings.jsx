@@ -142,6 +142,23 @@ function Settings() {
           setForm={setForm}
         />
 
+        <div className="border border-border rounded-xl p-4 bg-cream/50 flex flex-col gap-3">
+          <h3 className="font-semibold text-[14px]">Vergi və haqlar (hesablama backend-də aparılır)</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {[['vat_percent', 'ƏDV (%)', '0.01'], ['service_fee_percent', 'Servis haqqı (%)', '0.01'], ['delivery_fee', 'Çatdırılma haqqı (takeaway)', '0.01']].map(([key, label, step]) => (
+              <div key={key}>
+                <label className="text-[11.5px] font-semibold text-muted mb-1 block">{label}</label>
+                <input type="number" min="0" step={step} max={key === 'delivery_fee' ? undefined : 100} value={form[key] ?? 0} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className={fieldCls} />
+              </div>
+            ))}
+            <div>
+              <label className="text-[11.5px] font-semibold text-muted mb-1 block">Valyuta kodu</label>
+              <input maxLength={3} value={form.currency || 'AZN'} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} className={fieldCls} />
+            </div>
+          </div>
+          <p className="text-[11.5px] text-muted">Qiymətlər ƏDV-siz hesab olunur; servis haqqı endirimli məbləğə, ƏDV isə (məbləğ + servis) üzərinə əlavə edilir. Çatdırılma yalnız masasız sifarişlərə.</p>
+        </div>
+
         <ThemeEditor form={form} setForm={setForm} />
 
         <label className="flex items-center gap-2 text-[13px] font-semibold">

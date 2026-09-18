@@ -4,6 +4,7 @@ import { useOrderStore } from '../store/orderStore'
 import { publicSocket } from '../lib/socket'
 import { useT } from '../lib/i18n'
 import Button from '../components/Button'
+import PriceBreakdown from '../components/PriceBreakdown'
 
 const STEP_KEYS = [
   { key: 'NEW', labelKey: 'order_status_new' },
@@ -86,23 +87,8 @@ function OrderStatus() {
             </div>
           ))}
         </div>
-        <div className="pt-3 border-t border-border flex flex-col gap-1.5">
-          {Number(order.discount) > 0 && (
-            <>
-              <div className="flex justify-between text-[13px] text-muted">
-                <span>{t('subtotal')}</span>
-                <span>{Number(order.subtotal).toFixed(2)} ₼</span>
-              </div>
-              <div className="flex justify-between text-[13px] text-success font-semibold">
-                <span>{t('discount')} {order.promo_code ? `(${order.promo_code})` : ''}</span>
-                <span>−{Number(order.discount).toFixed(2)} ₼</span>
-              </div>
-            </>
-          )}
-          <div className="flex justify-between">
-            <span className="font-semibold">{t('total')}</span>
-            <span className="font-display font-bold text-burgundy">{Number(order.total).toFixed(2)} ₼</span>
-          </div>
+        <div className="pt-3 border-t border-border">
+          <PriceBreakdown data={order} />
         </div>
       </div>
 

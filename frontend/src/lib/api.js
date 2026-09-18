@@ -76,6 +76,7 @@ export const notificationsApi = {
 
 export const ordersApi = {
   create: (body) => unwrap(apiClient.post('/orders', body)),
+  quote: (body) => unwrap(apiClient.post('/orders/quote', body)),
   get: (id, token) => unwrap(apiClient.get(`/orders/${id}`, { params: token ? { token } : {} })),
   list: (params) => unwrap(apiClient.get('/orders', { params })),
   updateStatus: (id, status, note) => unwrap(apiClient.put(`/orders/${id}`, { status, note })),

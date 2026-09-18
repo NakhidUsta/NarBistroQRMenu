@@ -70,6 +70,13 @@ function OrdersAdmin() {
                   ))}
                   {order.note && <p className="mt-1.5 bg-gold/20 rounded-md px-2 py-1">📝 {order.note}</p>}
                   {Number(order.discount) > 0 && <p className="mt-1 text-success font-semibold">Promo {order.promo_code}: −{Number(order.discount).toFixed(2)} ₼</p>}
+                  {(Number(order.service_fee) > 0 || Number(order.vat) > 0 || Number(order.delivery_fee) > 0) && (
+                    <p className="mt-1 text-muted">
+                      {Number(order.service_fee) > 0 && `Servis ${Number(order.service_fee).toFixed(2)} · `}
+                      {Number(order.vat) > 0 && `ƏDV ${Number(order.vat).toFixed(2)} · `}
+                      {Number(order.delivery_fee) > 0 && `Çatdırılma ${Number(order.delivery_fee).toFixed(2)}`}
+                    </p>
+                  )}
                 </div>
               )}
               {!isFinal && (
