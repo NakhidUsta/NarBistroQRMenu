@@ -14,7 +14,7 @@ function ReviewsSection() {
   if (!data || data.count === 0) return null
 
   return (
-    <section className="px-5 pt-8">
+    <section className="px-5 md:px-8 pt-8">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="font-display text-[18px] font-semibold">{t('reviews_title')}</h2>
         <p className="text-[13px] font-semibold text-burgundy">★ {data.average.toFixed(1)} <span className="text-muted font-normal">({data.count})</span></p>

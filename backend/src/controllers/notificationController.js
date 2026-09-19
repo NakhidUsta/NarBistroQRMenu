@@ -2,6 +2,7 @@ const notificationService = require('../services/notificationService');
 const auditService = require('../services/auditService');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
+const { parsePage, sendPage } = require('../utils/pagination');
 
 const validId = (value) => {
   const id = Number(value);
@@ -10,7 +11,9 @@ const validId = (value) => {
 };
 
 exports.getAllNotifications = asyncHandler(async (req, res) => {
-  res.json(await notificationService.list({ unreadOnly: req.query.unreadOnly === 'true', role: req.admin.role }));
+  const { limit, before } = parsePage(req.query);
+  const rows = await notificationService.list({ unreadOnly: req.query.unreadOnly === 'true', role: req.admin.role, limit: limit + 1, before });
+  res.json(sendPage(res, rows, limit));
 });
 
 exports.markRead = asyncHandler(async (req, res) => {

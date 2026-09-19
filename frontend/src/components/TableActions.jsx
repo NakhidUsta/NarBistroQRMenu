@@ -25,7 +25,7 @@ function TableActions() {
   }
 
   return (
-    <div className="flex gap-2 px-5 mb-4">
+    <div className="flex gap-2 px-5 md:px-8 mb-4 md:max-w-xl">
       <button
         type="button"
         disabled={busy === 'waiter'}

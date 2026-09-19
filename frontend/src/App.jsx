@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import PublicLayout from './components/PublicLayout'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageLoader from './components/PageLoader'
+import SplashGate from './components/SplashGate'
 import Menu from './pages/Menu'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
@@ -24,6 +25,7 @@ const CategoriesAdmin = lazy(() => import('./admin/CategoriesAdmin'))
 const MenuAdmin = lazy(() => import('./admin/MenuAdmin'))
 const TablesAdmin = lazy(() => import('./admin/TablesAdmin'))
 const OrdersAdmin = lazy(() => import('./admin/OrdersAdmin'))
+const NotificationsAdmin = lazy(() => import('./admin/NotificationsAdmin'))
 const PromotionsAdmin = lazy(() => import('./admin/PromotionsAdmin'))
 const Settings = lazy(() => import('./admin/Settings'))
 const StaffAdmin = lazy(() => import('./admin/StaffAdmin'))
@@ -46,6 +48,7 @@ function MenuAlias() {
 function App() {
   return (
     <ErrorBoundary>
+      <SplashGate />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Navigate to="/menyu" replace />} />
@@ -81,6 +84,7 @@ function App() {
               <Route path="audit" element={<AuditLogsAdmin />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="orders" element={<OrdersAdmin />} />
+              <Route path="notifications" element={<NotificationsAdmin />} />
               <Route path="menu" element={<MenuAdmin />} />
               <Route path="categories" element={<CategoriesAdmin />} />
               <Route path="tables" element={<TablesAdmin />} />

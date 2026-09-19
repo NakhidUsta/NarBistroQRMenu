@@ -148,13 +148,13 @@ function Cart() {
   }
 
   return (
-    <div className="px-5 pb-32">
-      <div className="pt-6 pb-4">
+    <div className="px-5 pb-36 md:pb-16 md:max-w-5xl md:mx-auto md:px-8 md:grid md:grid-cols-[1fr_380px] md:gap-x-10 md:items-start">
+      <div className="pt-6 pb-4 md:col-span-2">
         <h1 className="font-display text-[24px] font-semibold">{t('cart_title')}</h1>
       </div>
 
       {blocked && (
-        <div className="mb-4 bg-danger/10 border border-danger/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+        <div className="mb-4 md:col-span-2 bg-danger/10 border border-danger/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
           <p className="text-[12.5px] font-semibold text-danger">{t('item_unavailable')}</p>
           <button
             type="button"
@@ -166,7 +166,7 @@ function Cart() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 mb-6">
+      <div className="flex flex-col gap-3 mb-6 md:col-start-1">
         {items.map((item) => {
           const unavailable = unavailableIds.includes(item.product_id)
           return (
@@ -209,9 +209,10 @@ function Cart() {
         })}
       </div>
 
+      <div className="md:col-start-2 md:sticky md:top-24 md:bg-panel md:rounded-2xl md:border md:border-border/60 md:p-6">
       {!confirming ? (
         <>
-          <div className="py-4 border-t border-border mb-4">
+          <div className="py-4 border-t border-border mb-4 md:border-t-0 md:pt-0">
             <PriceBreakdown data={summary} />
           </div>
           {canOrder ? (
@@ -256,6 +257,7 @@ function Cart() {
           </Button>
         </form>
       )}
+      </div>
 
       {priceChange && (
         <div className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" role="dialog" aria-label={t('price_changed_title')}>

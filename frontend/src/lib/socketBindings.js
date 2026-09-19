@@ -88,7 +88,7 @@ export function bindAdminSocket() {
   // Bildirişin özü backend-də artıq bazaya yazılıb (id/created_at daxil) — olduğu kimi əlavə edirik.
   listen(adminSocket, 'notification-created', (notification) => {
     useNotificationStore.getState().push(notification)
-    playAlert()
+    playAlert(notification.type)
     browserNotify(notification.title, notification.body || '')
   })
   // Başqa admin çağırışı qəbul/həll edəndə hamıda status dərhal yenilənir

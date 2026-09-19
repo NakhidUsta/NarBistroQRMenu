@@ -102,17 +102,18 @@ export const tablesApi = {
   requestBill: (code) => unwrap(apiClient.post(`/tables/${code}/request-bill`)),
 }
 
+// Kursor səhifələmə cavabı: gövdə massivdir, "daha var" məlumatı X-Has-More başlığındadır
+const withPage = (promise) => promise.then((res) => ({ items: res.data, hasMore: res.headers?.['x-has-more'] === '1' }))
+
 export const notificationsApi = {
   list: () => unwrap(apiClient.get('/notifications')),
+  listPage: (params) => withPage(apiClient.get('/notifications', { params })),
   markRead: (id) => unwrap(apiClient.patch(`/notifications/${id}/read`)),
   setStatus: (id, status) => unwrap(apiClient.patch(`/notifications/${id}/status`, { status })),
   markAllRead: () => apiClient.patch('/notifications/read-all'),
   remove: (id) => apiClient.delete(`/notifications/${id}`),
   clearRead: () => apiClient.delete('/notifications/read'),
 }
-
-// Kursor səhifələmə cavabı: gövdə massivdir, "daha var" məlumatı X-Has-More başlığındadır
-const withPage = (promise) => promise.then((res) => ({ items: res.data, hasMore: res.headers?.['x-has-more'] === '1' }))
 
 export const ordersApi = {
   create: (body) => unwrap(apiClient.post('/orders', body)),

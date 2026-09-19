@@ -15,15 +15,16 @@ function ProductCard({ product }) {
   return (
     <Link
       to={`/product/${product.id}`}
-      className={`group flex gap-4 bg-panel rounded-2xl p-3 shadow-[0_10px_30px_-20px_rgba(32,26,22,0.4)] border border-border/60 transition-transform hover:-translate-y-0.5 ${
+      className={`group flex gap-4 md:flex-col md:gap-0 bg-panel rounded-2xl p-3 md:p-0 md:overflow-hidden shadow-[0_10px_30px_-20px_rgba(32,26,22,0.4)] md:hover:shadow-[0_18px_40px_-22px_rgba(32,26,22,0.5)] border border-border/60 transition-all hover:-translate-y-0.5 ${
         unavailable ? 'opacity-60' : ''
       }`}
     >
-      <div className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-blush">
+      <div className="relative shrink-0 w-24 h-24 md:w-full md:h-52 rounded-xl md:rounded-none overflow-hidden bg-blush">
         <ResponsiveImage
           src={product.image_url}
           alt={name}
           thumb
+          desktopSizes="(min-width: 1152px) 360px, 50vw"
           loading="lazy"
           className="w-full h-full object-cover"
         />
@@ -33,7 +34,7 @@ function ProductCard({ product }) {
           </span>
         )}
       </div>
-      <div className="flex-1 min-w-0 flex flex-col justify-center">
+      <div className="flex-1 min-w-0 flex flex-col justify-center md:justify-start md:p-4">
         <div className="flex items-start justify-between gap-1">
           <h3 className="font-display text-[17px] font-semibold text-ink truncate">{name}</h3>
           <FavoriteButton productId={product.id} className="-mt-1 -mr-1 text-muted shrink-0" />

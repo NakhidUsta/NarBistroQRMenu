@@ -69,8 +69,8 @@ function Menu() {
 
   return (
     <div className="pb-2">
-      <div className="px-5 mb-4">
-        <div className="relative">
+      <div className="px-5 md:px-8 mb-4">
+        <div className="relative md:max-w-xl">
           <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="7" />
             <path d="m21 21-4.3-4.3" strokeLinecap="round" />
@@ -85,7 +85,7 @@ function Menu() {
       </div>
 
       {allergens.length > 0 && (
-        <div className="px-5 mb-4">
+        <div className="px-5 md:px-8 mb-4">
           <button
             type="button"
             onClick={() => setFilterOpen((o) => !o)}
@@ -123,11 +123,11 @@ function Menu() {
       {!query.trim() && (
         <div className="mb-5">
           <CategoryTabs categories={tabs} activeId={activeCategory} onSelect={setActiveCategory} />
-          <div className="h-px bg-border mx-5" />
+          <div className="h-px bg-border mx-5 md:mx-8" />
         </div>
       )}
 
-      <div className="px-5 flex flex-col gap-3.5">
+      <div className="px-5 md:px-8 flex flex-col gap-3.5 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 pb-4">
         {status === 'loading' && (
           <>
             {[1, 2, 3].map((i) => (
@@ -143,7 +143,7 @@ function Menu() {
           </>
         )}
         {status === 'error' && (
-          <div className="text-center py-16">
+          <div className="text-center py-16 md:col-span-full">
             <p className="font-display text-lg text-ink mb-1">{t('load_error_title')}</p>
             <p className="text-[13px] text-muted mb-4">{t('load_error_body')}</p>
             <button
@@ -156,7 +156,7 @@ function Menu() {
           </div>
         )}
         {status === 'ready' && visible.length === 0 && (
-          <div className="text-center py-16">
+          <div className="text-center py-16 md:col-span-full">
             <p className="font-display text-lg text-ink mb-1">{t('not_found_title')}</p>
             <p className="text-[13px] text-muted">{t('not_found_body')}</p>
           </div>
@@ -164,7 +164,7 @@ function Menu() {
         {visible.slice(0, count).map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
-        <LoadMore sentinelRef={sentinelRef} hasMore={hasMore} onMore={more} label={t('load_more')} />
+        <LoadMore sentinelRef={sentinelRef} hasMore={hasMore} onMore={more} label={t('load_more')} className="md:col-span-full" />
       </div>
     </div>
   )

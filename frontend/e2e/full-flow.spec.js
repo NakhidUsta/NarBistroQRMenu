@@ -35,7 +35,7 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     // Müştəri səhifəsini ƏVVƏLCƏDƏN aç — sonrakı dəyişikliklər refresh-siz gəlməlidir (real-time)
     await customer.goto(`/menyu?table=${table.code}&t=${table.qr_token}`)
     await expect(customer.getByPlaceholder('Menyuda axtar...')).toBeVisible()
-    await expect(customer.getByText(`Masa — ${table.label}`)).toBeVisible()
+    await expect(customer.getByText(`Masa — ${table.label}`).locator('visible=true')).toBeVisible()
 
     // 2-6. Yeni məhsul yarat: ad, qiymət, şəkil, kateqoriya, saxla
     await admin.goto('/admin/menu')

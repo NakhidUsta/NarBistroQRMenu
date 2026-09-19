@@ -143,6 +143,13 @@ Necə işləyir:
 
 Production-a çıxarış (HTTPS, nginx, pm2, backup) — [DEPLOY.md](DEPLOY.md).
 
+## Açılış ekranı, dizayn və bildirişlər
+
+- **Açılış ekranı (intro):** `frontend/index.html`-də saf HTML/CSS ilə hazırdır, yəni link açılan anda — JS yüklənməmişdən — görünür. Restoranın adı/loqosu/rəngləri `localStorage`-də (`qrmenu_brand`) saxlanılır və növbəti girişdə intro artıq restoranın öz brendi ilə açılır. Menyu və restoran məlumatı hazır olanda (min. 0.8 san, max. 8 san) solaraq silinir; xəta olsa da ilişmir (`SplashGate`).
+- **Telefon:** Menyu / Sevimlilər / Sifarişlər / Səbət paneli ekranın altında sabitdir və məhsul səhifəsində də görünür (səbət həmişə əlçatandır); "Səbətə əlavə et" paneli onun üstündə dayanır.
+- **Kompüter (md+):** həmin naviqasiya yuxarıdakı sticky başlığa (`SiteHeader`: loqo, ad, naviqasiya, dil) keçir; məzmun geniş şəbəkədə (3 sütunlu menyu, 2 sütunlu məhsul və səbət səhifələri) göstərilir.
+- **Bildirişlər səhifəsi (`/admin/notifications`, OWNER/MANAGER/WAITER):** tam siyahı (kursor səhifələmə — "Daha köhnələri göstər"), filtrlər, oxu/sil, çağırış üçün [Qəbul et]/[Həll edildi]; yan tərəfdə **səs ayarları** — ümumi açar, həcm, hər bildiriş növü üçün ayrıca siqnal (və ya "Səssiz") və sınaq düyməsi, brauzer bildirişləri. Ayarlar cihazda saxlanılır. Brauzerlər səsi yalnız istifadəçi jestindən sonra açır — panel ilk klikdə səsi avtomatik aktivləşdirir, bloklanıbsa "Səsi aktivləşdir" düyməsi çıxır. Başlıqdakı 🔊/🔇 düyməsi səsi tez söndürür.
+
 ## Struktur
 
 ```

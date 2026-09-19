@@ -28,8 +28,8 @@ async function createOnce(data) {
   return existing || create(data);
 }
 
-async function list({ unreadOnly, role } = {}) {
-  return notificationRepository.findAll({ unreadOnly, excludeTypes: RESTRICTED_TYPES[role] || [] });
+async function list({ unreadOnly, role, limit, before } = {}) {
+  return notificationRepository.findAll({ unreadOnly, excludeTypes: RESTRICTED_TYPES[role] || [], limit, before });
 }
 
 async function markRead(id) {

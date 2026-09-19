@@ -29,16 +29,20 @@ async function create({ restaurant_id, type, title, body, entity_type, entity_id
   return findById(result.recordset[0].id);
 }
 
-async function findAll({ unreadOnly, excludeTypes = [] } = {}) {
+async function findAll({ unreadOnly, excludeTypes = [], limit = 200, before } = {}) {
   const pool = await poolPromise;
-  const request = pool.request();
+  const request = pool.request().input('limit', sql.Int, limit);
   const where = [];
+  if (before) {
+    where.push('n.id < @before');
+    request.input('before', sql.Int, before);
+  }
   if (unreadOnly) where.push('n.is_read = 0');
   excludeTypes.forEach((type, i) => {
     request.input(`ex${i}`, sql.NVarChar(40), type);
     where.push(`n.type <> @ex${i}`);
   });
-  const result = await request.query(`${SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY n.created_at DESC, n.id DESC`);
+  const result = await request.query(`SELECT TOP (@limit) * FROM (${SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''}   ) AS x ORDER BY x.created_at DESC, x.id DESC`);
   return result.recordset;
 }
 

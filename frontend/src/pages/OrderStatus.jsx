@@ -41,7 +41,7 @@ function OrderStatus() {
   const currentIndex = STEP_KEYS.findIndex((s) => s.key === order.status)
 
   return (
-    <div className="px-5 pb-10 pt-6">
+    <div className="px-5 pb-28 md:pb-16 pt-6 md:px-8 md:max-w-3xl md:mx-auto">
       <h1 className="font-display text-[22px] font-semibold mb-1">{t('order_number')} #{order.id}</h1>
       <p className="text-[13px] text-muted mb-6">
         {order.customer_name} · {new Date(order.created_at).toLocaleString('az-AZ')}

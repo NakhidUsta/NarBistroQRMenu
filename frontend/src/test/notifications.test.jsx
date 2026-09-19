@@ -8,7 +8,7 @@ vi.mock('../lib/api', async (importOriginal) => {
   return {
     ...actual,
     notificationsApi: {
-      list: vi.fn(),
+      listPage: vi.fn(),
       markRead: vi.fn().mockResolvedValue({}),
       setStatus: vi.fn(),
       remove: vi.fn().mockResolvedValue({}),
@@ -25,7 +25,7 @@ import { useNotificationStore } from '../store/notificationStore'
 const n = (over) => ({ id: 1, type: 'call_waiter', status: 'OPEN', is_read: false, title: 'Masa 5 — Ofisiant çağırılır', created_at: new Date().toISOString(), entity_type: 'table', entity_id: 5, ...over })
 
 async function openBell(items) {
-  notificationsApi.list.mockResolvedValue(items)
+  notificationsApi.listPage.mockResolvedValue({ items, hasMore: false })
   render(<MemoryRouter><NotificationBell /></MemoryRouter>)
   await userEvent.click(screen.getByRole('button', { name: 'Bildirişlər' }))
   await screen.findAllByTestId('notification-item')

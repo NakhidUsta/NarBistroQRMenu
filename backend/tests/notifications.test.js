@@ -98,9 +98,9 @@ describe('notificationService', () => {
 
   it('ofisiant sistem xətası bildirişlərini görmür, sahib/menecer görür', async () => {
     await notificationService.list({ role: 'WAITER' });
-    expect(notificationRepository.findAll).toHaveBeenLastCalledWith({ unreadOnly: undefined, excludeTypes: ['system_error'] });
+    expect(notificationRepository.findAll).toHaveBeenLastCalledWith(expect.objectContaining({ excludeTypes: ['system_error'] }));
     await notificationService.list({ role: 'OWNER' });
-    expect(notificationRepository.findAll).toHaveBeenLastCalledWith({ unreadOnly: undefined, excludeTypes: [] });
+    expect(notificationRepository.findAll).toHaveBeenLastCalledWith(expect.objectContaining({ excludeTypes: [] }));
   });
 });
 
@@ -146,5 +146,26 @@ describe('errorHandler', () => {
     expect(JSON.stringify(res.body)).not.toMatch(/secret_table|stack|at /);
     await new Promise((r) => setImmediate(r));
     expect(notificationRepository.create).toHaveBeenCalledWith(expect.objectContaining({ type: 'system_error', title: 'Sistem xətası' }));
+  });
+});
+
+describe('GET /api/notifications səhifələmə', () => {
+  const rows = (n, start = 100) => Array.from({ length: n }, (_, i) => ({ id: start - i, type: 'order_created' }));
+
+  it('limit+1 sətir istəyir, limit qədər qaytarır, X-Has-More və kursor (before) işləyir', async () => {
+    notificationRepository.findAll.mockResolvedValue(rows(51));
+    const res = await request(app).get('/api/notifications?limit=50&before=90').set('Cookie', cookieFor('WAITER'));
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(50);
+    expect(res.headers['x-has-more']).toBe('1');
+    expect(notificationRepository.findAll).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 51, before: 90, excludeTypes: ['system_error'] }));
+  });
+
+  it('parametrsiz sorğu əvvəlki kimi massiv qaytarır; yanlış limit 400', async () => {
+    notificationRepository.findAll.mockResolvedValue(rows(3));
+    const ok = await request(app).get('/api/notifications').set('Cookie', cookieFor('OWNER'));
+    expect(Array.isArray(ok.body)).toBe(true);
+    expect(ok.headers['x-has-more']).toBe('0');
+    expect((await request(app).get('/api/notifications?limit=0').set('Cookie', cookieFor('OWNER'))).status).toBe(400);
   });
 });

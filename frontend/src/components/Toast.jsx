@@ -10,7 +10,7 @@ function Toast() {
   if (!toasts.length) return null
 
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none px-4 w-full max-w-sm">
+    <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none px-4 w-full max-w-sm">
       {toasts.map((t) => (
         <div
           key={t.id}

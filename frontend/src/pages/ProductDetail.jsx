@@ -21,6 +21,7 @@ function ProductDetail() {
   const navigate = useNavigate()
   const products = useMenuStore((s) => s.products)
   const menuStatus = useMenuStore((s) => s.status)
+  const catalog = useMenuStore((s) => s.ingredients)
   const product = useMemo(() => products.find((p) => String(p.id) === id), [products, id])
   const addItem = useCartStore((s) => s.addItem)
   const showToast = useUiStore((s) => s.showToast)
@@ -54,7 +55,6 @@ function ProductDetail() {
   const name = localize(product, 'name')
   const description = localize(product, 'description')
   // Kataloq komponentləri (sıralı, cari dildə); kataloqa köçürülməmiş köhnə məhsullar üçün mətn sahəsi ehtiyat kimi qalır
-  const catalog = useMenuStore((s) => s.ingredients)
   const catalogIngredients = (product.ingredient_ids || []).map((id) => catalog.find((i) => i.id === id)).filter(Boolean).map((i) => localize(i, 'name'))
   const ingredients = catalogIngredients.length ? catalogIngredients : splitList(localize(product, 'ingredients'))
   const allergens = splitList(localize(product, 'allergens'))
@@ -67,9 +67,9 @@ function ProductDetail() {
   }
 
   return (
-    <div className="pb-28">
-      <div className="relative">
-        <ProductGallery key={product.id} images={product.images?.length ? product.images : product.image_url ? [product.image_url] : []} alt={name} />
+    <div className="pb-44 md:pb-16 md:max-w-5xl md:mx-auto md:px-8 md:pt-8 md:grid md:grid-cols-2 md:gap-x-10 md:items-start">
+      <div className="relative md:rounded-3xl md:overflow-hidden md:row-span-2 md:sticky md:top-24">
+        <ProductGallery key={product.id} images={product.images?.length ? product.images : product.image_url ? [product.image_url] : []} alt={name} className="h-80 md:h-[520px]" />
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-ink/70 via-transparent to-transparent" />
         <button
           type="button"
@@ -89,7 +89,7 @@ function ProductDetail() {
         )}
       </div>
 
-      <div className="bg-panel -mt-6 rounded-t-[28px] relative px-6 pt-6 pb-8 shadow-[0_-10px_30px_-20px_rgba(32,26,22,0.5)]">
+      <div className="bg-panel -mt-6 md:mt-0 rounded-t-[28px] md:rounded-3xl relative px-6 md:px-8 pt-6 md:pt-8 pb-8 shadow-[0_-10px_30px_-20px_rgba(32,26,22,0.5)] md:shadow-none md:border md:border-border/60">
         <div className="flex items-start justify-between gap-4 mb-2">
           <h1 className="font-display text-[24px] font-semibold text-ink">{name}</h1>
           <span className="font-display text-[22px] font-bold text-burgundy whitespace-nowrap">
@@ -122,7 +122,7 @@ function ProductDetail() {
       </div>
 
       {product.is_available ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-panel border-t border-border px-5 py-4 flex items-center gap-4 shadow-[0_-8px_24px_-16px_rgba(32,26,22,0.4)] max-w-lg mx-auto">
+        <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] left-0 right-0 z-30 bg-panel border-t border-border px-5 py-3 flex items-center gap-4 shadow-[0_-8px_24px_-16px_rgba(32,26,22,0.4)] max-w-lg mx-auto md:static md:col-start-2 md:max-w-none md:mx-0 md:z-auto md:border-0 md:bg-transparent md:shadow-none md:px-0 md:pt-6 md:pb-0">
           <div className="flex items-center gap-3 bg-cream rounded-full px-1 py-1 border border-border">
             <button
               type="button"
@@ -149,7 +149,7 @@ function ProductDetail() {
           </button>
         </div>
       ) : (
-        <div className="fixed bottom-0 left-0 right-0 bg-panel border-t border-border px-5 py-4 text-center max-w-lg mx-auto">
+        <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] left-0 right-0 z-30 bg-panel border-t border-border px-5 py-3 text-center max-w-lg mx-auto md:static md:col-start-2 md:max-w-none md:mx-0 md:z-auto md:border-0 md:bg-transparent md:px-0 md:pt-6">
           <span className="text-[14px] text-muted font-semibold">{t('unavailable')}</span>
         </div>
       )}

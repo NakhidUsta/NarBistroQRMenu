@@ -49,9 +49,13 @@ describe('BottomNav', () => {
     expect(screen.getByRole('link', { name: /Sifarişlər/ })).toHaveAttribute('href', '/orders')
   })
 
-  it('məhsul detalı səhifəsində gizlənir', () => {
+  it('məhsul detalı və sifariş səhifəsində də görünür (səbət həmişə əlçatandır)', () => {
     wrap(<BottomNav />, '/product/3')
-    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+    const nav = screen.getByRole('navigation', { name: 'Əsas naviqasiya' })
+    expect(nav).toBeInTheDocument()
+    expect(nav.className).toMatch(/fixed/)
+    expect(nav.className).toMatch(/md:hidden/)
+    expect(screen.getByRole('link', { name: /Səbət/ })).toHaveAttribute('href', '/cart')
   })
 })
 

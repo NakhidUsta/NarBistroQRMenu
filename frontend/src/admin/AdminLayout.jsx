@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useAdminSocket } from '../lib/useAdminSocket'
-import { requestNotificationPermission } from '../lib/alerts'
+import { installAudioUnlock, requestNotificationPermission } from '../lib/alerts'
+import { useSoundSettings } from '../lib/soundSettings'
+import { useNotificationStore } from '../store/notificationStore'
 import Toast from '../components/Toast'
 import NotificationBell from './NotificationBell'
 
@@ -10,6 +12,7 @@ const ALL = ['OWNER', 'MANAGER', 'WAITER', 'KITCHEN']
 const NAV_ITEMS = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: '📊', roles: ['OWNER', 'MANAGER'] },
   { to: '/admin/orders', label: 'Sifarişlər', icon: '🧾', roles: ALL },
+  { to: '/admin/notifications', label: 'Bildirişlər', icon: '🔔', roles: ['OWNER', 'MANAGER', 'WAITER'], badge: true },
   { to: '/kitchen', label: 'Mətbəx ekranı', icon: '👨‍🍳', roles: ALL },
   { to: '/admin/menu', label: 'Menyu', icon: '🍽️', roles: ['OWNER', 'MANAGER'] },
   { to: '/admin/ingredients', label: 'Tərkiblər', icon: '🧂', roles: ['OWNER', 'MANAGER'] },
@@ -43,9 +46,14 @@ function AdminLayout() {
   const logout = useAuthStore((s) => s.logout)
   const socketStatus = useAdminSocket()
   const [menuOpen, setMenuOpen] = useState(false)
+  const unread = useNotificationStore((s) => s.items.filter((n) => !n.isRead).length)
+  const soundOn = useSoundSettings((s) => s.enabled)
+  const setSoundOn = useSoundSettings((s) => s.setEnabled)
 
   useEffect(() => {
     requestNotificationPermission()
+    // Brauzer səsi yalnız istifadəçi jestindən sonra açır — ilk klikdə avtomatik aktivləşir
+    installAudioUnlock()
   }, [])
 
   // Mobil çəkməcə: səhifə dəyişəndə bağlanır, açıq olanda Escape ilə də bağlanır
@@ -92,6 +100,11 @@ function AdminLayout() {
             >
               <span>{item.icon}</span>
               {item.label}
+              {item.badge && unread > 0 && (
+                <span className="ml-auto bg-danger text-cream text-[10.5px] font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center" aria-label={`${unread} oxunmamış`}>
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -121,7 +134,21 @@ function AdminLayout() {
             <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[socketStatus]}`} />
             {STATUS_TEXT[socketStatus]}
           </span>
-          {['OWNER', 'MANAGER', 'WAITER'].includes(admin?.role) && <NotificationBell />}
+          {['OWNER', 'MANAGER', 'WAITER'].includes(admin?.role) && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSoundOn(!soundOn)}
+                aria-label={soundOn ? 'Bildiriş səsini söndür' : 'Bildiriş səsini aç'}
+                aria-pressed={soundOn}
+                title={soundOn ? 'Səs açıqdır' : 'Səs söndürülüb'}
+                className="text-lg leading-none"
+              >
+                {soundOn ? '🔊' : '🔇'}
+              </button>
+              <NotificationBell />
+            </>
+          )}
           </div>
         </header>
         <main className="p-3 sm:p-6">

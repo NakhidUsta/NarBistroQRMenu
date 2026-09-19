@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { hideSplash } from '../lib/splash'
 
 // Gözlənilməz render xətası və ya lazy səhifənin (chunk) yüklənməməsi (oflayn / yeni versiya çıxandan sonra köhnə fayl adı)
 // boş ağ ekranla nəticələnməsin: aydın mesaj + "Yenidən cəhd et" və "Səhifəni yenilə" düymələri göstərilir.
@@ -11,6 +12,7 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error) {
     console.error('Səhifə xətası:', error)
+    hideSplash() // açılış ekranı xəta mesajını örtüb ilişib qalmasın
   }
 
   isChunkError() {

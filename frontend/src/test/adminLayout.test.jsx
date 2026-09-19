@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 vi.mock('../lib/useAdminSocket', () => ({ useAdminSocket: () => 'connected' }))
 vi.mock('../admin/NotificationBell', () => ({ default: () => <span>bell</span> }))
-vi.mock('../lib/alerts', () => ({ requestNotificationPermission: vi.fn(), playAlert: vi.fn(), browserNotify: vi.fn() }))
+vi.mock('../lib/alerts', () => ({ requestNotificationPermission: vi.fn(), installAudioUnlock: vi.fn(), playAlert: vi.fn(), browserNotify: vi.fn() }))
 
 import AdminLayout from '../admin/AdminLayout'
 import { useAuthStore } from '../store/authStore'

@@ -1,6 +1,6 @@
 function CategoryTabs({ categories, activeId, onSelect }) {
   return (
-    <div className="flex gap-6 overflow-x-auto px-5 pb-1 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+    <div className="flex gap-6 md:gap-9 overflow-x-auto px-5 md:px-8 pb-1 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
       {categories.map((cat) => {
         const isActive = cat.id === activeId
         return (

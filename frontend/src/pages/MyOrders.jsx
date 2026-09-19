@@ -87,7 +87,7 @@ function MyOrders() {
   }, [refs])
 
   return (
-    <div className="px-5 pt-6 pb-28">
+    <div className="px-5 md:px-8 md:max-w-3xl md:mx-auto pt-6 pb-28 md:pb-16">
       <h1 className="font-display text-[24px] font-semibold mb-5">{t('orders_title')}</h1>
       <OutboxList />
       {!loading && orders.length === 0 && outboxCount === 0 ? (
