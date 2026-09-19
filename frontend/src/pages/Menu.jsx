@@ -13,7 +13,7 @@ import { useAllergenFilterStore, hidesProduct } from '../store/allergenFilterSto
 const PAGE_SIZE = 12
 
 function Menu() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const categories = useMenuStore((s) => s.categories)
   const products = useMenuStore((s) => s.products)
   const status = useMenuStore((s) => s.status)
@@ -21,8 +21,12 @@ function Menu() {
   const showToast = useUiStore((s) => s.showToast)
   const t = useT()
   const localize = useLocalize()
-  const [activeCategory, setActiveCategory] = useState('all')
-  const [query, setQuery] = useState('')
+  // Kateqoriya, axtarış və səhifə URL-də saxlanılır (?cat=5&q=...&page=2): məhsuldan geri qayıdanda və link paylaşanda eyni görünüş açılır
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const c = Number(searchParams.get('cat'))
+    return Number.isInteger(c) && c > 0 ? c : 'all'
+  })
+  const [query, setQuery] = useState(() => searchParams.get('q') || '')
   const [filterOpen, setFilterOpen] = useState(false)
   const allergens = useMenuStore((s) => s.allergens)
   const avoid = useAllergenFilterStore((s) => s.avoid)
@@ -65,8 +69,29 @@ function Menu() {
   const hiddenCount = filtered.length - visible.length
 
   // Nömrəli səhifələmə (səhifədə 12 yemək); kateqoriya/axtarış/filtr dəyişəndə 1-ci səhifəyə qayıdır
-  const pagination = usePagination(visible, { pageSize: PAGE_SIZE, resetKey: `${activeCategory}|${query}|${avoid.join(',')}`, scroll: false })
+  const pagination = usePagination(visible, {
+    pageSize: PAGE_SIZE,
+    resetKey: `${activeCategory}|${query}|${avoid.join(',')}`,
+    scroll: false,
+    initialPage: Math.max(1, parseInt(searchParams.get('page'), 10) || 1),
+  })
   const gridRef = useRef(null)
+
+  // Silinmiş/mövcud olmayan kateqoriya linki → "Hamısı"
+  useEffect(() => {
+    if (status === 'ready' && activeCategory !== 'all' && !categories.some((c) => c.id === activeCategory)) setActiveCategory('all')
+  }, [status, categories, activeCategory])
+
+  // Cari görünüşü URL-ə yaz (history-ni doldurmadan). Menyu yüklənənə qədər yazılmır — yoxsa gələn ?page=3 səhifə "1"-ə yazılıb itərdi.
+  useEffect(() => {
+    if (status !== 'ready') return
+    const next = new URLSearchParams(searchParams)
+    const put = (key, value, empty) => (value === empty ? next.delete(key) : next.set(key, String(value)))
+    put('cat', activeCategory, 'all')
+    put('q', query.trim() ? query : '', '')
+    put('page', pagination.page, 1)
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true })
+  }, [status, activeCategory, query, pagination.page])
   function goToPage(p) {
     pagination.goTo(p)
     gridRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
