@@ -6,6 +6,10 @@ jest.mock('../src/config/db', () => {
   const { fakePool } = require('./helpers');
   return { sql, poolPromise: Promise.resolve(fakePool) };
 });
+jest.mock('../src/repositories/adminUserRepository', () => {
+  const { authStateFor } = require('./helpers');
+  return { findAuthState: jest.fn(async (id) => authStateFor(id)) };
+});
 jest.mock('../src/services/auditService', () => ({ list: jest.fn().mockResolvedValue([]), log: jest.fn() }));
 jest.mock('../src/services/adminService', () => ({ getDashboard: jest.fn().mockResolvedValue({ ok: true }) }));
 
@@ -68,6 +72,29 @@ describe('autentifikasiya və rol icazələri', () => {
   it('etibarsız token 401 qaytarır', async () => {
     const res = await request(app).get('/api/orders').set('Cookie', ['qrmenu_token=saxta']);
     expect(res.status).toBe(401);
+  });
+
+  it('köhnə token versiyası (şifrə dəyişib / bütün cihazlardan çıxış) 401 qaytarır', async () => {
+    const res = await request(app).get('/api/orders').set('Cookie', cookieFor('OWNER', { tv: 5 }));
+    expect(res.status).toBe(401);
+  });
+
+  it('DB-də silinmiş istifadəçinin tokeni 401 qaytarır', async () => {
+    const res = await request(app).get('/api/orders').set('Cookie', cookieFor('OWNER', { id: 999 }));
+    expect(res.status).toBe(401);
+  });
+
+  it('rol tokendən yox, DB-dən oxunur: token OWNER deyir, DB-də KITCHEN → 403', async () => {
+    // id=4 DB-də KITCHEN-dir; saxta token isə role:OWNER iddia edir
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: 4, email: 'x', role: 'OWNER', restaurant_id: 1, tv: 0 }, process.env.JWT_SECRET);
+    const res = await request(app).get('/api/staff').set('Cookie', [`qrmenu_token=${token}`]);
+    expect(res.status).toBe(403);
+  });
+
+  it('şifrə dəyişmə və hamıdan çıxış giriş tələb edir', async () => {
+    expect((await request(app).post('/api/auth/change-password').send({ current_password: 'a', new_password: 'b' })).status).toBe(401);
+    expect((await request(app).post('/api/auth/logout-all')).status).toBe(401);
   });
 
   it('sifariş statusunu yalnız icazəli rol dəyişə bilər (müştəri -> 401)', async () => {

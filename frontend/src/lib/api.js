@@ -122,6 +122,8 @@ export const authApi = {
   login: (email, password) => unwrap(apiClient.post('/auth/login', { email, password })),
   logout: () => unwrap(apiClient.post('/auth/logout')),
   me: () => unwrap(apiClient.get('/auth/me')),
+  changePassword: (current_password, new_password) => unwrap(apiClient.post('/auth/change-password', { current_password, new_password })),
+  logoutAll: () => unwrap(apiClient.post('/auth/logout-all')),
 }
 
 export const adminApi = {

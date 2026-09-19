@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { to: '/admin/staff', label: 'İşçilər', icon: '👥', roles: ['OWNER'] },
   { to: '/admin/audit', label: 'Audit Log', icon: '📜', roles: ['OWNER', 'MANAGER'] },
   { to: '/admin/settings', label: 'Ayarlar', icon: '⚙️', roles: ['OWNER', 'MANAGER'] },
+  { to: '/admin/account', label: 'Hesabım', icon: '🔐', roles: ALL },
 ]
 
 const STATUS_DOT = { connected: 'bg-success', reconnecting: 'bg-gold', disconnected: 'bg-danger' }

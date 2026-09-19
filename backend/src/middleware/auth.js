@@ -1,19 +1,22 @@
-const jwt = require('jsonwebtoken');
+const authService = require('../services/authService');
+const asyncHandler = require('../utils/asyncHandler');
 
-function requireAdmin(req, res, next) {
-  const token = req.cookies?.qrmenu_token;
+const COOKIE = 'qrmenu_token';
+
+// Token yalnız imza ilə deyil, DB-də sessiya versiyası və CARİ rol ilə də yoxlanılır (bax: authService.authenticate).
+const requireAdmin = asyncHandler(async (req, res, next) => {
+  const token = req.cookies?.[COOKIE];
   if (!token) {
     return res.status(401).json({ error: 'Giriş tələb olunur' });
   }
-
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.admin = payload;
+    req.admin = await authService.authenticate(token);
     next();
-  } catch {
-    res.status(401).json({ error: 'Sessiya etibarsızdır, yenidən daxil olun' });
+  } catch (err) {
+    if (err.status === 401) return res.status(401).json({ error: err.message });
+    throw err;
   }
-}
+});
 
 // authorize('OWNER', 'MANAGER') kimi çağırılır — requireAdmin-dən SONRA istifadə olunmalıdır.
 // Rol siyahısı boşdursa yalnız giriş yoxlanılır (hər hansı admin roluna icazə verilir).
@@ -31,15 +34,17 @@ function authorize(...roles) {
 
 // Cookie varsa req.admin-i doldurur, yoxdursa (və ya etibarsızdırsa) sadəcə davam edir —
 // həm admin, həm də açıq (public) istifadəçilərin eyni endpoint-ə müraciət etdiyi yerlərdə istifadə olunur.
-function optionalAdmin(req, res, next) {
-  const token = req.cookies?.qrmenu_token;
-  if (!token) return next();
-  try {
-    req.admin = jwt.verify(token, process.env.JWT_SECRET);
-  } catch {
-    // etibarsız token — sükutla adi (public) sorğu kimi davam et
+const optionalAdmin = asyncHandler(async (req, res, next) => {
+  const token = req.cookies?.[COOKIE];
+  if (token) {
+    try {
+      req.admin = await authService.authenticate(token);
+    } catch (err) {
+      if (err.status !== 401) throw err;
+      // etibarsız token — sükutla adi (public) sorğu kimi davam et
+    }
   }
   next();
-}
+});
 
 module.exports = { requireAdmin, authorize, optionalAdmin };

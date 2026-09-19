@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const adminUserRepository = require('../repositories/adminUserRepository');
+const authService = require('./authService');
 const AppError = require('../utils/AppError');
 
 const DEFAULT_RESTAURANT_ID = 1;
@@ -35,7 +36,9 @@ async function update(id, { role, password }, actingAdminId) {
     validatePassword(password);
     password_hash = await bcrypt.hash(password, 10);
   }
-  return adminUserRepository.update(id, { role, password_hash });
+  const updated = await adminUserRepository.update(id, { role, password_hash });
+  authService.revokeSessions(id); // rol/şifrə dəyişikliyi dərhal qüvvəyə minsin
+  return updated;
 }
 
 async function remove(id, actingAdminId) {
@@ -46,6 +49,7 @@ async function remove(id, actingAdminId) {
     throw new AppError(400, 'Sistemdə ən azı bir OWNER qalmalıdır');
   }
   await adminUserRepository.remove(id);
+  authService.revokeSessions(id);
 }
 
 module.exports = { list, create, update, remove };

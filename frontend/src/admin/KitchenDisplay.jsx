@@ -66,11 +66,9 @@ function KitchenDisplay() {
             <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[socketStatus]}`} />
             {STATUS_TEXT[socketStatus]}
           </span>
-          {admin?.role !== 'KITCHEN' && (
-            <button onClick={() => navigate('/admin/orders')} className="text-[12.5px] font-semibold text-cream/70 hover:text-cream">
-              Admin panel
-            </button>
-          )}
+          <button onClick={() => navigate(admin?.role === 'KITCHEN' ? '/admin/account' : '/admin/orders')} className="text-[12.5px] font-semibold text-cream/70 hover:text-cream">
+            {admin?.role === 'KITCHEN' ? 'Hesabım' : 'Admin panel'}
+          </button>
           <button onClick={handleLogout} className="text-[12.5px] font-semibold text-cream/70 hover:text-cream">Çıxış</button>
         </div>
       </header>

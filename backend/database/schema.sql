@@ -60,6 +60,9 @@ CREATE TABLE admin_users (
     password_hash NVARCHAR(MAX) NOT NULL,
     role          NVARCHAR(20) NOT NULL DEFAULT N'OWNER'
                   CHECK (role IN (N'OWNER', N'MANAGER', N'WAITER', N'KITCHEN')),
+    token_version   INT NOT NULL DEFAULT 0,   -- artırılanda köhnə sessiyalar etibarsız olur
+    failed_attempts INT NOT NULL DEFAULT 0,
+    locked_until    DATETIME2 NULL,
     created_at    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO

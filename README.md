@@ -44,6 +44,23 @@ npm run dev
 - Admin panel: `http://localhost:5174/admin/login`
 - Mətbəx ekranı (KDS): `http://localhost:5174/kitchen`
 
+## Təhlükəsizlik və əməliyyat
+
+- **Sessiya:** JWT httpOnly cookie, defolt 12 saat (`ADMIN_SESSION_HOURS`). Hər sorğuda DB-də token versiyası və **cari rol** yoxlanılır: şifrə dəyişəndə, "Bütün cihazlardan çıxış" edəndə, rol dəyişəndə/istifadəçi silinəndə köhnə sessiyalar və açıq socket bağlantıları dərhal bağlanır (admin paneldə **Hesabım**).
+- **Giriş qorunması:** IP üzrə 5 uğursuz cəhd / 15 dəq limiti + hesab üzrə 5 uğursuz cəhddən sonra 15 dəqiqəlik bloklama; bcrypt hash; cavab vaxtı ilə istifadəçi adı aşkar olmur.
+- **Şifrəni unutdunuz (e-poçt xidməti olmadan):** OWNER işçi şifrəsini **İşçilər** səhifəsindən dəyişə bilər; OWNER özü unudubsa server maşınında:
+  ```bash
+  cd backend && npm run reset-password -- admin@qrmenu.local YeniSifre123
+  ```
+  Bütün köhnə sessiyalar bağlanır və hesab bloku götürülür. (E-poçt ilə "sıfırlama linki" və e-poçt təsdiqi üçün SMTP/e-poçt provayderi lazımdır — hələ qoşulmayıb.)
+- **DB backup:** `cd backend && npm run backup` — sıxılmış, CHECKSUM ilə tam backup (`BACKUP_DIR`, defolt SQL Server-in backup qovluğu), 14 gündən köhnələri silinir. Gündəlik işə salmaq üçün (Windows):
+  ```bash
+  schtasks /Create /SC DAILY /ST 03:00 /TN "QRMenuBackup" /TR "cmd /c cd /d C:\path\to\qr-menu\backend && npm run backup"
+  ```
+  Bərpanı sınayın: `RESTORE VERIFYONLY FROM DISK = N'...bak' WITH CHECKSUM` (sysadmin ilə).
+- **Monitorinq:** `/api/health` (DB gecikməsi, uptime), 1 saniyədən yavaş API sorğuları konsola `[YAVAŞ]` kimi yazılır, bütün admin dəyişiklikləri **Audit Log**-da.
+- **HTTPS:** deploy zamanı reverse proxy (nginx/Cloudflare) ilə; `NODE_ENV=production` olanda cookie `secure`+`SameSite=None` və `trust proxy` aktiv olur.
+
 ## Rollar
 
 | Rol | Giriş |

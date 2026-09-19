@@ -21,6 +21,7 @@ import Settings from './admin/Settings'
 import StaffAdmin from './admin/StaffAdmin'
 import AuditLogsAdmin from './admin/AuditLogsAdmin'
 import KitchenDisplay from './admin/KitchenDisplay'
+import AccountAdmin from './admin/AccountAdmin'
 import ReviewsAdmin from './admin/ReviewsAdmin'
 import CustomersAdmin from './admin/CustomersAdmin'
 import InventoryAdmin from './admin/InventoryAdmin'
@@ -47,6 +48,7 @@ function App() {
       <Route path="/admin" element={<ProtectedAdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="account" element={<AccountAdmin />} />
           <Route path="reviews" element={<ReviewsAdmin />} />
           <Route path="customers" element={<CustomersAdmin />} />
           <Route path="inventory" element={<InventoryAdmin />} />

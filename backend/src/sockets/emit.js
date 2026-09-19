@@ -11,6 +11,12 @@ function getIO() {
   return ioInstance;
 }
 
+// Sessiyası ləğv edilən adminin açıq socket bağlantılarını qapat (yenidən qoşulmaq üçün etibarlı cookie tələb olunacaq).
+function disconnectAdmin(userId) {
+  if (!ioInstance) return;
+  ioInstance.of('/admin').in(`user:${userId}`).disconnectSockets(true);
+}
+
 function emitProductUpdated(product, action) {
   getIO().emit('product-updated', { product, action });
   getIO().of('/admin').to('admin').emit('product-updated', { product, action });
@@ -48,6 +54,7 @@ function emitNotificationCreated(notification) {
 module.exports = {
   setIO,
   getIO,
+  disconnectAdmin,
   emitProductUpdated,
   emitCategoryUpdated,
   emitTableUpdated,

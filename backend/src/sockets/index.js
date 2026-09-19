@@ -1,5 +1,5 @@
 const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
+const authService = require('../services/authService');
 const { setIO } = require('./emit');
 
 function parseCookie(cookieHeader, name) {
@@ -39,12 +39,11 @@ function initSockets(httpServer) {
   // Admin namespace — JWT cookie ilə doğrulanır, rola görə əlavə room-a qoşulur
   const adminNamespace = io.of('/admin');
 
-  adminNamespace.use((socket, next) => {
+  adminNamespace.use(async (socket, next) => {
     try {
       const token = parseCookie(socket.handshake.headers.cookie, 'qrmenu_token');
       if (!token) return next(new Error('Giriş tələb olunur'));
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      socket.admin = payload;
+      socket.admin = await authService.authenticate(token);
       next();
     } catch {
       next(new Error('Sessiya etibarsızdır'));
@@ -53,6 +52,7 @@ function initSockets(httpServer) {
 
   adminNamespace.on('connection', (socket) => {
     socket.join('admin');
+    socket.join(`user:${socket.admin.id}`);
     if (socket.admin?.role) {
       socket.join(`role:${socket.admin.role}`);
     }
