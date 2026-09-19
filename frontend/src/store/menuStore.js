@@ -1,24 +1,28 @@
 import { create } from 'zustand'
-import { categoriesApi, productsApi } from '../lib/api'
+import { allergensApi, categoriesApi, productsApi } from '../lib/api'
 
 export const useMenuStore = create((set, get) => ({
   categories: [],
   products: [],
+  allergens: [],
   status: 'idle',
 
   async fetchAll(params) {
     set({ status: 'loading' })
     try {
-      const [categories, products] = await Promise.all([
+      const [categories, products, allergens] = await Promise.all([
         categoriesApi.list(),
         productsApi.list(params),
+        // allergen kataloqu menyunu bloklamasın
+        allergensApi.list().catch(() => get().allergens),
       ])
-      set({ categories, products, status: 'ready' })
+      set({ categories, products, allergens, status: 'ready' })
     } catch {
       set({ status: 'error' })
     }
   },
 
+  // Sosket hadisəsi bəzən qismən məhsul gətirir (məs. stok yenilənməsi) — mövcud sahələri (images, allergen_ids) itirməmək üçün birləşdirilir
   upsertProduct(product, action) {
     if (action === 'deleted') {
       set({ products: get().products.filter((p) => p.id !== product.id) })
@@ -28,7 +32,7 @@ export const useMenuStore = create((set, get) => ({
     const exists = products.some((p) => p.id === product.id)
     set({
       products: exists
-        ? products.map((p) => (p.id === product.id ? product : p))
+        ? products.map((p) => (p.id === product.id ? { ...p, ...product } : p))
         : [...products, product],
     })
   },

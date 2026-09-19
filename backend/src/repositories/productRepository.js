@@ -7,6 +7,79 @@ const SELECT_COLUMNS = `
   stock_quantity, track_inventory, created_at
 `;
 
+// Məhsulun qalereyası (images) və allergen ID-ləri ayrı cədvəllərdədir; oxunanda məhsula əlavə olunur.
+// images[0] həmişə əsas şəkildir (products.image_url); image_url qalereyada yoxdursa (köhnə API) başa əlavə olunur.
+async function attachRelations(products, productId) {
+  if (!products.length) return products;
+  const pool = await poolPromise;
+  const run = (text, order) => {
+    const request = pool.request();
+    let query = text;
+    if (productId) {
+      request.input('id', sql.Int, productId);
+      query += ' WHERE product_id = @id';
+    }
+    return request.query(`${query} ${order}`);
+  };
+  const [imageRows, allergenRows] = await Promise.all([
+    run('SELECT product_id, image_url FROM product_images', 'ORDER BY product_id, sort_order, id'),
+    run('SELECT product_id, allergen_id FROM product_allergens', 'ORDER BY allergen_id'),
+  ]);
+  const imagesBy = new Map();
+  for (const r of imageRows.recordset) imagesBy.set(r.product_id, [...(imagesBy.get(r.product_id) || []), r.image_url]);
+  const allergensBy = new Map();
+  for (const r of allergenRows.recordset) allergensBy.set(r.product_id, [...(allergensBy.get(r.product_id) || []), r.allergen_id]);
+
+  return products.map((p) => {
+    const gallery = imagesBy.get(p.id) || [];
+    const images = p.image_url && !gallery.includes(p.image_url) ? [p.image_url, ...gallery] : gallery;
+    return { ...p, images, allergen_ids: allergensBy.get(p.id) || [] };
+  });
+}
+
+async function withRelations(product) {
+  if (!product) return null;
+  const [withData] = await attachRelations([product], product.id);
+  return withData;
+}
+
+// body.images / body.allergen_ids massivdirsə əlaqə cədvəlləri tam əvəz olunur; verilməyibsə toxunulmur.
+async function writeRelations(transaction, productId, body) {
+  if (Array.isArray(body.images)) {
+    await new sql.Request(transaction).input('id', sql.Int, productId).query('DELETE FROM product_images WHERE product_id = @id');
+    for (const [index, url] of body.images.entries()) {
+      await new sql.Request(transaction)
+        .input('id', sql.Int, productId)
+        .input('url', sql.NVarChar(500), url)
+        .input('sort', sql.Int, index)
+        .query('INSERT INTO product_images (product_id, image_url, sort_order) VALUES (@id, @url, @sort)');
+    }
+  }
+  if (Array.isArray(body.allergen_ids)) {
+    await new sql.Request(transaction).input('id', sql.Int, productId).query('DELETE FROM product_allergens WHERE product_id = @id');
+    for (const allergenId of body.allergen_ids) {
+      await new sql.Request(transaction)
+        .input('id', sql.Int, productId)
+        .input('allergen', sql.Int, allergenId)
+        .query('INSERT INTO product_allergens (product_id, allergen_id) VALUES (@id, @allergen)');
+    }
+  }
+}
+
+async function inTransaction(work) {
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+  try {
+    const result = await work(transaction);
+    await transaction.commit();
+    return result;
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+}
+
 async function findAll({ category_id, includeUnavailable = true } = {}) {
   const pool = await poolPromise;
   const request = pool.request();
@@ -24,7 +97,7 @@ async function findAll({ category_id, includeUnavailable = true } = {}) {
   query += ' ORDER BY sort_order ASC, id ASC';
 
   const result = await request.query(query);
-  return result.recordset;
+  return attachRelations(result.recordset);
 }
 
 async function findById(id) {
@@ -32,7 +105,7 @@ async function findById(id) {
   const result = await pool.request()
     .input('id', sql.Int, id)
     .query(`SELECT ${SELECT_COLUMNS} FROM products WHERE id = @id`);
-  return result.recordset[0] || null;
+  return withRelations(result.recordset[0]);
 }
 
 function bindBody(request, body) {
@@ -61,42 +134,50 @@ function bindBody(request, body) {
 }
 
 async function create(body) {
-  const pool = await poolPromise;
-  const request = bindBody(pool.request(), body)
-    .input('restaurant_id', sql.Int, body.restaurant_id);
-  const result = await request.query(`
-    INSERT INTO products (
-      restaurant_id, category_id, name, name_en, name_ru, description, description_en, description_ru,
-      price, image_url, ingredients, ingredients_en, ingredients_ru, allergens, allergens_en, allergens_ru,
-      prep_time_minutes, is_available, is_popular, sort_order, stock_quantity, track_inventory
-    )
-    OUTPUT INSERTED.*
-    VALUES (
-      @restaurant_id, @category_id, @name, @name_en, @name_ru, @description, @description_en, @description_ru,
-      @price, @image_url, @ingredients, @ingredients_en, @ingredients_ru, @allergens, @allergens_en, @allergens_ru,
-      @prep_time_minutes, @is_available, @is_popular, @sort_order, @stock_quantity, @track_inventory
-    )
-  `);
-  return result.recordset[0];
+  const product = await inTransaction(async (transaction) => {
+    const request = bindBody(new sql.Request(transaction), body)
+      .input('restaurant_id', sql.Int, body.restaurant_id);
+    const result = await request.query(`
+      INSERT INTO products (
+        restaurant_id, category_id, name, name_en, name_ru, description, description_en, description_ru,
+        price, image_url, ingredients, ingredients_en, ingredients_ru, allergens, allergens_en, allergens_ru,
+        prep_time_minutes, is_available, is_popular, sort_order, stock_quantity, track_inventory
+      )
+      OUTPUT INSERTED.*
+      VALUES (
+        @restaurant_id, @category_id, @name, @name_en, @name_ru, @description, @description_en, @description_ru,
+        @price, @image_url, @ingredients, @ingredients_en, @ingredients_ru, @allergens, @allergens_en, @allergens_ru,
+        @prep_time_minutes, @is_available, @is_popular, @sort_order, @stock_quantity, @track_inventory
+      )
+    `);
+    const created = result.recordset[0];
+    await writeRelations(transaction, created.id, body);
+    return created;
+  });
+  return withRelations(product);
 }
 
 async function update(id, body) {
-  const pool = await poolPromise;
-  const request = bindBody(pool.request(), body).input('id', sql.Int, id);
-  const result = await request.query(`
-    UPDATE products
-    SET category_id = @category_id, name = @name, name_en = @name_en, name_ru = @name_ru,
-        description = @description, description_en = @description_en, description_ru = @description_ru,
-        price = @price, image_url = @image_url,
-        ingredients = @ingredients, ingredients_en = @ingredients_en, ingredients_ru = @ingredients_ru,
-        allergens = @allergens, allergens_en = @allergens_en, allergens_ru = @allergens_ru,
-        prep_time_minutes = @prep_time_minutes, is_available = @is_available,
-        is_popular = @is_popular, sort_order = @sort_order,
-        stock_quantity = @stock_quantity, track_inventory = @track_inventory
-    OUTPUT INSERTED.*
-    WHERE id = @id
-  `);
-  return result.recordset[0] || null;
+  const product = await inTransaction(async (transaction) => {
+    const request = bindBody(new sql.Request(transaction), body).input('id', sql.Int, id);
+    const result = await request.query(`
+      UPDATE products
+      SET category_id = @category_id, name = @name, name_en = @name_en, name_ru = @name_ru,
+          description = @description, description_en = @description_en, description_ru = @description_ru,
+          price = @price, image_url = @image_url,
+          ingredients = @ingredients, ingredients_en = @ingredients_en, ingredients_ru = @ingredients_ru,
+          allergens = @allergens, allergens_en = @allergens_en, allergens_ru = @allergens_ru,
+          prep_time_minutes = @prep_time_minutes, is_available = @is_available,
+          is_popular = @is_popular, sort_order = @sort_order,
+          stock_quantity = @stock_quantity, track_inventory = @track_inventory
+      OUTPUT INSERTED.*
+      WHERE id = @id
+    `);
+    const updated = result.recordset[0] || null;
+    if (updated) await writeRelations(transaction, id, body);
+    return updated;
+  });
+  return withRelations(product);
 }
 
 async function adjustStock(id, changeQty) {
@@ -122,7 +203,7 @@ async function adjustStock(id, changeQty) {
         .query(`INSERT INTO stock_movements (product_id, change_qty, reason) VALUES (@product_id, @change_qty, @reason)`);
     }
     await transaction.commit();
-    return product || null;
+    return withRelations(product);
   } catch (err) {
     await transaction.rollback();
     throw err;
@@ -135,7 +216,7 @@ async function setAvailability(id, isAvailable) {
     .input('id', sql.Int, id)
     .input('is_available', sql.Bit, isAvailable ? 1 : 0)
     .query('UPDATE products SET is_available = @is_available OUTPUT INSERTED.* WHERE id = @id');
-  return result.recordset[0] || null;
+  return withRelations(result.recordset[0]);
 }
 
 async function remove(id) {

@@ -18,7 +18,7 @@ sqlcmd -S localhost -E -C -f 65001 -d qr_menu -i backend/database/schema.sql
 
 Seed: 1 restoran, 1 OWNER (`admin@qrmenu.local` / `ChangeMe123!` — **production-da mütləq dəyişdirin**), kateqoriyalar, məhsullar, 3 masa, `XOSGEL10` promo kodu.
 
-Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme).
+Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər).
 
 ### 2. Backend
 
@@ -85,7 +85,6 @@ E2E, PDF-in 23 addımlı ssenarisini icra edir (admin məhsul yaradır → müş
 ## PWA / SEO
 
 - `public/manifest.webmanifest`, `public/sw.js` (menyu API-si network-first, şəkillər stale-while-revalidate, offline səhifə), ikonlar `public/icons/`. Service worker yalnız **production build**-də (`npm run build && npm run preview`) qeydiyyatdan keçir.
-- `robots.txt` / `sitemap.xml` daxilində `DOMAIN.com` yer tutucusunu deploy zamanı real domenlə əvəz edin.
 - **Dinamik SEO/OG:** `npm run build` (frontend) sonrası backend `frontend/dist`-i özü təqdim edir (`FRONTEND_DIST` ilə dəyişmək olar) və hər səhifənin `<head>`-inə DB-dən restoran/məhsul üzrə OG, Twitter, canonical və JSON-LD (Restaurant / MenuItem) yeridir. `/sitemap.xml` məhsullardan avtomatik yaranır, `/robots.txt` real domeni yazır. Admin/səbət/sifariş səhifələri `noindex` alır. Domen üçün backend `.env`-də `PUBLIC_URL=https://menu.example.az` qoyun (yoxdursa Host başlığından alınır); frontend build-də `VITE_API_URL`-i real API ünvanına təyin edin. Dev rejimində (Vite) bu işləmir — yalnız production-da.
 - **Paylaş:** məhsul səhifəsində və menyunun altında "Paylaş" düyməsi — mobildə sistem paylaşım pəncərəsi (Instagram/WhatsApp orada seçilir), digər yerdə link kopyalanır. Paylaşılan link masa kodu daşımır.
 
@@ -97,6 +96,12 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 - **kəsmə** (`POST /api/media/:id/crop`, nisbət `1:1 | 4:3 | 16:9`, fokus `attention | centre`) orijinalı saxlayıb yeni şəkil yaradır;
 - **silmə** — istifadədə olan (məhsul/tema şəkli) şəkil üçün `409`; silinəndə bütün variantlar da silinir;
 - məhsul/tema formalarında “Kitabxanadan seç” ilə əsas şəkil seçilir; müştəri UI-ı `<picture>` (AVIF → WebP → orijinal) və `srcset` istifadə edir. Köhnə yükləmələr və xarici URL-lər olduğu kimi göstərilir.
+
+## Məhsul şəkilləri və allergenlər
+
+- **Qalereya:** məhsula 10-a qədər şəkil (`product_images`); admin formasında yüklə / kitabxanadan seç / sırala / sil, birinci şəkil **əsas** şəkildir (`products.image_url` avtomatik ona bərabər olur). Müştəri məhsul səhifəsində sürüşən qalereya (AVIF/WebP) görür. API: `POST/PUT /api/products` gövdəsində `images: [url,…]` (yalnız `/uploads/…` və http(s) linkləri qəbul olunur); verilməzsə mövcud qalereyaya toxunulmur.
+- **Allergenlər:** AB-nin 14 standart allergeni (`allergens`, AZ/EN/RU adları + ikon), məhsula `allergen_ids: [1, 7]` ilə bağlanır (`product_allergens`); `GET /api/allergens` açıqdır. Müştəri menyuda "Allergen filteri" ilə qaçınmaq istədiyi allergenləri seçir və onları ehtiva edən yeməklər gizlədilir (seçim cihazda saxlanılır). Köhnə sərbəst mətn sahəsi ("Digər allergen qeydləri") ehtiyat/qeyd üçün qalır — filtr yalnız kataloqdan seçilmiş allergenlərə işləyir, ona görə istifadəçiyə ofisiantla dəqiqləşdirmək tövsiyə olunur.
+- Tərkib (ingredients) hələlik tərcümə olunan sərbəst mətn olaraq qalır.
 
 ## Struktur
 

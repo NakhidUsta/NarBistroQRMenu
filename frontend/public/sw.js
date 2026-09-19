@@ -6,7 +6,7 @@ const DATA_CACHE = `qrmenu-data-${VERSION}`
 const IMG_CACHE = `qrmenu-img-${VERSION}`
 const IMG_LIMIT = 80
 
-const PUBLIC_API = ['/api/products', '/api/categories', '/api/restaurant']
+const PUBLIC_API = ['/api/products', '/api/categories', '/api/restaurant', '/api/allergens']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -8,6 +8,9 @@ GO
 
 -- ============ CƏDVƏLLƏR ============
 
+IF OBJECT_ID('product_allergens', 'U') IS NOT NULL DROP TABLE product_allergens;
+IF OBJECT_ID('allergens', 'U') IS NOT NULL DROP TABLE allergens;
+IF OBJECT_ID('product_images', 'U') IS NOT NULL DROP TABLE product_images;
 IF OBJECT_ID('media', 'U') IS NOT NULL DROP TABLE media;
 IF OBJECT_ID('reviews', 'U') IS NOT NULL DROP TABLE reviews;
 IF OBJECT_ID('promo_usage', 'U') IS NOT NULL DROP TABLE promo_usage;
@@ -212,6 +215,34 @@ CREATE TABLE media (
 );
 GO
 
+CREATE TABLE product_images (
+    id         INT IDENTITY(1,1) PRIMARY KEY,
+    product_id INT NOT NULL FOREIGN KEY REFERENCES products(id) ON DELETE CASCADE,
+    image_url  NVARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+CREATE INDEX IX_product_images_product ON product_images (product_id, sort_order);
+GO
+
+CREATE TABLE allergens (
+    id         INT IDENTITY(1,1) PRIMARY KEY,
+    code       NVARCHAR(30) NOT NULL UNIQUE,
+    name       NVARCHAR(60) NOT NULL,
+    name_en    NVARCHAR(60) NULL,
+    name_ru    NVARCHAR(60) NULL,
+    icon       NVARCHAR(10) NULL,
+    sort_order INT NOT NULL DEFAULT 0
+);
+GO
+
+CREATE TABLE product_allergens (
+    product_id  INT NOT NULL FOREIGN KEY REFERENCES products(id) ON DELETE CASCADE,
+    allergen_id INT NOT NULL FOREIGN KEY REFERENCES allergens(id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, allergen_id)
+);
+GO
+
 CREATE TABLE reviews (
     id            INT IDENTITY(1,1) PRIMARY KEY,
     restaurant_id INT NOT NULL FOREIGN KEY REFERENCES restaurants(id),
@@ -290,12 +321,45 @@ INSERT INTO categories (restaurant_id, name, slug, sort_order) VALUES
 GO
 
 INSERT INTO products (restaurant_id, category_id, name, description, price, image_url, ingredients, allergens, prep_time_minutes, is_popular, sort_order) VALUES
-(1, 3, N'Truffle Pasta', N'Krem-truffle sousu, parmezan, göbələk, təzə otlar.', 24.00, N'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800&h=800&fit=crop', N'Fettuccine pasta, truffle krem sousu, vəhşi göbələk, parmezan pendiri, sarımsaq, cəfəri', N'Süd məhsulları, qluten', 18, 1, 0),
-(1, 3, N'Grilled Salmon', N'Təzə somon, mövsümi tərəvəzlər, limon-kərə sousu.', 28.00, N'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=800&fit=crop', N'Somon fileti, brokoli, yerkökü, limon, kərə, otlar', N'Balıq, süd məhsulları', 20, 1, 1),
-(1, 3, N'Ribeye Steak', N'Premium ribeye, sarımsaqlı kartof püresi, mövsümi tərəvəzlər.', 36.00, N'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&h=800&fit=crop', N'Mal əti (ribeye), kartof, kərə, sarımsaq, rozmarin', N'Süd məhsulları', 25, 0, 2),
-(1, 4, N'Cheesecake', N'Klassik cheesecake, qarışıq giləmeyvə sousu.', 9.00, N'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=800&h=800&fit=crop', N'Krem pendir, bisküvi, yumurta, giləmeyvə sousu', N'Süd məhsulları, qluten, yumurta', 5, 0, 3),
-(1, 2, N'Fəsil tərəvəz salatı', N'Mövsümün ən təzə tərəvəzləri ilə hazırlanıb.', 12.00, N'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=800&fit=crop', N'Qarışıq yaşıllıq, pomidor, xiyar, zeytun yağı, limon', N'Yoxdur', 8, 0, 0),
-(1, 5, N'Təzə portağal şirəsi', N'100% təbii, sıxılmış portağal şirəsi.', 6.00, N'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=800&h=800&fit=crop', N'Təzə portağal', N'Yoxdur', 3, 0, 0);
+(1, (SELECT id FROM categories WHERE slug = N'mains'), N'Truffle Pasta', N'Krem-truffle sousu, parmezan, göbələk, təzə otlar.', 24.00, N'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800&h=800&fit=crop', N'Fettuccine pasta, truffle krem sousu, vəhşi göbələk, parmezan pendiri, sarımsaq, cəfəri', N'Süd məhsulları, qluten', 18, 1, 0),
+(1, (SELECT id FROM categories WHERE slug = N'mains'), N'Grilled Salmon', N'Təzə somon, mövsümi tərəvəzlər, limon-kərə sousu.', 28.00, N'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=800&fit=crop', N'Somon fileti, brokoli, yerkökü, limon, kərə, otlar', N'Balıq, süd məhsulları', 20, 1, 1),
+(1, (SELECT id FROM categories WHERE slug = N'mains'), N'Ribeye Steak', N'Premium ribeye, sarımsaqlı kartof püresi, mövsümi tərəvəzlər.', 36.00, N'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&h=800&fit=crop', N'Mal əti (ribeye), kartof, kərə, sarımsaq, rozmarin', N'Süd məhsulları', 25, 0, 2),
+(1, (SELECT id FROM categories WHERE slug = N'desserts'), N'Cheesecake', N'Klassik cheesecake, qarışıq giləmeyvə sousu.', 9.00, N'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=800&h=800&fit=crop', N'Krem pendir, bisküvi, yumurta, giləmeyvə sousu', N'Süd məhsulları, qluten, yumurta', 5, 0, 3),
+(1, (SELECT id FROM categories WHERE slug = N'starters'), N'Fəsil tərəvəz salatı', N'Mövsümün ən təzə tərəvəzləri ilə hazırlanıb.', 12.00, N'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=800&fit=crop', N'Qarışıq yaşıllıq, pomidor, xiyar, zeytun yağı, limon', N'Yoxdur', 8, 0, 0),
+(1, (SELECT id FROM categories WHERE slug = N'drinks'), N'Təzə portağal şirəsi', N'100% təbii, sıxılmış portağal şirəsi.', 6.00, N'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=800&h=800&fit=crop', N'Təzə portağal', N'Yoxdur', 3, 0, 0);
+GO
+
+-- AB-nin 14 əsas allergeni
+INSERT INTO allergens (code, name, name_en, name_ru, icon, sort_order) VALUES
+(N'gluten',      N'Qlüten',          N'Gluten',       N'Глютен',         N'🌾', 1),
+(N'crustaceans', N'Xərçəngkimilər',  N'Crustaceans',  N'Ракообразные',   N'🦀', 2),
+(N'eggs',        N'Yumurta',         N'Eggs',         N'Яйца',           N'🥚', 3),
+(N'fish',        N'Balıq',           N'Fish',         N'Рыба',           N'🐟', 4),
+(N'peanuts',     N'Yerfındığı',      N'Peanuts',      N'Арахис',         N'🥜', 5),
+(N'soy',         N'Soya',            N'Soy',          N'Соя',            N'🫘', 6),
+(N'milk',        N'Süd',             N'Milk',         N'Молоко',         N'🥛', 7),
+(N'nuts',        N'Qoz-fındıq',      N'Tree nuts',    N'Орехи',          N'🌰', 8),
+(N'celery',      N'Kərəviz',         N'Celery',       N'Сельдерей',      N'🥬', 9),
+(N'mustard',     N'Xardal',          N'Mustard',      N'Горчица',        N'🟡', 10),
+(N'sesame',      N'Küncüt',          N'Sesame',       N'Кунжут',         N'🌱', 11),
+(N'sulphites',   N'Sulfitlər',       N'Sulphites',    N'Сульфиты',       N'🍷', 12),
+(N'lupin',       N'Lüpin',           N'Lupin',        N'Люпин',          N'🌼', 13),
+(N'molluscs',    N'Molyuskalar',     N'Molluscs',     N'Моллюски',       N'🐚', 14);
+GO
+
+-- nümunə məhsulların əsas şəkli qalereyanın birinci elementi və allergen əlaqələri
+INSERT INTO product_images (product_id, image_url, sort_order)
+SELECT id, LEFT(image_url, 500), 0 FROM products WHERE image_url IS NOT NULL;
+
+INSERT INTO product_allergens (product_id, allergen_id)
+SELECT p.id, a.id FROM (VALUES
+    (N'Truffle Pasta', N'milk'), (N'Truffle Pasta', N'gluten'),
+    (N'Grilled Salmon', N'fish'), (N'Grilled Salmon', N'milk'),
+    (N'Ribeye Steak', N'milk'),
+    (N'Cheesecake', N'milk'), (N'Cheesecake', N'gluten'), (N'Cheesecake', N'eggs')
+) AS m(product_name, allergen_code)
+JOIN products p ON p.name = m.product_name
+JOIN allergens a ON a.code = m.allergen_code;
 GO
 
 INSERT INTO restaurant_tables (restaurant_id, label, code, capacity, qr_token) VALUES

@@ -41,7 +41,8 @@ async function findUsedUrls() {
   const pool = await poolPromise;
   const products = await pool.request().query('SELECT image_url FROM products WHERE image_url IS NOT NULL');
   const restaurant = await pool.request().query('SELECT logo_url, theme FROM restaurants');
-  const urls = new Set(products.recordset.map((r) => r.image_url));
+  const gallery = await pool.request().query('SELECT image_url FROM product_images');
+  const urls = new Set([...products.recordset, ...gallery.recordset].map((r) => r.image_url));
   for (const r of restaurant.recordset) {
     if (r.logo_url) urls.add(r.logo_url);
     if (r.theme) {

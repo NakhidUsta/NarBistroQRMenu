@@ -22,6 +22,7 @@ const uploadRoutes = require('./routes/upload');
 const reviewRoutes = require('./routes/reviews');
 const mediaRoutes = require('./routes/media');
 const insightRoutes = require('./routes/insights');
+const allergenRoutes = require('./routes/allergens');
 const createSpaRouter = require('./routes/spa');
 
 const app = express();
@@ -111,6 +112,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/allergens', allergenRoutes);
 app.use('/api/insights', insightRoutes);
 
 // Production: build olunmuş frontend + dinamik SEO meta (dist yoxdursa heç nə etmir)

@@ -6,6 +6,7 @@ import { useUiStore } from '../store/uiStore'
 import { useT, useLocalize } from '../lib/i18n'
 import CategoryTabs from '../components/CategoryTabs'
 import ProductCard from '../components/ProductCard'
+import { useAllergenFilterStore, hidesProduct } from '../store/allergenFilterStore'
 
 function Menu() {
   const [searchParams] = useSearchParams()
@@ -18,6 +19,11 @@ function Menu() {
   const localize = useLocalize()
   const [activeCategory, setActiveCategory] = useState('all')
   const [query, setQuery] = useState('')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const allergens = useMenuStore((s) => s.allergens)
+  const avoid = useAllergenFilterStore((s) => s.avoid)
+  const toggleAvoid = useAllergenFilterStore((s) => s.toggle)
+  const clearAvoid = useAllergenFilterStore((s) => s.clear)
 
   const tabs = useMemo(
     () => [{ id: 'all', name: t('all') }, ...categories.map((c) => ({ ...c, name: localize(c, 'name') }))],
@@ -43,6 +49,9 @@ function Menu() {
     return list
   }, [products, activeCategory, query, localize])
 
+  const visible = useMemo(() => filtered.filter((p) => !hidesProduct(p, avoid)), [filtered, avoid])
+  const hiddenCount = filtered.length - visible.length
+
   return (
     <div className="pb-2">
       <div className="px-5 mb-4">
@@ -59,6 +68,42 @@ function Menu() {
           />
         </div>
       </div>
+
+      {allergens.length > 0 && (
+        <div className="px-5 mb-4">
+          <button
+            type="button"
+            onClick={() => setFilterOpen((o) => !o)}
+            aria-expanded={filterOpen}
+            className={`text-[12.5px] font-semibold rounded-full px-3.5 py-1.5 border ${avoid.length ? 'bg-burgundy text-white border-burgundy' : 'bg-panel text-muted border-border'}`}
+          >
+            {t('allergen_filter')}{avoid.length > 0 && ` (${avoid.length})`}
+          </button>
+          {filterOpen && (
+            <div className="mt-2.5 bg-panel border border-border/60 rounded-2xl p-3.5">
+              <p className="text-[12px] text-muted mb-2.5">{t('allergen_filter_hint')}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {allergens.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    aria-pressed={avoid.includes(a.id)}
+                    onClick={() => toggleAvoid(a.id)}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold border ${avoid.includes(a.id) ? 'bg-burgundy text-white border-burgundy' : 'bg-cream text-ink border-border'}`}
+                  >
+                    <span aria-hidden="true">{a.icon}</span>
+                    {localize(a, 'name')}
+                  </button>
+                ))}
+              </div>
+              {avoid.length > 0 && (
+                <button type="button" onClick={clearAvoid} className="mt-2.5 text-[12px] font-semibold text-burgundy underline">{t('allergen_filter_clear')}</button>
+              )}
+            </div>
+          )}
+          {hiddenCount > 0 && <p className="mt-2 text-[12px] text-muted">{hiddenCount} {t('allergen_hidden')}</p>}
+        </div>
+      )}
 
       {!query.trim() && (
         <div className="mb-5">
@@ -95,13 +140,13 @@ function Menu() {
             </button>
           </div>
         )}
-        {status === 'ready' && filtered.length === 0 && (
+        {status === 'ready' && visible.length === 0 && (
           <div className="text-center py-16">
             <p className="font-display text-lg text-ink mb-1">{t('not_found_title')}</p>
             <p className="text-[13px] text-muted">{t('not_found_body')}</p>
           </div>
         )}
-        {filtered.map((product) => (
+        {visible.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>

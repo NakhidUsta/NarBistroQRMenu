@@ -3,11 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMenuStore } from '../store/menuStore'
 import { useCartStore } from '../store/cartStore'
 import { useUiStore } from '../store/uiStore'
-import ResponsiveImage from '../components/ResponsiveImage'
 import { useT, useLocalize } from '../lib/i18n'
 import Badge from '../components/Badge'
 import FavoriteButton from '../components/FavoriteButton'
 import ShareButton from '../components/ShareButton'
+import ProductGallery from '../components/ProductGallery'
+import AllergenChips from '../components/AllergenChips'
 
 function splitList(text) {
   if (!text) return []
@@ -53,13 +54,8 @@ function ProductDetail() {
   return (
     <div className="pb-28">
       <div className="relative">
-        <ResponsiveImage
-          src={product.image_url}
-          alt={name}
-          sizes="(min-width: 768px) 768px, 100vw"
-          className="w-full h-80 object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent" />
+        <ProductGallery key={product.id} images={product.images?.length ? product.images : product.image_url ? [product.image_url] : []} alt={name} />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-ink/70 via-transparent to-transparent" />
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -97,9 +93,10 @@ function ProductDetail() {
           </div>
         )}
 
-        {allergens.length > 0 && (
+        {(allergens.length > 0 || product.allergen_ids?.length > 0) && (
           <div className="mb-2 pt-4 border-t border-border">
             <h2 className="text-[12px] uppercase tracking-wider font-bold text-muted mb-2">{t('allergens')}</h2>
+            <AllergenChips ids={product.allergen_ids} className="mb-2" />
             <div className="flex flex-wrap gap-1.5">
               {allergens.map((a) => (
                 <Badge key={a} variant="info">{a}</Badge>

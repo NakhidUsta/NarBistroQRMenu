@@ -3,6 +3,7 @@ import ResponsiveImage from './ResponsiveImage'
 import { useT, useLocalize } from '../lib/i18n'
 import Badge from './Badge'
 import FavoriteButton from './FavoriteButton'
+import AllergenChips from './AllergenChips'
 
 function ProductCard({ product }) {
   const unavailable = !product.is_available
@@ -40,6 +41,7 @@ function ProductCard({ product }) {
         {description && (
           <p className="text-[12.5px] text-muted leading-snug line-clamp-2 mt-0.5">{description}</p>
         )}
+        <AllergenChips ids={product.allergen_ids} iconOnly className="mt-1" />
         <div className="mt-1.5 flex items-center gap-2">
           <span className="font-display text-[15px] font-bold text-burgundy">{Number(product.price).toFixed(2)} ₼</span>
           {unavailable && <Badge variant="unavailable">{t('sold_out')}</Badge>}

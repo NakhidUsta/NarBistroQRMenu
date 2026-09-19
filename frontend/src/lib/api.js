@@ -166,3 +166,7 @@ export function imageVariants(url) {
     lgAvif: `${base}-lg.avif`,
   }
 }
+
+export const allergensApi = {
+  list: () => unwrap(apiClient.get('/allergens')),
+}
