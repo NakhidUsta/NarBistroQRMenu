@@ -72,6 +72,12 @@ function disconnectAdmin(userId) {
   ioInstance.of('/admin').in(`user:${userId}`).disconnectSockets(true);
 }
 
+// Tək cihaz sessiyası ləğv edildikdə yalnız o cihazın socket-ləri bağlanır (digər cihazlar qalır)
+function disconnectSession(sessionId) {
+  if (!ioInstance || !sessionId) return;
+  ioInstance.of('/admin').in(`session:${sessionId}`).disconnectSockets(true);
+}
+
 const admins = () => getIO().of('/admin');
 
 function emitProductUpdated(product, action) {
@@ -129,6 +135,7 @@ module.exports = {
   getSocketStats,
   recordAck,
   disconnectAdmin,
+  disconnectSession,
   emitProductUpdated,
   emitCategoryUpdated,
   emitIngredientUpdated,

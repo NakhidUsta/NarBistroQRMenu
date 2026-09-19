@@ -1,9 +1,17 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import { useUiStore } from '../store/uiStore'
 import Button from '../components/Button'
+
+// User-Agent sətrindən qısa "Brauzer · Sistem" təsviri
+export function describeDevice(ua = '') {
+  const has = (name) => ua.includes(`${name}/`)
+  const browser = has('Edg') ? 'Edge' : has('OPR') ? 'Opera' : has('Firefox') ? 'Firefox' : has('Chrome') ? 'Chrome' : has('Safari') ? 'Safari' : 'Brauzer'
+  const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad|iOS/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : ''
+  return os ? `${browser} · ${os}` : browser
+}
 
 const inputCls = 'w-full bg-cream border border-border rounded-lg px-3 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-burgundy/30'
 
@@ -13,6 +21,23 @@ function AccountAdmin() {
   const showToast = useUiStore((s) => s.showToast)
   const [form, setForm] = useState({ current: '', next: '', repeat: '' })
   const [saving, setSaving] = useState(false)
+  const [sessions, setSessions] = useState([])
+
+  const loadSessions = useCallback(() => authApi.sessions().then(setSessions).catch(() => {}), [])
+  useEffect(() => {
+    loadSessions()
+  }, [loadSessions])
+
+  async function revoke(id) {
+    if (!confirm('Bu cihazdan çıxış edilsin?')) return
+    try {
+      await authApi.revokeSession(id)
+      showToast('Cihaz sessiyası bağlandı')
+      loadSessions()
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Bağlanmadı', 'error')
+    }
+  }
 
   async function changePassword(e) {
     e.preventDefault()
@@ -64,7 +89,23 @@ function AccountAdmin() {
 
       <div className="bg-panel rounded-2xl border border-border/60 p-5">
         <h2 className="font-semibold text-[15px] mb-1">Sessiyalar</h2>
-        <p className="text-[12.5px] text-muted mb-3">Sessiya 12 saatdan sonra avtomatik başa çatır. Cihazınız itibsə bütün sessiyaları bağlayın.</p>
+        <p className="text-[12.5px] text-muted mb-3">Giriş etdiyiniz cihazlar. Sessiya 12 saat fəaliyyətsiz qalanda (və ən çox 7 gün) avtomatik başa çatır. Tanımadığınız cihaz görsəniz onu bağlayın; cihazınız itibsə hamısını bağlayın.</p>
+        <ul className="flex flex-col gap-2 mb-4" data-testid="session-list">
+          {sessions.map((s) => (
+            <li key={s.id} className="flex items-center justify-between gap-3 border border-border/60 rounded-xl px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold truncate">
+                  {describeDevice(s.user_agent)}
+                  {s.current && <span className="ml-2 text-[10.5px] font-bold uppercase text-success">Bu cihaz</span>}
+                </p>
+                <p className="text-[11.5px] text-muted truncate">{s.ip || '—'} · son fəaliyyət {new Date(s.last_used_at).toLocaleString('az-AZ')}</p>
+              </div>
+              {!s.current && (
+                <button type="button" onClick={() => revoke(s.id)} className="text-[12px] font-bold text-danger shrink-0">Bağla</button>
+              )}
+            </li>
+          ))}
+        </ul>
         <Button variant="outline" onClick={logoutEverywhere}>Bütün cihazlardan çıxış et</Button>
       </div>
     </div>

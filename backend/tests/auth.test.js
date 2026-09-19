@@ -1,11 +1,13 @@
 jest.mock('../src/config/db', () => ({ sql: jest.requireActual('mssql'), poolPromise: Promise.resolve({}) }));
 jest.mock('../src/repositories/adminUserRepository');
-jest.mock('../src/sockets/emit', () => ({ disconnectAdmin: jest.fn() }));
+jest.mock('../src/repositories/adminSessionRepository');
+jest.mock('../src/sockets/emit', () => ({ disconnectAdmin: jest.fn(), disconnectSession: jest.fn() }));
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const repo = require('../src/repositories/adminUserRepository');
-const { disconnectAdmin } = require('../src/sockets/emit');
+const sessions = require('../src/repositories/adminSessionRepository');
+const { disconnectAdmin, disconnectSession } = require('../src/sockets/emit');
 const authService = require('../src/services/authService');
 
 const hash = bcrypt.hashSync('Correct123!', 4);
@@ -17,6 +19,10 @@ const admin = (over = {}) => ({
 beforeEach(() => {
   jest.clearAllMocks();
   authService.invalidate(7);
+  sessions.createSession.mockResolvedValue({ id: 11, expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000) });
+  sessions.insertToken.mockResolvedValue();
+  sessions.purgeOld.mockResolvedValue();
+  sessions.revokeAllForUser.mockResolvedValue();
 });
 
 describe('authService.login', () => {
@@ -24,7 +30,7 @@ describe('authService.login', () => {
     repo.findByEmail.mockResolvedValue(admin());
     const { token, admin: a } = await authService.login('a@b.co', 'Correct123!');
     expect(a).toEqual({ id: 7, email: 'a@b.co', role: 'MANAGER', restaurant_id: 1 });
-    expect(jwt.verify(token, process.env.JWT_SECRET)).toMatchObject({ id: 7, tv: 2 });
+    expect(jwt.verify(token, process.env.JWT_SECRET)).toMatchObject({ id: 7, tv: 2, sid: 11 });
     expect(repo.resetFailures).toHaveBeenCalledWith(7);
   });
 

@@ -5,6 +5,25 @@ export const apiClient = axios.create({
   withCredentials: true,
 })
 
+// Access token qısa ömürlüdür (15 dəq). 401 alanda refresh cookie ilə səssiz yenilənib sorğu bir dəfə təkrarlanır;
+// eyni anda bir neçə sorğu 401 alsa yalnız BİR yenilənmə göndərilir (refresh token rotasiya olunduğu üçün paralel göndərmək olmaz).
+let refreshPromise = null
+
+export function refreshSession() {
+  if (!refreshPromise) {
+    refreshPromise = apiClient
+      .post('/auth/refresh', null, { __noRefresh: true })
+      .then((res) => res.data)
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
+const onAdminSurface = () =>
+  typeof window !== 'undefined' && (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/kitchen'))
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -15,9 +34,23 @@ apiClient.interceptors.response.use(
       await new Promise((r) => setTimeout(r, 400 * 2 ** config.__retry))
       return apiClient(config)
     }
-    const isAuthCall = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/me')
-    const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
-    if (error.response?.status === 401 && isAdminPath && !isAuthCall) {
+
+    const url = config?.url || ''
+    const isLogin = url.includes('/auth/login')
+    const isRefresh = url.includes('/auth/refresh')
+    const isMe = url.includes('/auth/me')
+
+    if (error.response?.status === 401 && config && !config.__refreshed && !config.__noRefresh && !isLogin && !isRefresh && (onAdminSurface() || isMe)) {
+      try {
+        await refreshSession()
+        config.__refreshed = true
+        return apiClient(config)
+      } catch {
+        // yenilənmə alınmadı (refresh bitib/bağlanıb) — aşağıda giriş səhifəsinə yönləndirilir
+      }
+    }
+
+    if (error.response?.status === 401 && window.location.pathname.startsWith('/admin') && !isLogin && !isMe && !isRefresh) {
       window.location.href = '/admin/login'
     }
     return Promise.reject(error)
@@ -122,6 +155,9 @@ export const auditApi = {
 export const authApi = {
   login: (email, password) => unwrap(apiClient.post('/auth/login', { email, password })),
   logout: () => unwrap(apiClient.post('/auth/logout')),
+  refresh: () => refreshSession(),
+  sessions: () => unwrap(apiClient.get('/auth/sessions')),
+  revokeSession: (id) => apiClient.delete(`/auth/sessions/${id}`),
   me: () => unwrap(apiClient.get('/auth/me')),
   changePassword: (current_password, new_password) => unwrap(apiClient.post('/auth/change-password', { current_password, new_password })),
   logoutAll: () => unwrap(apiClient.post('/auth/logout-all')),

@@ -75,6 +75,7 @@ function initSockets(httpServer) {
   adminNamespace.on('connection', (socket) => {
     socket.join('admin');
     socket.join(`user:${socket.admin.id}`);
+    if (socket.admin.sid) socket.join(`session:${socket.admin.sid}`);
     if (socket.admin?.role) {
       socket.join(`role:${socket.admin.role}`);
     }
