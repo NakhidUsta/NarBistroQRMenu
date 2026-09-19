@@ -62,10 +62,12 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
   },
 }));
 
-// Ümumi sorğu limiti — sui-istifadə/flood hücumlarına qarşı (bütün /api yollarına)
+// Ümumi sorğu limiti — flood hücumlarına qarşı (bütün /api yollarına), IP üzrə.
+// Restoran Wi-Fi-ında bütün müştərilər (və işçilər) BİR IP paylaşır, ona görə hədd yüksək saxlanılır (defolt 3000/15 dəq);
+// sərt limitlər yalnız giriş və e-poçt axınlarındadır. Lazım olsa RATE_LIMIT_GENERAL ilə dəyişin.
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 300,
+  limit: Number(process.env.RATE_LIMIT_GENERAL) || 3000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Çox sayda sorğu göndərildi, bir az sonra yenidən cəhd edin' },
