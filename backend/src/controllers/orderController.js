@@ -3,6 +3,7 @@ const auditService = require('../services/auditService');
 const { validateCreateOrderBody, validateStatus, validateId, VALID_STATUSES } = require('../validators/orderValidator');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
+const { parsePage, sendPage } = require('../utils/pagination');
 
 exports.createOrder = asyncHandler(async (req, res) => {
   const validationError = validateCreateOrderBody(req.body);
@@ -34,7 +35,9 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   if (status && !validateStatus(status)) throw new AppError(400, 'Yanlış status filtri');
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new AppError(400, 'Tarix YYYY-MM-DD formatında olmalıdır');
   const search = q ? String(q).trim().slice(0, 100) : undefined;
-  res.json(await orderService.listOrders({ status, date, q: search || undefined }));
+  const { limit, before } = parsePage(req.query);
+  const rows = await orderService.listOrders({ status, date, q: search || undefined, limit: limit + 1, before });
+  res.json(sendPage(res, rows, limit));
 });
 
 exports.updateOrderStatus = asyncHandler(async (req, res) => {

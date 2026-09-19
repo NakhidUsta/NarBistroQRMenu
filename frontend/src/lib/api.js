@@ -110,11 +110,15 @@ export const notificationsApi = {
   clearRead: () => apiClient.delete('/notifications/read'),
 }
 
+// Kursor səhifələmə cavabı: gövdə massivdir, "daha var" məlumatı X-Has-More başlığındadır
+const withPage = (promise) => promise.then((res) => ({ items: res.data, hasMore: res.headers?.['x-has-more'] === '1' }))
+
 export const ordersApi = {
   create: (body) => unwrap(apiClient.post('/orders', body)),
   quote: (body) => unwrap(apiClient.post('/orders/quote', body)),
   get: (id, token) => unwrap(apiClient.get(`/orders/${id}`, { params: token ? { token } : {} })),
   list: (params) => unwrap(apiClient.get('/orders', { params })),
+  listPage: (params) => withPage(apiClient.get('/orders', { params })),
   updateStatus: (id, status, note) => unwrap(apiClient.put(`/orders/${id}`, { status, note })),
 }
 
@@ -150,6 +154,7 @@ export const staffApi = {
 
 export const auditApi = {
   list: (params) => unwrap(apiClient.get('/audit-logs', { params })),
+  listPage: (params) => withPage(apiClient.get('/audit-logs', { params })),
 }
 
 export const authApi = {

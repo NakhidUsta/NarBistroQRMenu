@@ -1,5 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import PublicLayout from './components/PublicLayout'
+import ErrorBoundary from './components/ErrorBoundary'
+import PageLoader from './components/PageLoader'
 import Menu from './pages/Menu'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
@@ -7,70 +10,83 @@ import OrderStatus from './pages/OrderStatus'
 import Favorites from './pages/Favorites'
 import MyOrders from './pages/MyOrders'
 import NotFound from './pages/NotFound'
-
-import Login from './admin/Login'
 import ProtectedAdminRoute from './admin/ProtectedAdminRoute'
-import AdminLayout from './admin/AdminLayout'
-import Dashboard from './admin/Dashboard'
-import CategoriesAdmin from './admin/CategoriesAdmin'
-import MenuAdmin from './admin/MenuAdmin'
-import TablesAdmin from './admin/TablesAdmin'
-import OrdersAdmin from './admin/OrdersAdmin'
-import PromotionsAdmin from './admin/PromotionsAdmin'
-import Settings from './admin/Settings'
-import StaffAdmin from './admin/StaffAdmin'
-import AuditLogsAdmin from './admin/AuditLogsAdmin'
-import KitchenDisplay from './admin/KitchenDisplay'
-import AccountAdmin from './admin/AccountAdmin'
-import ReviewsAdmin from './admin/ReviewsAdmin'
-import MediaAdmin from './admin/MediaAdmin'
-import IngredientsAdmin from './admin/IngredientsAdmin'
-import CustomersAdmin from './admin/CustomersAdmin'
-import InventoryAdmin from './admin/InventoryAdmin'
-import ReportsAdmin from './admin/ReportsAdmin'
+
+// Müştəri səhifələri əsas paketdədir (oflayn menyu üçün lazımdır — service worker onları birinci girişdə keşləyir).
+// Admin/mətbəx səhifələri yalnız işçilər üçündür və çox böyükdür — ayrı chunk-larda tələb olunanda yüklənir (lazy loading).
+const Login = lazy(() => import('./admin/Login'))
+const AdminLayout = lazy(() => import('./admin/AdminLayout'))
+const Dashboard = lazy(() => import('./admin/Dashboard'))
+const CategoriesAdmin = lazy(() => import('./admin/CategoriesAdmin'))
+const MenuAdmin = lazy(() => import('./admin/MenuAdmin'))
+const TablesAdmin = lazy(() => import('./admin/TablesAdmin'))
+const OrdersAdmin = lazy(() => import('./admin/OrdersAdmin'))
+const PromotionsAdmin = lazy(() => import('./admin/PromotionsAdmin'))
+const Settings = lazy(() => import('./admin/Settings'))
+const StaffAdmin = lazy(() => import('./admin/StaffAdmin'))
+const AuditLogsAdmin = lazy(() => import('./admin/AuditLogsAdmin'))
+const KitchenDisplay = lazy(() => import('./admin/KitchenDisplay'))
+const AccountAdmin = lazy(() => import('./admin/AccountAdmin'))
+const ReviewsAdmin = lazy(() => import('./admin/ReviewsAdmin'))
+const MediaAdmin = lazy(() => import('./admin/MediaAdmin'))
+const IngredientsAdmin = lazy(() => import('./admin/IngredientsAdmin'))
+const CustomersAdmin = lazy(() => import('./admin/CustomersAdmin'))
+const InventoryAdmin = lazy(() => import('./admin/InventoryAdmin'))
+const ReportsAdmin = lazy(() => import('./admin/ReportsAdmin'))
+
+// PDF-də ümumi menyu linki /menu kimi göstərilir (Instagram bio, QR: /menu?table=...) — sorğu parametrləri saxlanılaraq /menyu-ya yönləndirilir
+function MenuAlias() {
+  const { search } = useLocation()
+  return <Navigate to={{ pathname: '/menyu', search }} replace />
+}
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/menyu" replace />} />
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/menyu" replace />} />
+          <Route path="/menu" element={<MenuAlias />} />
 
-      <Route element={<PublicLayout />}>
-        <Route path="/menyu" element={<Menu />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/order/:id" element={<OrderStatus />} />
-        <Route path="/favorites" element={<Favorites />} />
-        <Route path="/orders" element={<MyOrders />} />
-      </Route>
+          <Route element={<PublicLayout />}>
+            <Route path="/menyu" element={<Menu />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/order/:id" element={<OrderStatus />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/orders" element={<MyOrders />} />
+          </Route>
 
-      <Route path="/admin/login" element={<Login />} />
-      <Route element={<ProtectedAdminRoute />}>
-        <Route path="/kitchen" element={<KitchenDisplay />} />
-      </Route>
-      <Route path="/admin" element={<ProtectedAdminRoute />}>
-        <Route element={<AdminLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="account" element={<AccountAdmin />} />
-          <Route path="reviews" element={<ReviewsAdmin />} />
-          <Route path="media" element={<MediaAdmin />} />
-          <Route path="ingredients" element={<IngredientsAdmin />} />
-          <Route path="customers" element={<CustomersAdmin />} />
-          <Route path="inventory" element={<InventoryAdmin />} />
-          <Route path="reports" element={<ReportsAdmin />} />
-          <Route path="staff" element={<StaffAdmin />} />
-          <Route path="audit" element={<AuditLogsAdmin />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="orders" element={<OrdersAdmin />} />
-          <Route path="menu" element={<MenuAdmin />} />
-          <Route path="categories" element={<CategoriesAdmin />} />
-          <Route path="tables" element={<TablesAdmin />} />
-          <Route path="promotions" element={<PromotionsAdmin />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-      </Route>
+          <Route path="/admin/login" element={<Login />} />
+          <Route element={<ProtectedAdminRoute />}>
+            <Route path="/kitchen" element={<KitchenDisplay />} />
+          </Route>
+          <Route path="/admin" element={<ProtectedAdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="account" element={<AccountAdmin />} />
+              <Route path="reviews" element={<ReviewsAdmin />} />
+              <Route path="media" element={<MediaAdmin />} />
+              <Route path="ingredients" element={<IngredientsAdmin />} />
+              <Route path="customers" element={<CustomersAdmin />} />
+              <Route path="inventory" element={<InventoryAdmin />} />
+              <Route path="reports" element={<ReportsAdmin />} />
+              <Route path="staff" element={<StaffAdmin />} />
+              <Route path="audit" element={<AuditLogsAdmin />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="orders" element={<OrdersAdmin />} />
+              <Route path="menu" element={<MenuAdmin />} />
+              <Route path="categories" element={<CategoriesAdmin />} />
+              <Route path="tables" element={<TablesAdmin />} />
+              <Route path="promotions" element={<PromotionsAdmin />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Route>
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 

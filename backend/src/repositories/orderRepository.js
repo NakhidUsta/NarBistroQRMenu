@@ -132,12 +132,16 @@ async function findIdByClientRequestId(pool, clientRequestId) {
   return result.recordset[0] || null;
 }
 
-async function findAll(pool, { status, q, date, limit = 200 } = {}) {
+async function findAll(pool, { status, q, date, limit = 200, before } = {}) {
   const request = pool.request().input('limit', sql.Int, limit);
   const where = [];
   if (status) {
     where.push('o.status = @status');
     request.input('status', sql.NVarChar(20), status);
+  }
+  if (before) {
+    where.push('o.id < @before');
+    request.input('before', sql.Int, before);
   }
   if (date) {
     where.push(`CAST(DATEADD(HOUR, ${TZ}, o.created_at) AS DATE) = @date`);
@@ -157,7 +161,7 @@ async function findAll(pool, { status, q, date, limit = 200 } = {}) {
     SELECT TOP (@limit) o.*
     FROM orders o LEFT JOIN restaurant_tables t ON t.id = o.table_id
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-    ORDER BY o.created_at DESC
+    ORDER BY o.created_at DESC, o.id DESC
   `);
   const orders = result.recordset;
   if (!orders.length) return orders;

@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useOrderStore } from '../store/orderStore'
 import { useUiStore } from '../store/uiStore'
+import { useSentinel } from '../lib/useInfinite'
+import LoadMore from '../components/LoadMore'
+
+const PAGE_SIZE = 30
 
 const FILTER_STATUSES = ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'COMPLETED', 'CANCELLED']
 
@@ -18,6 +22,10 @@ const STATUS_COLORS = {
 function OrdersAdmin() {
   const orders = useOrderStore((s) => s.orders)
   const fetchOrders = useOrderStore((s) => s.fetchOrders)
+  const loadMore = useOrderStore((s) => s.loadMore)
+  const hasMore = useOrderStore((s) => s.hasMore)
+  const loadingMore = useOrderStore((s) => s.loadingMore)
+  const sentinelRef = useSentinel(loadMore, { enabled: hasMore })
   const changeStatus = useOrderStore((s) => s.changeStatus)
   const showToast = useUiStore((s) => s.showToast)
 
@@ -30,7 +38,7 @@ function OrdersAdmin() {
   useEffect(() => {
     clearTimeout(debounce.current)
     debounce.current = setTimeout(() => {
-      fetchOrders({ ...(q.trim() && { q: q.trim() }), ...(status && { status }), ...(date && { date }) })
+      fetchOrders({ limit: PAGE_SIZE, ...(q.trim() && { q: q.trim() }), ...(status && { status }), ...(date && { date }) })
     }, q ? 300 : 0)
     return () => clearTimeout(debounce.current)
   }, [q, status, date])
@@ -145,6 +153,7 @@ function OrdersAdmin() {
           )
         })}
         {orders.length === 0 && <p className="text-muted text-[13.5px]">{filtered ? 'Bu filtrə uyğun sifariş tapılmadı' : 'Hələ sifariş yoxdur'}</p>}
+        <LoadMore sentinelRef={sentinelRef} hasMore={hasMore} loading={loadingMore} onMore={loadMore} label="Daha köhnə sifarişlər" />
       </div>
     </div>
   )

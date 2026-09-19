@@ -51,7 +51,7 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5174', credentials: true }));
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5174', credentials: true, exposedHeaders: ['X-Has-More'] }));
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {

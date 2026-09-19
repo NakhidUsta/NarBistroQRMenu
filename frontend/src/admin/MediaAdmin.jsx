@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { mediaApi, uploadApi, imageVariants, resolveUploadUrl } from '../lib/api'
 import { useUiStore } from '../store/uiStore'
+import { useVisibleCount } from '../lib/useInfinite'
+import LoadMore from '../components/LoadMore'
 
 const ASPECTS = [['1:1', 'Kvadrat 1:1'], ['4:3', 'Klassik 4:3'], ['16:9', 'Geniş 16:9']]
 const FOCUS = [['attention', 'Ağıllı (diqqət nöqtəsi)'], ['centre', 'Mərkəz']]
@@ -98,6 +100,7 @@ function MediaAdmin() {
   const [cropping, setCropping] = useState(null)
   const [drag, setDrag] = useState(false)
   const input = useRef(null)
+  const { count, hasMore, more, sentinelRef } = useVisibleCount(items.length, 24, items.length === 0)
 
   async function remove(m) {
     if (!confirm('Bu şəkil və bütün variantları silinsin?')) return
@@ -142,7 +145,7 @@ function MediaAdmin() {
         <p className="text-muted text-[13px] text-center py-10">Hələ şəkil yoxdur.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {items.map((m) => (
+          {items.slice(0, count).map((m) => (
             <div key={m.id} className="bg-panel border border-border/60 rounded-xl overflow-hidden shadow-sm" data-testid="media-card">
               <div className="relative aspect-square bg-blush">
                 <img src={thumbOf(m)} alt="" loading="lazy" className="w-full h-full object-cover" />
@@ -160,6 +163,7 @@ function MediaAdmin() {
         </div>
       )}
 
+      <LoadMore sentinelRef={sentinelRef} hasMore={hasMore} onMore={more} />
       {cropping && <CropDialog media={cropping} onClose={() => setCropping(null)} onDone={() => { setCropping(null); reload() }} />}
     </div>
   )

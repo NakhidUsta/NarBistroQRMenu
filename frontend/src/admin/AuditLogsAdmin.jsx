@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { auditApi } from '../lib/api'
+import { useSentinel } from '../lib/useInfinite'
+import LoadMore from '../components/LoadMore'
+
+const PAGE_SIZE = 50
 
 const ENTITY_FILTERS = [
   ['', 'Hamısı'],
@@ -35,11 +39,32 @@ function AuditLogsAdmin() {
   const [logs, setLogs] = useState([])
   const [entity, setEntity] = useState('')
   const [loading, setLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     setLoading(true)
-    auditApi.list(entity ? { entity_type: entity } : {}).then(setLogs).finally(() => setLoading(false))
+    auditApi
+      .listPage({ limit: PAGE_SIZE, ...(entity && { entity_type: entity }) })
+      .then(({ items, hasMore: more }) => {
+        setLogs(items)
+        setHasMore(more)
+      })
+      .finally(() => setLoading(false))
   }, [entity])
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !logs.length) return
+    setLoadingMore(true)
+    try {
+      const { items, hasMore: more } = await auditApi.listPage({ limit: PAGE_SIZE, before: logs[logs.length - 1].id, ...(entity && { entity_type: entity }) })
+      setLogs((prev) => [...prev, ...items.filter((i) => !prev.some((p) => p.id === i.id))])
+      setHasMore(more)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [logs, entity, loadingMore])
+  const sentinelRef = useSentinel(loadMore, { enabled: hasMore })
 
   return (
     <div>
@@ -80,6 +105,7 @@ function AuditLogsAdmin() {
             </div>
           )
         })}
+        <LoadMore sentinelRef={sentinelRef} hasMore={hasMore} loading={loadingMore} onMore={loadMore} label="Daha köhnə qeydlər" />
       </div>
     </div>
   )

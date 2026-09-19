@@ -6,7 +6,11 @@ import { useUiStore } from '../store/uiStore'
 import { useT, useLocalize } from '../lib/i18n'
 import CategoryTabs from '../components/CategoryTabs'
 import ProductCard from '../components/ProductCard'
+import LoadMore from '../components/LoadMore'
+import { useVisibleCount } from '../lib/useInfinite'
 import { useAllergenFilterStore, hidesProduct } from '../store/allergenFilterStore'
+
+const PAGE_SIZE = 12
 
 function Menu() {
   const [searchParams] = useSearchParams()
@@ -51,6 +55,9 @@ function Menu() {
 
   const visible = useMemo(() => filtered.filter((p) => !hidesProduct(p, avoid)), [filtered, avoid])
   const hiddenCount = filtered.length - visible.length
+
+  // Uzun siyahı tədricən göstərilir (sonsuz sürüşdürmə); kateqoriya/axtarış/filtr dəyişəndə yenidən başlayır
+  const { count, hasMore, more, sentinelRef } = useVisibleCount(visible.length, PAGE_SIZE, `${activeCategory}|${query}|${avoid.join(',')}`)
 
   return (
     <div className="pb-2">
@@ -146,9 +153,10 @@ function Menu() {
             <p className="text-[13px] text-muted">{t('not_found_body')}</p>
           </div>
         )}
-        {visible.map((product) => (
+        {visible.slice(0, count).map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
+        <LoadMore sentinelRef={sentinelRef} hasMore={hasMore} onMore={more} label={t('load_more')} />
       </div>
     </div>
   )

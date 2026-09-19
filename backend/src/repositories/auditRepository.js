@@ -16,21 +16,26 @@ async function insert({ admin_user_id, action, entity_type, entity_id, before_js
     `);
 }
 
-async function findRecent({ limit = 200, entity_type } = {}) {
+async function findRecent({ limit = 200, entity_type, before } = {}) {
   const pool = await poolPromise;
   const request = pool.request().input('limit', sql.Int, limit);
-  let where = '';
+  const conditions = [];
   if (entity_type) {
-    where = 'WHERE a.entity_type = @entity_type';
+    conditions.push('a.entity_type = @entity_type');
     request.input('entity_type', sql.NVarChar(60), entity_type);
   }
+  if (before) {
+    conditions.push('a.id < @before');
+    request.input('before', sql.Int, before);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const result = await request.query(`
     SELECT TOP (@limit) a.id, a.admin_user_id, u.email AS admin_email, a.action, a.entity_type,
            a.entity_id, a.before_json, a.after_json, a.created_at
     FROM audit_logs a
     LEFT JOIN admin_users u ON u.id = a.admin_user_id
     ${where}
-    ORDER BY a.created_at DESC
+    ORDER BY a.created_at DESC, a.id DESC
   `);
   return result.recordset;
 }
