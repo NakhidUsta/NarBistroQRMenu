@@ -10,6 +10,7 @@ import { useUiStore } from '../store/uiStore'
 import { ordersApi } from '../lib/api'
 import ResponsiveImage from '../components/ResponsiveImage'
 import { useT } from '../lib/i18n'
+import { tableText } from '../lib/tableLabel'
 import Button from '../components/Button'
 import PriceBreakdown from '../components/PriceBreakdown'
 
@@ -285,7 +286,7 @@ function Cart() {
           <div className="bg-panel rounded-3xl w-full max-w-sm p-6 shadow-2xl">
             <h2 className="font-display text-[20px] font-semibold mb-1">{t('confirm_title')}</h2>
             <p className="text-[13px] text-muted mb-4">
-              {table ? `${t('table_label')}: ${table.label} · ` : ''}{t('confirm_body')}
+              {table ? `${tableText(t, table)} · ` : ''}{t('confirm_body')}
             </p>
             <div className="flex flex-col gap-1 mb-4 max-h-40 overflow-y-auto">
               {items.map((i) => (

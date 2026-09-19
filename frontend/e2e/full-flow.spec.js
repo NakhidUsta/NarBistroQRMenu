@@ -35,7 +35,7 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     // Müştəri səhifəsini ƏVVƏLCƏDƏN aç — sonrakı dəyişikliklər refresh-siz gəlməlidir (real-time)
     await customer.goto(`/menyu?table=${table.code}&t=${table.qr_token}`)
     await expect(customer.getByPlaceholder('Menyuda axtar...')).toBeVisible()
-    await expect(customer.getByText(`Masa — ${table.label}`).locator('visible=true')).toBeVisible()
+    await expect(customer.getByText(table.label).locator('visible=true').first()).toBeVisible()
 
     // 2-6. Yeni məhsul yarat: ad, qiymət, şəkil, kateqoriya, saxla
     await admin.goto('/admin/menu')
@@ -44,12 +44,14 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     await form.locator('label:text-is("Ad") + input').fill(NAME)
     await form.locator('label:text-is("Qiymət (₼)") + input').fill('15')
     await form.locator('label:text-is("Kateqoriya") + select').selectOption({ index: 1 })
+    const category = (await form.locator('label:text-is("Kateqoriya") + select option:checked').textContent()).trim()
     await form.locator('input[type=file]').setInputFiles(IMAGE)
     await expect(form.locator('img').first()).toBeVisible()
     await form.getByRole('button', { name: 'Saxla' }).click()
     await expect(admin.getByText(NAME)).toBeVisible()
 
-    // 7-8. Müştəri səhifəsində məhsul dərhal görünür (yeniləmə yoxdur)
+    // 7-8. Müştəri səhifəsində məhsul dərhal görünür (yeniləmə yoxdur). Menyu səhifə-səhifə yüklənir (12-lik), ona görə məhsulun kateqoriyasına keçirik
+    await customer.getByRole('button', { name: category, exact: true }).click()
     await expect(customer.getByText(NAME)).toBeVisible()
     await expect(customer.getByText(NAME).locator('xpath=ancestor::a')).toContainText('15.00')
 

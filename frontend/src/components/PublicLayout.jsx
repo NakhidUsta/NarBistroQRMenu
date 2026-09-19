@@ -6,6 +6,7 @@ import { useTableSessionStore } from '../store/tableSessionStore'
 import { publicSocket } from '../lib/socket'
 import { bindPublicSocket } from '../lib/socketBindings'
 import { useT, useLocalize } from '../lib/i18n'
+import { tableText } from '../lib/tableLabel'
 import Toast from './Toast'
 import TableActions from './TableActions'
 import LanguageSwitcher from './LanguageSwitcher'
@@ -82,7 +83,7 @@ function PublicLayout() {
           <header className="md:hidden px-5 pt-6 pb-2 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted font-semibold truncate">
-                {table ? `${t('table_label')} — ${table.label}` : t('welcome')}
+                {table ? tableText(t, table) : t('welcome')}
               </p>
               <h1 className="font-display text-[26px] font-semibold text-ink truncate">{name}</h1>
             </div>

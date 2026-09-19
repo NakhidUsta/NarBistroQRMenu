@@ -5,6 +5,7 @@ import { useT, useLocalize } from '../lib/i18n'
 import BrandLogo from './BrandLogo'
 import LanguageSwitcher from './LanguageSwitcher'
 import { NavIcon, useNavItems } from './navItems'
+import { tableText } from '../lib/tableLabel'
 
 // Kompüter (md+) başlığı: loqo + restoran adı solda, naviqasiya (Menyu / Sevimlilər / Sifarişlər / Səbət) və dil sağda.
 // Telefonda gizlidir — orada alt naviqasiya (BottomNav) var.
@@ -23,7 +24,7 @@ function SiteHeader() {
           <BrandLogo url={restaurant?.logo_url} name={name} className="w-10 h-10" />
           <span className="min-w-0">
             <span className="block font-display text-[21px] font-semibold text-ink leading-tight truncate">{name}</span>
-            {table && <span className="block text-[11px] uppercase tracking-[0.16em] text-muted font-semibold">{t('table_label')} — {table.label}</span>}
+            {table && <span className="block text-[11px] uppercase tracking-[0.16em] text-muted font-semibold">{tableText(t, table)}</span>}
           </span>
         </Link>
 

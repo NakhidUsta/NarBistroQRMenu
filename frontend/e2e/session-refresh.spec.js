@@ -40,7 +40,7 @@ test('access token bitəndə səhifə səssiz yenilənir; refresh də yoxdursa g
 
     // Cihaz siyahısında bu sessiya "Bu cihaz" kimi görünür
     await page.goto('/admin/account')
-    await expect(page.getByText('Bu cihaz')).toBeVisible()
+    await expect(page.getByTestId('session-list').getByText('Bu cihaz')).toBeVisible()
 
     // Hər iki cookie yoxdursa (sessiya bitib) giriş səhifəsinə yönləndirilir
     await context.clearCookies()

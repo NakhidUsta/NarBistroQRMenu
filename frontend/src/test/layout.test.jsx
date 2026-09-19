@@ -112,3 +112,20 @@ describe('intro (splash) ekranı', () => {
     expect(JSON.parse(localStorage.getItem('qrmenu_brand'))).toMatchObject({ name: 'By Orxan', primary: '#7a1f1f' })
   })
 })
+
+describe('masa etiketi', () => {
+  it('"Masa 1" etiketi təkrar "MASA — MASA 1" kimi yazılmır; digər etiketlər prefikslə göstərilir', async () => {
+    const { tableText } = await import('../lib/tableLabel')
+    const t = (k) => ({ table_label: 'Masa' })[k]
+    expect(tableText(t, { label: 'Masa 1' })).toBe('Masa 1')
+    expect(tableText(t, { label: 'masa 7' })).toBe('masa 7')
+    expect(tableText(t, { label: 'VIP 2' })).toBe('Masa — VIP 2')
+    expect(tableText(t, null)).toBe('')
+  })
+
+  it('başlıqda təkrar yoxdur', () => {
+    wrap(<SiteHeader />)
+    expect(screen.getByText('MASA 1', { exact: false })).toBeInTheDocument()
+    expect(screen.queryByText(/MASA — MASA 1/i)).toBeNull()
+  })
+})
