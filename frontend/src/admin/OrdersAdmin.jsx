@@ -1,3 +1,5 @@
+import { METHOD_LABELS, PAY_STATUS, awaitingOnlinePayment } from '../lib/payment'
+import { paymentsApi } from '../lib/api'
 import { useEffect, useRef, useState } from 'react'
 import { useOrderStore } from '../store/orderStore'
 import { useUiStore } from '../store/uiStore'
@@ -27,6 +29,7 @@ function OrdersAdmin() {
   const loadingMore = useOrderStore((s) => s.loadingMore)
   const sentinelRef = useSentinel(loadMore, { enabled: hasMore })
   const changeStatus = useOrderStore((s) => s.changeStatus)
+  const updateOrder = useOrderStore((s) => s.updateOrder)
   const showToast = useUiStore((s) => s.showToast)
 
   const [q, setQ] = useState('')
@@ -42,6 +45,16 @@ function OrdersAdmin() {
     }, q ? 300 : 0)
     return () => clearTimeout(debounce.current)
   }, [q, status, date])
+
+  // Nağd / kartla masada: işçi ödənişi "alındı" kimi qeyd edir (audit logda görünür)
+  async function markPaid(order, method) {
+    try {
+      updateOrder(await paymentsApi.markPaid(order.id, method))
+      showToast(`Sifariş #${order.id}: ödəniş qeyd edildi`)
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Ödəniş qeyd edilmədi', 'error')
+    }
+  }
 
   async function advance(order) {
     const idx = STATUS_FLOW.indexOf(order.status)
@@ -123,6 +136,18 @@ function OrdersAdmin() {
                   {STATUS_LABELS[order.status]}
                 </span>
               </div>
+              <div className="flex items-center gap-2 flex-wrap text-[11.5px]" data-testid="order-payment">
+                <span className="text-muted font-semibold">{METHOD_LABELS[order.payment_method] || 'Nağd'}</span>
+                <span className={`px-2.5 py-0.5 rounded-full font-bold ${(PAY_STATUS[order.payment_status] || PAY_STATUS.UNPAID).cls}`}>
+                  {(PAY_STATUS[order.payment_status] || PAY_STATUS.UNPAID).label}
+                </span>
+                {order.payment_status === 'UNPAID' && order.status !== 'CANCELLED' && order.payment_method !== 'ONLINE' && (
+                  <span className="flex gap-1.5 ml-auto">
+                    <button onClick={() => markPaid(order, 'CASH')} className="font-semibold bg-success/15 text-success rounded-full px-3 py-1">Nağd alındı</button>
+                    <button onClick={() => markPaid(order, 'CARD_POS')} className="font-semibold bg-success/15 text-success rounded-full px-3 py-1">Kart alındı</button>
+                  </span>
+                )}
+              </div>
               {(order.items?.length > 0 || order.note) && (
                 <div className="border-t border-border/60 pt-2.5 text-[12.5px]">
                   {order.items?.map((i, idx) => (
@@ -141,7 +166,7 @@ function OrdersAdmin() {
               )}
               {!isFinal && (
                 <div className="flex gap-2 justify-end border-t border-border/60 pt-3">
-                  {nextLabel && (
+                  {nextLabel && !awaitingOnlinePayment(order) && (
                     <button onClick={() => advance(order)} className="text-[12px] font-semibold bg-ink text-cream rounded-full px-3.5 py-2">
                       → {nextLabel}
                     </button>

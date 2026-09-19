@@ -17,6 +17,8 @@ const STATUS_KEY = {
   CANCELLED: 'order_cancelled',
 }
 
+const PAY_KEY = { PAID: 'pay_status_paid', PENDING: 'pay_status_pending', FAILED: 'pay_status_failed', REFUNDED: 'pay_status_refunded' }
+
 // Offline növbədəki (hələ göndərilməmiş) sifarişlər: gözləyir / qiymət dəyişib / rədd edilib
 function OutboxList() {
   const t = useT()
@@ -110,6 +112,9 @@ function MyOrders() {
               <div className="text-right">
                 <p className="font-display font-bold text-[15px]">{Number(o.total).toFixed(2)} ₼</p>
                 <p className="text-[12px] font-semibold text-burgundy">{t(STATUS_KEY[o.status] || 'order_status_new')}</p>
+                {o.payment_status && o.payment_status !== 'UNPAID' && (
+                  <p className={`text-[11px] font-semibold ${o.payment_status === 'PAID' ? 'text-success' : 'text-gold'}`}>{t(PAY_KEY[o.payment_status])}</p>
+                )}
               </div>
             </Link>
           ))}

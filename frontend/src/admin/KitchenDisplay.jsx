@@ -1,3 +1,4 @@
+import { awaitingOnlinePayment } from '../lib/payment'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrderStore } from '../store/orderStore'
@@ -76,7 +77,7 @@ function KitchenDisplay() {
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         {COLUMNS.map((col) => {
           const list = orders
-            .filter((o) => col.statuses.includes(o.status))
+            .filter((o) => col.statuses.includes(o.status) && !awaitingOnlinePayment(o))
             .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
           return (
             <section key={col.key} className="bg-white/5 rounded-2xl p-3">

@@ -25,6 +25,7 @@ const CategoriesAdmin = lazy(() => import('./admin/CategoriesAdmin'))
 const MenuAdmin = lazy(() => import('./admin/MenuAdmin'))
 const TablesAdmin = lazy(() => import('./admin/TablesAdmin'))
 const OrdersAdmin = lazy(() => import('./admin/OrdersAdmin'))
+const TestPay = lazy(() => import('./pages/TestPay'))
 const NotificationsAdmin = lazy(() => import('./admin/NotificationsAdmin'))
 const PromotionsAdmin = lazy(() => import('./admin/PromotionsAdmin'))
 const Settings = lazy(() => import('./admin/Settings'))
@@ -62,6 +63,8 @@ function App() {
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/orders" element={<MyOrders />} />
           </Route>
+
+          <Route path="/pay/test" element={<TestPay />} />
 
           <Route path="/admin/login" element={<Login />} />
           <Route path="/admin/forgot-password" element={<ForgotPassword />} />

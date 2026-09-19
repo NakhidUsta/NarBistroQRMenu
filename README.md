@@ -102,6 +102,8 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 
 ## E-poçt / Gmail (şifrə sıfırlama və e-poçt təsdiqi)
 
+> Qurulumu terminaldan yoxlamaq üçün: `cd backend && npm run mail:test -- sizin@gmail.com` (`.env`-dəki `SMTP_USER`/`SMTP_PASS` ilə sınaq məktubu göndərir və səhv olarsa səbəbini yazır).
+
 Sistem məktubları **Gmail SMTP** ilə göndərir. Gmail adi şifrə qəbul etmir — 16 simvollu **Tətbiq şifrəsi** (App Password) lazımdır:
 
 1. Google hesabında **2 addımlı doğrulamanı** aktiv edin (Təhlükəsizlik bölməsi) — bunsuz Tətbiq şifrəsi yaradıla bilmir.
@@ -151,6 +153,17 @@ Production-a çıxarış (HTTPS, nginx, pm2, backup) — [DEPLOY.md](DEPLOY.md).
 - **Bildirişlər səhifəsi (`/admin/notifications`, OWNER/MANAGER/WAITER):** tam siyahı (kursor səhifələmə — "Daha köhnələri göstər"), filtrlər, oxu/sil, çağırış üçün [Qəbul et]/[Həll edildi]; yan tərəfdə **səs ayarları** — ümumi açar, həcm, hər bildiriş növü üçün ayrıca siqnal (və ya "Səssiz") və sınaq düyməsi, brauzer bildirişləri. Ayarlar cihazda saxlanılır. Brauzerlər səsi yalnız istifadəçi jestindən sonra açır — panel ilk klikdə səsi avtomatik aktivləşdirir, bloklanıbsa "Səsi aktivləşdir" düyməsi çıxır. Başlıqdakı 🔊/🔇 düyməsi səsi tez söndürür.
 
 - **Səhifələmə:** müştəri menyusunda yeməklər nömrəli səhifələrlə göstərilir (səhifədə 12, ‹ 1 2 3 ›), kateqoriya tab-ları da səhifələnir ("Hamısı" sabit; telefonda 8 (həb düymələri kimi, bir neçə sətirdə), planşetdə 4, kompüterdə 6 kateqoriya). Axtarış/kateqoriya/allergen filtri dəyişəndə 1-ci səhifəyə qayıdır. Kateqoriya, axtarış və səhifə URL-də saxlanılır (`?cat=5&page=2`) — məhsuldan geri qayıdanda eyni görünüş açılır, link paylaşmaq da olur. Admin panelin Menyu və Kateqoriyalar siyahılarında da nömrəli səhifələmə var (10/20/50).
+
+## Ödəniş sistemi
+
+Üç ödəniş üsulu (Admin → Ayarlar → "Ödəniş üsulları"-ndan açılıb-bağlanır): **nağd**, **kartla masada (terminalla)** və **onlayn kart**.
+
+- **Nağd / kartla masada:** sifariş dərhal mətbəxə çatır, ödəniş "Ödənilməyib" görünür. Ofisiant/menecer Sifarişlər səhifəsində **"Nağd alındı" / "Kart alındı"** düyməsi ilə qeyd edir (audit logda saxlanılır, müştərinin açıq səhifəsində real vaxtda "Ödənilib" olur).
+- **Onlayn kart (Epoint.az):** müştəri "Ödənişə keç" edir → sifariş yaranır (amma **mətbəxə/adminə hələ çatmır**) → Epoint-in bank kart səhifəsinə yönləndirilir → ödəniş təsdiqlənəndə (server-server callback) sifariş **ilk dəfə indi** mətbəxə və bildirişlərə düşür. Uğursuz olarsa müştəri sifariş səhifəsindən "Yenidən cəhd et" edir. Ödənilməyən onlayn sifariş `PAYMENT_HOLD_MINUTES` (defolt 30) dəqiqədən sonra avtomatik ləğv olunur və stok qaytarılır.
+- **Təhlükəsizlik:** kart məlumatları (nömrə/CVV) bizim serverdən keçmir və saxlanılmır (yalnız maskalı nömrə); məbləğ həmişə bazadakı sifarişdən götürülür; callback imzası (`sha1(private+data+private)`) sabit vaxtlı müqayisə ilə yoxlanılır və məbləğ uyğun gəlməsə ödəniş qəbul edilmir; təkrar callback heç nəyi dəyişmir (idempotent); provayderin qaytardığı ödəniş ünvanı yalnız `https://*.epoint.az` ola bilər; URL-dəki `?pay=success` heç nəyi sübut etmir — status həmişə serverdən soruşulur. Açarlar yalnız `.env`-dədir.
+- **Canlıya çıxmaq üçün:** 1) [epoint.az](https://epoint.az) merchant hesabı açın, `public_key` / `private_key` alın; 2) `backend/.env`: `PAYMENT_PROVIDER=epoint`, `EPOINT_PUBLIC_KEY`, `EPOINT_PRIVATE_KEY`, `PUBLIC_URL=https://sizin-domen.az`; 3) Epoint panelində **Result URL** = `https://sizin-domen.az/api/payments/epoint/callback` (callback serverinizə İNTERNETDƏN çatmalıdır — localhost-da işləmir; orada status "yoxla" mexanizmi ilə çəkilir); 4) serveri yenidən başladın, Ayarlarda "Onlayn kart ödənişi"ni yandırın; 5) **kiçik məbləğlə bir real/sandbox ödəniş edib** yoxlayın — adapter Epoint sənədinə görə yazılıb, sizin hesabınızla hələ sınanmayıb. Geri qaytarma (refund) Epoint panelindən edilir; callback ilə gəlsə sifariş "Geri qaytarılıb" olur.
+- **İnkişaf/demo:** `PAYMENT_PROVIDER=test` — saxta ödəniş səhifəsi (`/pay/test`, "Uğurlu ödə / Rədd et"), real pul yoxdur. `NODE_ENV=production`-da avtomatik söndürülür.
+- Yeni provayder əlavə etmək: `backend/src/services/payments/` altında `createPayment / parseCallback / fetchStatus` verən adapter yazıb `index.js`-ə qoşun.
 
 ## Struktur
 

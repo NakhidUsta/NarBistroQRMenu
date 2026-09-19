@@ -1,6 +1,7 @@
 const restaurantRepository = require('../repositories/restaurantRepository');
 const AppError = require('../utils/AppError');
 const { emitRestaurantUpdated } = require('../sockets/emit');
+const { isOnlineAvailable } = require('./payments');
 
 const DEFAULT_RESTAURANT_ID = 1;
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -39,10 +40,13 @@ function sanitizeTheme(input) {
   return JSON.stringify(clean);
 }
 
+// Onlayn ödəniş provayderi serverdə qoşulubmu (açarlar göstərilmir) — frontend yalnız bu bayrağı görür
+const withPaymentInfo = (restaurant) => ({ ...restaurant, online_payment_available: isOnlineAvailable() });
+
 async function getRestaurant() {
   const restaurant = await restaurantRepository.find(DEFAULT_RESTAURANT_ID);
   if (!restaurant) throw new AppError(404, 'Restoran tapılmadı');
-  return restaurant;
+  return withPaymentInfo(restaurant);
 }
 
 // Yalnız öz yükləmələrimiz (/uploads/...) və http(s) şəkil linkləri — "javascript:" və s. rədd edilir
@@ -60,8 +64,8 @@ async function updateRestaurant(body) {
   validateImages(body);
   const restaurant = await restaurantRepository.update(DEFAULT_RESTAURANT_ID, { ...body, theme: sanitizeTheme(body.theme) });
   if (!restaurant) throw new AppError(404, 'Restoran tapılmadı');
-  emitRestaurantUpdated(restaurant);
-  return restaurant;
+  emitRestaurantUpdated(withPaymentInfo(restaurant));
+  return withPaymentInfo(restaurant);
 }
 
 module.exports = { getRestaurant, updateRestaurant, sanitizeTheme, FONTS };

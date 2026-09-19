@@ -38,6 +38,7 @@ async function insertStockMovementTx(transaction, { product_id, change_qty, reas
 async function insertOrder(transaction, {
   restaurant_id, table_id, table_session_id, customer_name, phone, note,
   subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token, client_request_id,
+  payment_method = 'CASH', payment_status = 'UNPAID',
 }) {
   const result = await new sql.Request(transaction)
     .input('restaurant_id', sql.Int, restaurant_id)
@@ -57,10 +58,12 @@ async function insertOrder(transaction, {
     .input('promo_code', sql.NVarChar(30), promo_code || null)
     .input('access_token', sql.NVarChar(64), access_token)
     .input('client_request_id', sql.NVarChar(64), client_request_id || null)
+    .input('payment_method', sql.NVarChar(12), payment_method)
+    .input('payment_status', sql.NVarChar(12), payment_status)
     .query(`
-      INSERT INTO orders (restaurant_id, table_id, table_session_id, customer_name, phone, note, subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token, client_request_id)
+      INSERT INTO orders (restaurant_id, table_id, table_session_id, customer_name, phone, note, subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token, client_request_id, payment_method, payment_status)
       OUTPUT INSERTED.*
-      VALUES (@restaurant_id, @table_id, @table_session_id, @customer_name, @phone, @note, @subtotal, @discount, @vat, @service_fee, @delivery_fee, @currency, @total, @promo_code_id, @promo_code, @access_token, @client_request_id)
+      VALUES (@restaurant_id, @table_id, @table_session_id, @customer_name, @phone, @note, @subtotal, @discount, @vat, @service_fee, @delivery_fee, @currency, @total, @promo_code_id, @promo_code, @access_token, @client_request_id, @payment_method, @payment_status)
     `);
   return result.recordset[0];
 }
@@ -94,6 +97,60 @@ async function updateStatus(transaction, orderId, status) {
     .input('id', sql.Int, orderId)
     .input('status', sql.NVarChar(20), status)
     .query('UPDATE orders SET status = @status OUTPUT INSERTED.* WHERE id = @id');
+  return result.recordset[0] || null;
+}
+
+// Ödəniş vəziyyətini yeniləyir (yalnız icazə verilən keçidlər: allowedFrom siyahısındakı statuslardan). Sətir dəyişməyibsə null.
+async function setPaymentTx(db, orderId, { payment_status, payment_method, paid_at, paid_amount, allowedFrom }) {
+  const request = new sql.Request(db)
+    .input('id', sql.Int, orderId)
+    .input('ps', sql.NVarChar(12), payment_status)
+    .input('pm', sql.NVarChar(12), payment_method || null)
+    .input('paid_at', sql.DateTime2, paid_at || null)
+    .input('paid_amount', sql.Decimal(10, 2), paid_amount == null ? null : paid_amount);
+  const from = (allowedFrom || []).map((v, i) => {
+    request.input(`f${i}`, sql.NVarChar(12), v);
+    return `@f${i}`;
+  });
+  const result = await request.query(`
+    UPDATE orders
+    SET payment_status = @ps,
+        payment_method = COALESCE(@pm, payment_method),
+        paid_at = COALESCE(@paid_at, paid_at),
+        paid_amount = COALESCE(@paid_amount, paid_amount)
+    OUTPUT INSERTED.*
+    WHERE id = @id${from.length ? ` AND payment_status IN (${from.join(', ')})` : ''}
+  `);
+  return result.recordset[0] || null;
+}
+
+// Vaxtı keçmiş, ödənilməmiş onlayn sifarişlər (stok bloklanıb qalmasın deyə ləğv edilir)
+async function findExpiredUnpaidOnline(pool, minutes) {
+  const result = await pool.request().input('m', sql.Int, minutes).query(`
+    SELECT id FROM orders
+    WHERE payment_method = N'ONLINE' AND payment_status IN (N'PENDING', N'FAILED') AND status = N'NEW'
+      AND created_at < DATEADD(MINUTE, -@m, SYSUTCDATETIME())
+  `);
+  return result.recordset.map((r) => r.id);
+}
+
+async function findItemsTx(db, orderId) {
+  const result = await new sql.Request(db).input('id', sql.Int, orderId).query('SELECT product_id, quantity FROM order_items WHERE order_id = @id AND product_id IS NOT NULL');
+  return result.recordset;
+}
+
+// Stoku geri qaytarır; məhsul stok 0-a düşdüyü üçün avtomatik bağlanmışdısa yenidən açılır
+async function restoreStockTx(db, productId, qty) {
+  const result = await new sql.Request(db)
+    .input('id', sql.Int, productId)
+    .input('qty', sql.Int, qty)
+    .query(`
+      UPDATE products
+      SET is_available = CASE WHEN stock_quantity <= 0 THEN 1 ELSE is_available END,
+          stock_quantity = stock_quantity + @qty
+      OUTPUT INSERTED.*
+      WHERE id = @id AND track_inventory = 1
+    `);
   return result.recordset[0] || null;
 }
 
@@ -190,6 +247,10 @@ module.exports = {
   insertOrderItem,
   insertStatusHistory,
   updateStatus,
+  setPaymentTx,
+  findExpiredUnpaidOnline,
+  findItemsTx,
+  restoreStockTx,
   findById,
   findIdByClientRequestId,
   findAccessToken,

@@ -3,7 +3,7 @@ const { sql, poolPromise } = require('../config/db');
 const SELECT_COLUMNS = `
   id, name, name_en, name_ru, logo_url, favicon_url, phone, whatsapp, address, google_maps_link, working_hours,
   email, about_text, about_text_en, about_text_ru, instagram_link, facebook_link, tiktok_link,
-  allow_tableless_orders, theme, vat_percent, service_fee_percent, delivery_fee, currency, created_at
+  allow_tableless_orders, theme, vat_percent, service_fee_percent, delivery_fee, currency, pay_cash, pay_card_pos, pay_online, created_at
 `;
 
 async function find(id) {
@@ -41,6 +41,9 @@ async function update(id, body) {
     .input('service_fee_percent', sql.Decimal(5, 2), body.service_fee_percent ?? 0)
     .input('delivery_fee', sql.Decimal(10, 2), body.delivery_fee ?? 0)
     .input('currency', sql.NVarChar(3), body.currency || 'AZN')
+    .input('pay_cash', sql.Bit, body.pay_cash === false ? 0 : 1)
+    .input('pay_card_pos', sql.Bit, body.pay_card_pos === false ? 0 : 1)
+    .input('pay_online', sql.Bit, body.pay_online ? 1 : 0)
     .query(`
       UPDATE restaurants
       SET name = @name, name_en = @name_en, name_ru = @name_ru, logo_url = @logo_url, favicon_url = @favicon_url, phone = @phone, whatsapp = @whatsapp,
@@ -49,7 +52,8 @@ async function update(id, body) {
           instagram_link = @instagram_link, facebook_link = @facebook_link, tiktok_link = @tiktok_link,
           allow_tableless_orders = @allow_tableless_orders, theme = @theme,
           vat_percent = @vat_percent, service_fee_percent = @service_fee_percent,
-          delivery_fee = @delivery_fee, currency = @currency
+          delivery_fee = @delivery_fee, currency = @currency,
+          pay_cash = @pay_cash, pay_card_pos = @pay_card_pos, pay_online = @pay_online
       OUTPUT INSERTED.*
       WHERE id = @id
     `);

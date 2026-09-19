@@ -111,7 +111,7 @@ function emitOrderCreated(order) {
 
 function emitOrderStatusUpdated(order) {
   send(admins().to('admin'), 'order-status-updated', order, { critical: true });
-  send(getIO().to(`order:${order.id}`), 'order-status-updated', { id: order.id, status: order.status }, { critical: true });
+  send(getIO().to(`order:${order.id}`), 'order-status-updated', { id: order.id, status: order.status, payment_status: order.payment_status, paid_at: order.paid_at }, { critical: true });
 }
 
 function emitRestaurantUpdated(restaurant) {

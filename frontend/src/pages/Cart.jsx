@@ -7,7 +7,9 @@ import { useRestaurantStore } from '../store/restaurantStore'
 import { useMyOrdersStore } from '../store/myOrdersStore'
 import { useOutboxStore, newRequestId } from '../store/outboxStore'
 import { useUiStore } from '../store/uiStore'
-import { ordersApi } from '../lib/api'
+import { ordersApi, paymentsApi } from '../lib/api'
+import { useLocaleStore } from '../store/localeStore'
+import { enabledMethods } from '../lib/payment'
 import ResponsiveImage from '../components/ResponsiveImage'
 import { useT } from '../lib/i18n'
 import { tableText } from '../lib/tableLabel'
@@ -32,12 +34,16 @@ function Cart() {
   const addMyOrder = useMyOrdersStore((s) => s.add)
   const showToast = useUiStore((s) => s.showToast)
   const t = useT()
+  const locale = useLocaleStore((s) => s.locale)
   const canOrder = !!table || !!restaurant?.allow_tableless_orders
 
   const [form, setForm] = useState({ customer_name: '', phone: '', note: '', promo_code: '' })
   const [submitting, setSubmitting] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const methods = enabledMethods(restaurant)
+  const [chosenMethod, setChosenMethod] = useState(null)
+  const paymentMethod = methods.includes(chosenMethod) ? chosenMethod : methods[0]
   const [priceChange, setPriceChange] = useState(null) // { previous_total, total } — backend qiymət dəyişikliyi aşkar etdi
   // Bir checkout cəhdinə bir ID: şəbəkə kəsilib təkrar göndərilsə belə backend ikinci sifariş yaratmır
   const requestId = useRef(newRequestId())
@@ -88,6 +94,7 @@ function Cart() {
       note: form.note,
       promo_code: form.promo_code.trim() || undefined,
       items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+      payment_method: paymentMethod,
       // müştərinin gördüyü məbləğ — backend cari məbləğlə fərqlənirsə sifariş yaratmayıb bizə xəbər verir
       expected_total: expectedTotal ?? (quote && !quote.promo_error ? Number(quote.total) : undefined),
     }
@@ -104,9 +111,12 @@ function Cart() {
 
   async function placeOrder(expectedTotal) {
     const payload = buildPayload(expectedTotal)
+    const online = paymentMethod === 'ONLINE'
     if (!navigator.onLine) {
       setShowModal(false)
-      queueOrder(payload)
+      // onlayn ödəniş internet tələb edir — oflayn növbəyə qoyulmur
+      if (online) showToast(t('pay_needs_internet'), 'error')
+      else queueOrder(payload)
       return
     }
     setSubmitting(true)
@@ -115,11 +125,23 @@ function Cart() {
       requestId.current = newRequestId()
       addMyOrder(order.id, order.access_token)
       clear()
+      if (online) {
+        // Onlayn ödəniş: sifariş yaranıb (mətbəxə hələ getmir) → provayderin ödəniş səhifəsinə yönləndir
+        try {
+          const { redirect_url: url } = await paymentsApi.start(order.id, order.access_token, locale)
+          window.location.assign(url)
+          return
+        } catch {
+          showToast(t('pay_start_failed'), 'error')
+        }
+      }
       navigate(`/order/${order.id}?token=${order.access_token}`)
     } catch (err) {
       const data = err.response?.data
       if (!err.response) {
-        queueOrder(payload) // şəbəkə xətası: sorğu serverə çatmış ola bilər — eyni ID idempotency ilə qorunur
+        // şəbəkə xətası: sorğu serverə çatmış ola bilər — eyni ID idempotency ilə qorunur (onlayn ödənişdə növbə yoxdur)
+        if (online) showToast(t('pay_needs_internet'), 'error')
+        else queueOrder(payload)
       } else if (err.response.status === 409 && data?.code === 'PRICE_CHANGED') {
         setPriceChange({ previous_total: data.previous_total, total: data.total })
         if (data.breakdown) setQuote((q) => ({ ...(q || {}), ...data.breakdown }))
@@ -249,12 +271,35 @@ function Cart() {
             )}
           </div>
 
+          {methods.length > 1 && (
+            <fieldset className="mt-1" data-testid="payment-methods">
+              <legend className="text-[12.5px] font-semibold text-muted mb-1.5">{t('pay_method_title')}</legend>
+              <div className="flex flex-col gap-2">
+                {methods.map((m) => {
+                  const label = { CASH: t('pay_cash'), CARD_POS: t('pay_card_pos'), ONLINE: t('pay_online') }[m]
+                  const hint = { CASH: t('pay_cash_hint'), CARD_POS: t('pay_card_pos_hint'), ONLINE: t('pay_online_hint') }[m]
+                  const active = paymentMethod === m
+                  return (
+                    <label key={m} className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 cursor-pointer transition-colors ${active ? 'border-burgundy bg-burgundy/5' : 'border-border bg-panel'}`}>
+                      <input type="radio" name="payment_method" value={m} checked={active} onChange={() => setChosenMethod(m)} className="mt-1 accent-burgundy" />
+                      <span>
+                        <span className="block text-[13.5px] font-semibold">{label}</span>
+                        <span className="block text-[12px] text-muted">{hint}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+              {paymentMethod === 'ONLINE' && <p className="text-[11.5px] text-muted mt-2">🔒 {t('pay_secure_note')}</p>}
+            </fieldset>
+          )}
+
           <div className="py-3 mt-1 border-t border-border">
             <PriceBreakdown data={summary} />
           </div>
 
           <Button type="submit" variant="accent" disabled={submitting || blocked} className="w-full">
-            {submitting ? t('sending') : t('confirm_order')}
+            {submitting ? t('sending') : paymentMethod === 'ONLINE' ? t('pay_go') : t('confirm_order')}
           </Button>
         </form>
       )}

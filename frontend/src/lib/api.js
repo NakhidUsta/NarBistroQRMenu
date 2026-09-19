@@ -124,6 +124,17 @@ export const ordersApi = {
   updateStatus: (id, status, note) => unwrap(apiClient.put(`/orders/${id}`, { status, note })),
 }
 
+export const paymentsApi = {
+  // Müştəri (sifariş tokeni ilə): onlayn ödənişi başlat → provayderin ödəniş səhifəsi
+  start: (orderId, token, language) => unwrap(apiClient.post(`/payments/orders/${orderId}/start`, { token, language })),
+  // Ödəniş səhifəsindən qayıdanda statusu serverdən təzələ (callback gecikə bilər)
+  verify: (orderId, token) => unwrap(apiClient.post(`/payments/orders/${orderId}/verify`, { token })),
+  testComplete: (body) => unwrap(apiClient.post('/payments/test/complete', body)),
+  // Admin/ofisiant: nağd / kartla masada ödənişi qeyd et
+  markPaid: (orderId, method) => unwrap(apiClient.post(`/orders/${orderId}/payment`, method ? { method } : {})),
+  list: (orderId) => unwrap(apiClient.get(`/orders/${orderId}/payments`)),
+}
+
 export const reviewsApi = {
   publicList: () => unwrap(apiClient.get('/reviews/public')),
   orderStatus: (orderId, token) => unwrap(apiClient.get(`/reviews/order/${orderId}`, { params: { token } })),

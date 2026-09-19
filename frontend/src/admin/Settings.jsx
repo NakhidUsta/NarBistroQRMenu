@@ -97,6 +97,39 @@ const FIELDS = [
   ['tiktok_link', 'TikTok linki'],
 ]
 
+// Müştəriyə hansı ödəniş üsulları təklif olunur. Onlayn kart üçün serverdə provayder (Epoint) qoşulmalıdır (.env).
+function PaymentMethodsEditor({ form, setForm }) {
+  const rows = [
+    ['pay_cash', 'Nağd', 'Müştəri sifarişi təhvil alanda nağd ödəyir'],
+    ['pay_card_pos', 'Kartla (masada terminalla)', 'Ofisiant kart terminalını gətirir'],
+  ]
+  const online = !!form.online_payment_available
+  return (
+    <div className="border border-border rounded-xl p-4 bg-cream/50 flex flex-col gap-2.5" data-testid="payment-settings">
+      <h3 className="font-semibold text-[14px]">Ödəniş üsulları</h3>
+      {rows.map(([key, label, hint]) => (
+        <label key={key} className="flex items-start gap-2.5 text-[13px]">
+          <input type="checkbox" className="mt-0.5" checked={form[key] !== false} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} />
+          <span><span className="font-semibold">{label}</span><span className="block text-[11.5px] text-muted">{hint}</span></span>
+        </label>
+      ))}
+      <label className={`flex items-start gap-2.5 text-[13px] ${online ? '' : 'opacity-60'}`}>
+        <input type="checkbox" className="mt-0.5" disabled={!online} checked={!!form.pay_online && online} onChange={(e) => setForm({ ...form, pay_online: e.target.checked })} />
+        <span>
+          <span className="font-semibold">Onlayn kart ödənişi</span>
+          <span className="block text-[11.5px] text-muted">Müştəri sifarişi verəndə kartla dərhal ödəyir; ödəniş təsdiqlənəndən sonra sifariş mətbəxə çatır.</span>
+        </span>
+      </label>
+      {!online && (
+        <p className="text-[11.5px] text-danger bg-danger/5 rounded-lg px-3 py-2" role="note">
+          Onlayn ödəniş provayderi qoşulmayıb. Serverin <code>.env</code> faylında <code>PAYMENT_PROVIDER=epoint</code>, <code>EPOINT_PUBLIC_KEY</code> və <code>EPOINT_PRIVATE_KEY</code> təyin edin (epoint.az merchant hesabı lazımdır), sonra serveri yenidən başladın.
+        </p>
+      )}
+      <p className="text-[11.5px] text-muted">Kart məlumatları (nömrə, CVV) bu sistemdən keçmir və saxlanılmır — kart səhifəsi provayderdədir. Ödənilməyən onlayn sifariş 30 dəqiqədən sonra avtomatik ləğv edilir.</p>
+    </div>
+  )
+}
+
 function Settings() {
   const restaurant = useRestaurantStore((s) => s.restaurant)
   const fetchRestaurant = useRestaurantStore((s) => s.fetch)
@@ -176,6 +209,8 @@ function Settings() {
           </div>
           <p className="text-[11.5px] text-muted">Qiymətlər ƏDV-siz hesab olunur; servis haqqı endirimli məbləğə, ƏDV isə (məbləğ + servis) üzərinə əlavə edilir. Çatdırılma yalnız masasız sifarişlərə.</p>
         </div>
+
+        <PaymentMethodsEditor form={form} setForm={setForm} />
 
         <ThemeEditor form={form} setForm={setForm} />
 

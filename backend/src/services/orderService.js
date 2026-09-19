@@ -8,9 +8,30 @@ const restaurantRepository = require('../repositories/restaurantRepository');
 const promoService = require('./promoService');
 const pricingService = require('./pricingService');
 const AppError = require('../utils/AppError');
+const { isOnlineAvailable } = require('./payments');
 const { emitOrderCreated, emitOrderStatusUpdated, emitProductUpdated } = require('../sockets/emit');
 
 const DEFAULT_RESTAURANT_ID = 1;
+const PAYMENT_METHODS = ['CASH', 'CARD_POS', 'ONLINE'];
+
+// Hansı ödəniş üsulları müştəriyə təklif olunur (restoran ayarları + onlayn provayder qoşulubmu)
+function enabledPaymentMethods(restaurant) {
+  const enabled = {
+    CASH: restaurant?.pay_cash !== false,
+    CARD_POS: restaurant?.pay_card_pos !== false,
+    ONLINE: !!restaurant?.pay_online && isOnlineAvailable(),
+  };
+  if (!enabled.CASH && !enabled.CARD_POS && !enabled.ONLINE) enabled.CASH = true; // ən azı bir üsul həmişə var
+  return enabled;
+}
+
+function resolvePaymentMethod(requested, restaurant) {
+  const enabled = enabledPaymentMethods(restaurant);
+  const method = requested || PAYMENT_METHODS.find((m) => enabled[m]);
+  if (!PAYMENT_METHODS.includes(method)) throw new AppError(400, 'Ödəniş üsulu düzgün deyil');
+  if (!enabled[method]) throw new AppError(400, 'Bu ödəniş üsulu hazırda mövcud deyil');
+  return method;
+}
 
 const LOW_STOCK_THRESHOLD = 5; // dashboard-dakı "az qalan stok" həddi ilə eyni
 
@@ -94,7 +115,7 @@ async function findReplay(pool, clientRequestId, phone) {
 
 const isUniqueViolation = (err) => err && (err.number === 2601 || err.number === 2627);
 
-async function createOrder({ table_code, customer_name, phone, note, items: rawItems, promo_code, client_request_id, expected_total }) {
+async function createOrder({ table_code, customer_name, phone, note, items: rawItems, promo_code, client_request_id, expected_total, payment_method }) {
   const items = mergeItems(rawItems);
   const pool = await poolPromise;
   const replay = await findReplay(pool, client_request_id, phone);
@@ -137,7 +158,9 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
       promo = result.promo;
       discount = result.discount;
     }
-    const settings = pricingService.settingsFrom(await restaurantRepository.find(DEFAULT_RESTAURANT_ID));
+    const restaurant = await restaurantRepository.find(DEFAULT_RESTAURANT_ID);
+    const method = resolvePaymentMethod(payment_method, restaurant);
+    const settings = pricingService.settingsFrom(restaurant);
     const pricing = pricingService.compute({ subtotal, discount, ...settings, isTakeaway: !table });
     const total = pricing.total;
 
@@ -170,6 +193,9 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
       promo_code: promo?.code,
       access_token: crypto.randomBytes(16).toString('hex'),
       client_request_id,
+      payment_method: method,
+      // onlayn: ödəniş təsdiqlənənə qədər sifariş mətbəxə/adminə çatmır
+      payment_status: method === 'ONLINE' ? 'PENDING' : 'UNPAID',
     });
 
     for (const row of priceRows) {
@@ -200,26 +226,10 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
     await transaction.commit();
 
     const fullOrder = { ...order, items: priceRows, table_code: table?.code };
-    emitOrderCreated(fullOrder);
     stockUpdatedProducts.forEach((p) => emitProductUpdated(p, 'updated'));
 
-    // Sifariş artıq commit olunub — bildiriş xətası müştəriyə 500 kimi qayıtmamalıdır (best-effort)
-    try {
-      await notificationService.create({
-        type: 'order_created',
-        title: table ? `Yeni sifariş — ${table.label}` : 'Yeni sifariş',
-        body: `${priceRows.reduce((n, r) => n + r.quantity, 0)} məhsul · ${total.toFixed(2)} ₼`,
-        entity_type: 'order',
-        entity_id: order.id,
-      });
-      for (const product of stockUpdatedProducts) {
-        const ordered = priceRows.find((r) => r.product_id === product.id)?.quantity || 0;
-        await notifyStockLevel(product, ordered);
-      }
-    } catch (notifyErr) {
-      console.error('Bildiriş yaradıla bilmədi:', notifyErr.message);
-    }
-
+    // Onlayn ödənişli sifariş ödəniş təsdiqlənəndə (paymentService) elan olunur — o vaxta qədər admin/mətbəx görmür
+    if (method !== 'ONLINE') await announceOrder(fullOrder, { table, stockUpdatedProducts });
     return fullOrder;
   } catch (err) {
     if (transaction) {
@@ -235,6 +245,36 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
     }
     throw err;
   }
+}
+
+// Sifarişi adminlərə/mətbəxə çatdırır: socket + bildiriş (+ stok xəbərdarlıqları). Commit-dən SONRA çağırılır — xəta müştəriyə 500 kimi qayıtmır.
+async function announceOrder(order, { table, stockUpdatedProducts = [] } = {}) {
+  emitOrderCreated(order);
+  try {
+    const items = order.items || [];
+    await notificationService.create({
+      type: 'order_created',
+      title: table ? `Yeni sifariş — ${table.label}` : 'Yeni sifariş',
+      body: `${items.reduce((n, r) => n + Number(r.quantity), 0)} məhsul · ${Number(order.total).toFixed(2)} ₼${order.payment_status === 'PAID' ? ' · ödənilib' : ''}`,
+      entity_type: 'order',
+      entity_id: order.id,
+    });
+    for (const product of stockUpdatedProducts) {
+      const ordered = items.find((r) => r.product_id === product.id)?.quantity || 0;
+      await notifyStockLevel(product, ordered);
+    }
+  } catch (notifyErr) {
+    console.error('Bildiriş yaradıla bilmədi:', notifyErr.message);
+  }
+}
+
+// Ödəniş təsdiqləndikdən sonra: sifarişi DB-dən oxuyub elan edir
+async function announceStoredOrder(orderId) {
+  const pool = await poolPromise;
+  const order = await orderRepository.findById(pool, orderId);
+  if (!order) return;
+  const table = order.table_id ? await tableRepository.findById(order.table_id) : null;
+  await announceOrder({ ...order, table_code: table?.code }, { table });
 }
 
 async function getOrder(id, { isAdmin, token } = {}) {
@@ -265,6 +305,11 @@ async function listOrders(filters) {
 
 async function updateStatus(id, status, adminId, note) {
   const pool = await poolPromise;
+  // Onlayn ödənişi təsdiqlənməyən sifariş hazırlanmağa göndərilə bilməz (yalnız ləğv edilə bilər)
+  const current = await orderRepository.findById(pool, id);
+  if (current && current.payment_method === 'ONLINE' && ['PENDING', 'FAILED'].includes(current.payment_status) && status !== 'CANCELLED') {
+    throw new AppError(409, 'Onlayn ödəniş hələ təsdiqlənməyib — sifariş yalnız ləğv edilə bilər');
+  }
   let transaction;
   try {
     transaction = new sql.Transaction(pool);
@@ -290,4 +335,4 @@ async function updateStatus(id, status, adminId, note) {
   }
 }
 
-module.exports = { createOrder, quote, getOrder, hasAccess, listOrders, updateStatus };
+module.exports = { createOrder, quote, getOrder, hasAccess, listOrders, updateStatus, announceStoredOrder, enabledPaymentMethods, resolvePaymentMethod, PAYMENT_METHODS };

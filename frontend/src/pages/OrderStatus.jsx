@@ -6,6 +6,7 @@ import { useT } from '../lib/i18n'
 import Button from '../components/Button'
 import PriceBreakdown from '../components/PriceBreakdown'
 import ReviewForm from '../components/ReviewForm'
+import PaymentPanel from '../components/PaymentPanel'
 
 const STEP_KEYS = [
   { key: 'NEW', labelKey: 'order_status_new' },
@@ -19,6 +20,7 @@ function OrderStatus() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
+  const returned = searchParams.get('pay') // ödəniş səhifəsindən qayıdış (yalnız "yoxla" siqnalı)
   const order = useOrderStore((s) => s.currentOrder)
   const fetchOrder = useOrderStore((s) => s.fetchOrder)
   const t = useT()
@@ -46,6 +48,8 @@ function OrderStatus() {
       <p className="text-[13px] text-muted mb-6">
         {order.customer_name} · {new Date(order.created_at).toLocaleString('az-AZ')}
       </p>
+
+      <PaymentPanel order={order} token={token} returned={returned} />
 
       {isCancelled ? (
         <div className="bg-danger/10 text-danger rounded-2xl px-5 py-4 text-center font-semibold mb-6">

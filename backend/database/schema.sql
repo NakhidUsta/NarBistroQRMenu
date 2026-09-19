@@ -10,6 +10,7 @@ GO
 
 -- ============ CƏDVƏLLƏR ============
 
+IF OBJECT_ID('payments', 'U') IS NOT NULL DROP TABLE payments;
 IF OBJECT_ID('email_tokens', 'U') IS NOT NULL DROP TABLE email_tokens;
 IF OBJECT_ID('refresh_tokens', 'U') IS NOT NULL DROP TABLE refresh_tokens;
 IF OBJECT_ID('admin_sessions', 'U') IS NOT NULL DROP TABLE admin_sessions;
@@ -61,6 +62,9 @@ CREATE TABLE restaurants (
     service_fee_percent    DECIMAL(5, 2) NOT NULL DEFAULT 0,
     delivery_fee           DECIMAL(10, 2) NOT NULL DEFAULT 0, -- yalnız masasız (takeaway) sifarişlərə
     currency               NVARCHAR(3) NOT NULL DEFAULT N'AZN',
+    pay_cash               BIT NOT NULL DEFAULT 1,  -- ödəniş üsulları (müştəriyə təklif olunanlar)
+    pay_card_pos           BIT NOT NULL DEFAULT 1,
+    pay_online             BIT NOT NULL DEFAULT 0,
     created_at             DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
@@ -225,11 +229,37 @@ CREATE TABLE orders (
     note             NVARCHAR(300) NULL,
     access_token     NVARCHAR(64) NOT NULL,
     client_request_id NVARCHAR(64) NULL,     -- idempotency açarı: eyni sorğunun təkrarı ikinci sifariş yaratmır
+    payment_method   NVARCHAR(12) NOT NULL DEFAULT N'CASH' CHECK (payment_method IN (N'CASH', N'CARD_POS', N'ONLINE')),
+    payment_status   NVARCHAR(12) NOT NULL DEFAULT N'UNPAID' CHECK (payment_status IN (N'UNPAID', N'PENDING', N'PAID', N'FAILED', N'REFUNDED')),
+    paid_at          DATETIME2 NULL,
+    paid_amount      DECIMAL(10, 2) NULL,
     created_at       DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
 
 CREATE UNIQUE INDEX UX_orders_client_request_id ON orders (client_request_id) WHERE client_request_id IS NOT NULL;
+GO
+
+-- Ödəniş cəhdləri (onlayn provayder + əllə qeydlər). Kart məlumatları saxlanılmır — yalnız maskalı nömrə.
+CREATE TABLE payments (
+    id                   INT IDENTITY(1,1) PRIMARY KEY,
+    order_id             INT NOT NULL FOREIGN KEY REFERENCES orders(id) ON DELETE CASCADE,
+    provider             NVARCHAR(20) NOT NULL,
+    method               NVARCHAR(12) NOT NULL,
+    status               NVARCHAR(12) NOT NULL DEFAULT N'PENDING' CHECK (status IN (N'PENDING', N'SUCCESS', N'FAILED', N'REFUNDED')),
+    amount               DECIMAL(10, 2) NOT NULL CHECK (amount >= 0),
+    currency             NVARCHAR(3) NOT NULL DEFAULT N'AZN',
+    provider_order_id    NVARCHAR(64) NULL,
+    provider_transaction NVARCHAR(100) NULL,
+    card_mask            NVARCHAR(30) NULL,
+    failure_reason       NVARCHAR(300) NULL,
+    created_by           INT NULL FOREIGN KEY REFERENCES admin_users(id) ON DELETE SET NULL,
+    created_at           DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_at           DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    paid_at              DATETIME2 NULL
+);
+CREATE UNIQUE INDEX UX_payments_provider_order_id ON payments (provider_order_id) WHERE provider_order_id IS NOT NULL;
+CREATE INDEX IX_payments_order ON payments (order_id, created_at);
 GO
 
 CREATE TABLE order_items (

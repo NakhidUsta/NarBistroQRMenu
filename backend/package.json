@@ -10,6 +10,7 @@
     "test": "jest --runInBand",
     "backup": "node scripts/backup.js",
     "reset-password": "node scripts/resetAdminPassword.js",
+    "mail:test": "node scripts/testMail.js",
     "media:import": "node scripts/importLegacyMedia.js",
     "migrate:ingredients": "node scripts/migrateIngredients.js"
   },
