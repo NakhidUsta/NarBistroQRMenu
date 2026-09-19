@@ -8,6 +8,8 @@ GO
 
 -- ============ CƏDVƏLLƏR ============
 
+IF OBJECT_ID('product_ingredients', 'U') IS NOT NULL DROP TABLE product_ingredients;
+IF OBJECT_ID('ingredients', 'U') IS NOT NULL DROP TABLE ingredients;
 IF OBJECT_ID('product_allergens', 'U') IS NOT NULL DROP TABLE product_allergens;
 IF OBJECT_ID('allergens', 'U') IS NOT NULL DROP TABLE allergens;
 IF OBJECT_ID('product_images', 'U') IS NOT NULL DROP TABLE product_images;
@@ -240,6 +242,24 @@ CREATE TABLE product_allergens (
     product_id  INT NOT NULL FOREIGN KEY REFERENCES products(id) ON DELETE CASCADE,
     allergen_id INT NOT NULL FOREIGN KEY REFERENCES allergens(id) ON DELETE CASCADE,
     PRIMARY KEY (product_id, allergen_id)
+);
+GO
+
+CREATE TABLE ingredients (
+    id         INT IDENTITY(1,1) PRIMARY KEY,
+    name       NVARCHAR(80) NOT NULL,
+    name_en    NVARCHAR(80) NULL,
+    name_ru    NVARCHAR(80) NULL,
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_ingredients_name UNIQUE (name)
+);
+GO
+
+CREATE TABLE product_ingredients (
+    product_id    INT NOT NULL FOREIGN KEY REFERENCES products(id) ON DELETE CASCADE,
+    ingredient_id INT NOT NULL FOREIGN KEY REFERENCES ingredients(id),
+    sort_order    INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (product_id, ingredient_id)
 );
 GO
 

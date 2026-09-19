@@ -18,7 +18,7 @@ sqlcmd -S localhost -E -C -f 65001 -d qr_menu -i backend/database/schema.sql
 
 Seed: 1 restoran, 1 OWNER (`admin@qrmenu.local` / `ChangeMe123!` — **production-da mütləq dəyişdirin**), kateqoriyalar, məhsullar, 3 masa, `XOSGEL10` promo kodu.
 
-Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər).
+Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər, 010 tərkib kataloqu).
 
 ### 2. Backend
 
@@ -101,7 +101,8 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 
 - **Qalereya:** məhsula 10-a qədər şəkil (`product_images`); admin formasında yüklə / kitabxanadan seç / sırala / sil, birinci şəkil **əsas** şəkildir (`products.image_url` avtomatik ona bərabər olur). Müştəri məhsul səhifəsində sürüşən qalereya (AVIF/WebP) görür. API: `POST/PUT /api/products` gövdəsində `images: [url,…]` (yalnız `/uploads/…` və http(s) linkləri qəbul olunur); verilməzsə mövcud qalereyaya toxunulmur.
 - **Allergenlər:** AB-nin 14 standart allergeni (`allergens`, AZ/EN/RU adları + ikon), məhsula `allergen_ids: [1, 7]` ilə bağlanır (`product_allergens`); `GET /api/allergens` açıqdır. Müştəri menyuda "Allergen filteri" ilə qaçınmaq istədiyi allergenləri seçir və onları ehtiva edən yeməklər gizlədilir (seçim cihazda saxlanılır). Köhnə sərbəst mətn sahəsi ("Digər allergen qeydləri") ehtiyat/qeyd üçün qalır — filtr yalnız kataloqdan seçilmiş allergenlərə işləyir, ona görə istifadəçiyə ofisiantla dəqiqləşdirmək tövsiyə olunur.
-- Tərkib (ingredients) hələlik tərcümə olunan sərbəst mətn olaraq qalır.
+- **Tərkib kataloqu:** komponentlər (`ingredients`, AZ/EN/RU) məhsula sıralı `ingredient_ids` ilə bağlanır (`product_ingredients`). Admin → **Tərkiblər** səhifəsində ad/tərcümə bir yerdə dəyişir və bütün məhsullarda, açıq müştəri ekranlarında dərhal yenilənir (socket `ingredient-updated`); məhsul formunda axtarışlı seçici var, kataloqda olmayan komponent orada yazılıb dərhal yaradılır. Məhsulda istifadə olunan komponent silinmir (409). Köhnə sərbəst mətn sahələri ehtiyat kimi qalır — mövcud məhsulları kataloqa köçürmək üçün bir dəfə: `cd backend && npm run migrate:ingredients` (`-- --dry-run` ilə öncə baxın). Boş bazadan başlayırsınızsa (`schema.sql`) bunu seed məhsulları üçün də işlədə bilərsiniz.
+- **Köhnə şəkilləri kitabxanaya köçürmək:** media kitabxanasından əvvəl yüklənmiş fayllar üçün `npm run media:import` (`-- --dry-run`, `-- --delete-old`) — variantlar yaradır, məhsul/loqo/hero istinadlarını yeni linkə yönləndirir.
 
 ## Deploy
 

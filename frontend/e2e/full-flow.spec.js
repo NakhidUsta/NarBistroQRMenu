@@ -15,6 +15,7 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
   const customer = await customerCtx.newPage()
   let productId
   let orderId
+  let mediaBefore = null
 
   try {
     // 1. Admin panelə daxil ol
@@ -23,6 +24,8 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     await admin.locator('input[type=password]').fill(ADMIN.password)
     await admin.getByRole('button', { name: 'Daxil ol' }).click()
     await expect(admin).toHaveURL(/\/admin\/dashboard/)
+
+    mediaBefore = new Set((await (await adminCtx.request.get(`${API}/media`)).json()).map((m) => m.id))
 
     // Müştəri masasının cari QR məlumatı (admin sessiyası ilə)
     const tables = await (await adminCtx.request.get(`${API}/tables`)).json()
@@ -111,6 +114,11 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     // Təmizlik (test uğursuz olsa da): sifarişi ləğv et, məhsulu sil
     if (orderId) await adminCtx.request.put(`${API}/orders/${orderId}`, { data: { status: 'CANCELLED' } })
     if (productId) await adminCtx.request.delete(`${API}/products/${productId}`)
+    // testin yüklədiyi şəkli media kitabxanasından da sil (məhsul silindiyi üçün artıq istifadədə deyil)
+    if (mediaBefore) {
+      const now = await (await adminCtx.request.get(`${API}/media`)).json()
+      for (const m of now.filter((x) => !mediaBefore.has(x.id))) await adminCtx.request.delete(`${API}/media/${m.id}`)
+    }
     await adminCtx.close()
     await customerCtx.close()
   }

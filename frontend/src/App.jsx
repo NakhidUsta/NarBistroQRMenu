@@ -24,6 +24,7 @@ import KitchenDisplay from './admin/KitchenDisplay'
 import AccountAdmin from './admin/AccountAdmin'
 import ReviewsAdmin from './admin/ReviewsAdmin'
 import MediaAdmin from './admin/MediaAdmin'
+import IngredientsAdmin from './admin/IngredientsAdmin'
 import CustomersAdmin from './admin/CustomersAdmin'
 import InventoryAdmin from './admin/InventoryAdmin'
 import ReportsAdmin from './admin/ReportsAdmin'
@@ -52,6 +53,7 @@ function App() {
           <Route path="account" element={<AccountAdmin />} />
           <Route path="reviews" element={<ReviewsAdmin />} />
           <Route path="media" element={<MediaAdmin />} />
+          <Route path="ingredients" element={<IngredientsAdmin />} />
           <Route path="customers" element={<CustomersAdmin />} />
           <Route path="inventory" element={<InventoryAdmin />} />
           <Route path="reports" element={<ReportsAdmin />} />

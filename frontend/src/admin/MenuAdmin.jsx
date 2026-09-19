@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { productsApi, categoriesApi, imageVariants, resolveUploadUrl } from '../lib/api'
+import { productsApi, categoriesApi, ingredientsApi, imageVariants, resolveUploadUrl } from '../lib/api'
+import { useMenuStore } from '../store/menuStore'
 import { useUiStore } from '../store/uiStore'
 import Button from '../components/Button'
 import ImageGalleryField from './ImageGalleryField'
 import AllergenPicker from './AllergenPicker'
+import IngredientPicker from './IngredientPicker'
 import TranslationTabs from './TranslationTabs'
 
 const emptyForm = {
   id: null, category_id: '', name: '', name_en: '', name_ru: '',
-  description: '', description_en: '', description_ru: '', price: '', image_url: '', images: [], allergen_ids: [],
+  description: '', description_en: '', description_ru: '', price: '', image_url: '', images: [], allergen_ids: [], ingredient_ids: [],
   ingredients: '', ingredients_en: '', ingredients_ru: '',
   allergens: '', allergens_en: '', allergens_ru: '',
   prep_time_minutes: '', is_available: true, is_popular: false, sort_order: 0,
@@ -24,9 +26,10 @@ function MenuAdmin() {
   const showToast = useUiStore((s) => s.showToast)
 
   async function load() {
-    const [p, c] = await Promise.all([productsApi.list(), categoriesApi.list(true)])
+    const [p, c, ingredients] = await Promise.all([productsApi.list(), categoriesApi.list(true), ingredientsApi.list().catch(() => null)])
     setProducts(p)
     setCategories(c)
+    if (ingredients) useMenuStore.setState({ ingredients })
   }
 
   useEffect(() => {
@@ -152,11 +155,9 @@ function MenuAdmin() {
         />
         <ImageGalleryField value={form.images} onChange={(images) => setForm({ ...form, images, image_url: images[0] || '' })} />
         <AllergenPicker value={form.allergen_ids} onChange={(allergen_ids) => setForm({ ...form, allergen_ids })} />
+        <IngredientPicker value={form.ingredient_ids} onChange={(ingredient_ids) => setForm({ ...form, ingredient_ids })} />
         <TranslationTabs
-          fields={[
-            { key: 'ingredients', label: 'Tərkibi (vergüllə ayırın)', type: 'textarea' },
-            { key: 'allergens', label: 'Digər allergen qeydləri (vergüllə ayırın)' },
-          ]}
+          fields={[{ key: 'allergens', label: 'Digər allergen qeydləri (vergüllə ayırın)' }]}
           form={form}
           setForm={setForm}
         />

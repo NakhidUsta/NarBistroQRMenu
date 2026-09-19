@@ -18,6 +18,9 @@ export function bindPublicSocket() {
   publicSocket.on('category-updated', ({ category, action }) => {
     useMenuStore.getState().upsertCategory(category, action)
   })
+  publicSocket.on('ingredient-updated', ({ ingredient, action }) => {
+    useMenuStore.getState().upsertIngredient(ingredient, action)
+  })
   publicSocket.on('order-status-updated', (order) => {
     useOrderStore.getState().updateOrder(order)
   })
@@ -35,6 +38,9 @@ export function bindAdminSocket() {
   })
   adminSocket.on('category-updated', ({ category, action }) => {
     useMenuStore.getState().upsertCategory(category, action)
+  })
+  adminSocket.on('ingredient-updated', ({ ingredient, action }) => {
+    useMenuStore.getState().upsertIngredient(ingredient, action)
   })
   // Yeni sifarişin məhsul adları/masa etiketi siyahı sorğusunda gəlir — ona görə yenidən yükləyirik.
   adminSocket.on('order-created', () => {

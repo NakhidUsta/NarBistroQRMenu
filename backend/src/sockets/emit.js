@@ -27,6 +27,11 @@ function emitCategoryUpdated(category, action) {
   getIO().of('/admin').to('admin').emit('category-updated', { category, action });
 }
 
+function emitIngredientUpdated(ingredient, action) {
+  getIO().emit('ingredient-updated', { ingredient, action });
+  getIO().of('/admin').to('admin').emit('ingredient-updated', { ingredient, action });
+}
+
 function emitTableUpdated(table, action) {
   getIO().of('/admin').to('admin').emit('table-updated', { table, action });
 }
@@ -57,6 +62,7 @@ module.exports = {
   disconnectAdmin,
   emitProductUpdated,
   emitCategoryUpdated,
+  emitIngredientUpdated,
   emitTableUpdated,
   emitOrderCreated,
   emitOrderStatusUpdated,

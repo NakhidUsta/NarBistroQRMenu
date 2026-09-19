@@ -1,5 +1,6 @@
 const productRepository = require('../repositories/productRepository');
 const allergenService = require('./allergenService');
+const ingredientService = require('./ingredientService');
 const AppError = require('../utils/AppError');
 const { emitProductUpdated } = require('../sockets/emit');
 
@@ -19,6 +20,13 @@ async function normalizeRelations(body) {
     const known = await allergenService.existingIds();
     if (ids.some((id) => !known.has(id))) throw new AppError(400, 'Naməlum allergen seçilib');
     out.allergen_ids = ids;
+  }
+  if (Array.isArray(body.ingredient_ids)) {
+    // sıra əhəmiyyətlidir (menyuda göstərilmə ardıcıllığı) — təkrarlar atılır, ilk rast gəlinən qalır
+    const ids = [...new Set(body.ingredient_ids)];
+    const known = await ingredientService.existingIds();
+    if (ids.some((id) => !known.has(id))) throw new AppError(400, 'Naməlum tərkib komponenti seçilib');
+    out.ingredient_ids = ids;
   }
   return out;
 }

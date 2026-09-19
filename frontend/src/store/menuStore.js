@@ -1,22 +1,24 @@
 import { create } from 'zustand'
-import { allergensApi, categoriesApi, productsApi } from '../lib/api'
+import { allergensApi, categoriesApi, ingredientsApi, productsApi } from '../lib/api'
 
 export const useMenuStore = create((set, get) => ({
   categories: [],
   products: [],
   allergens: [],
+  ingredients: [],
   status: 'idle',
 
   async fetchAll(params) {
     set({ status: 'loading' })
     try {
-      const [categories, products, allergens] = await Promise.all([
+      const [categories, products, allergens, ingredients] = await Promise.all([
         categoriesApi.list(),
         productsApi.list(params),
         // allergen kataloqu menyunu bloklamasın
         allergensApi.list().catch(() => get().allergens),
+        ingredientsApi.list().catch(() => get().ingredients),
       ])
-      set({ categories, products, allergens, status: 'ready' })
+      set({ categories, products, allergens, ingredients, status: 'ready' })
     } catch {
       set({ status: 'error' })
     }
@@ -35,6 +37,16 @@ export const useMenuStore = create((set, get) => ({
         ? products.map((p) => (p.id === product.id ? { ...p, ...product } : p))
         : [...products, product],
     })
+  },
+
+  upsertIngredient(ingredient, action) {
+    const list = get().ingredients
+    if (action === 'deleted') {
+      set({ ingredients: list.filter((i) => i.id !== ingredient.id) })
+      return
+    }
+    const exists = list.some((i) => i.id === ingredient.id)
+    set({ ingredients: exists ? list.map((i) => (i.id === ingredient.id ? ingredient : i)) : [...list, ingredient] })
   },
 
   upsertCategory(category, action) {

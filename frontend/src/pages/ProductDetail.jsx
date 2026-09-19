@@ -41,7 +41,10 @@ function ProductDetail() {
 
   const name = localize(product, 'name')
   const description = localize(product, 'description')
-  const ingredients = splitList(localize(product, 'ingredients'))
+  // Kataloq komponentləri (sıralı, cari dildə); kataloqa köçürülməmiş köhnə məhsullar üçün mətn sahəsi ehtiyat kimi qalır
+  const catalog = useMenuStore((s) => s.ingredients)
+  const catalogIngredients = (product.ingredient_ids || []).map((id) => catalog.find((i) => i.id === id)).filter(Boolean).map((i) => localize(i, 'name'))
+  const ingredients = catalogIngredients.length ? catalogIngredients : splitList(localize(product, 'ingredients'))
   const allergens = splitList(localize(product, 'allergens'))
 
   function handleAdd() {

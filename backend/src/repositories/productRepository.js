@@ -7,7 +7,7 @@ const SELECT_COLUMNS = `
   stock_quantity, track_inventory, created_at
 `;
 
-// Məhsulun qalereyası (images) və allergen ID-ləri ayrı cədvəllərdədir; oxunanda məhsula əlavə olunur.
+// Məhsulun qalereyası (images), allergen və tərkib ID-ləri (ingredient_ids — sıralı) ayrı cədvəllərdədir; oxunanda məhsula əlavə olunur.
 // images[0] həmişə əsas şəkildir (products.image_url); image_url qalereyada yoxdursa (köhnə API) başa əlavə olunur.
 async function attachRelations(products, productId) {
   if (!products.length) return products;
@@ -21,19 +21,23 @@ async function attachRelations(products, productId) {
     }
     return request.query(`${query} ${order}`);
   };
-  const [imageRows, allergenRows] = await Promise.all([
+  const [imageRows, allergenRows, ingredientRows] = await Promise.all([
     run('SELECT product_id, image_url FROM product_images', 'ORDER BY product_id, sort_order, id'),
     run('SELECT product_id, allergen_id FROM product_allergens', 'ORDER BY allergen_id'),
+    run('SELECT product_id, ingredient_id FROM product_ingredients', 'ORDER BY product_id, sort_order, ingredient_id'),
   ]);
   const imagesBy = new Map();
   for (const r of imageRows.recordset) imagesBy.set(r.product_id, [...(imagesBy.get(r.product_id) || []), r.image_url]);
   const allergensBy = new Map();
   for (const r of allergenRows.recordset) allergensBy.set(r.product_id, [...(allergensBy.get(r.product_id) || []), r.allergen_id]);
 
+  const ingredientsBy = new Map();
+  for (const r of ingredientRows.recordset) ingredientsBy.set(r.product_id, [...(ingredientsBy.get(r.product_id) || []), r.ingredient_id]);
+
   return products.map((p) => {
     const gallery = imagesBy.get(p.id) || [];
     const images = p.image_url && !gallery.includes(p.image_url) ? [p.image_url, ...gallery] : gallery;
-    return { ...p, images, allergen_ids: allergensBy.get(p.id) || [] };
+    return { ...p, images, allergen_ids: allergensBy.get(p.id) || [], ingredient_ids: ingredientsBy.get(p.id) || [] };
   });
 }
 
@@ -43,7 +47,7 @@ async function withRelations(product) {
   return withData;
 }
 
-// body.images / body.allergen_ids massivdirsə əlaqə cədvəlləri tam əvəz olunur; verilməyibsə toxunulmur.
+// body.images / allergen_ids / ingredient_ids massivdirsə əlaqə cədvəlləri tam əvəz olunur; verilməyibsə toxunulmur.
 async function writeRelations(transaction, productId, body) {
   if (Array.isArray(body.images)) {
     await new sql.Request(transaction).input('id', sql.Int, productId).query('DELETE FROM product_images WHERE product_id = @id');
@@ -53,6 +57,16 @@ async function writeRelations(transaction, productId, body) {
         .input('url', sql.NVarChar(500), url)
         .input('sort', sql.Int, index)
         .query('INSERT INTO product_images (product_id, image_url, sort_order) VALUES (@id, @url, @sort)');
+    }
+  }
+  if (Array.isArray(body.ingredient_ids)) {
+    await new sql.Request(transaction).input('id', sql.Int, productId).query('DELETE FROM product_ingredients WHERE product_id = @id');
+    for (const [index, ingredientId] of body.ingredient_ids.entries()) {
+      await new sql.Request(transaction)
+        .input('id', sql.Int, productId)
+        .input('ingredient', sql.Int, ingredientId)
+        .input('sort', sql.Int, index)
+        .query('INSERT INTO product_ingredients (product_id, ingredient_id, sort_order) VALUES (@id, @ingredient, @sort)');
     }
   }
   if (Array.isArray(body.allergen_ids)) {

@@ -170,3 +170,10 @@ export function imageVariants(url) {
 export const allergensApi = {
   list: () => unwrap(apiClient.get('/allergens')),
 }
+
+export const ingredientsApi = {
+  list: () => unwrap(apiClient.get('/ingredients')),
+  create: (body) => unwrap(apiClient.post('/ingredients', body)),
+  update: (id, body) => unwrap(apiClient.put(`/ingredients/${id}`, body)),
+  remove: (id) => unwrap(apiClient.delete(`/ingredients/${id}`)),
+}

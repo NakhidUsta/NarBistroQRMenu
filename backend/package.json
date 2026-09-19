@@ -9,7 +9,9 @@
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
     "backup": "node scripts/backup.js",
-    "reset-password": "node scripts/resetAdminPassword.js"
+    "reset-password": "node scripts/resetAdminPassword.js",
+    "media:import": "node scripts/importLegacyMedia.js",
+    "migrate:ingredients": "node scripts/migrateIngredients.js"
   },
   "jest": {
     "testEnvironment": "node",

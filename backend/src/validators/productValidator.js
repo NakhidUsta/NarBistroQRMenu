@@ -1,9 +1,10 @@
 const MAX_IMAGES = 10;
+const MAX_INGREDIENTS = 40;
 // Yalnız öz yükləmələrimiz (/uploads/...) və http(s) şəkil linkləri — "javascript:" və s. rədd edilir
 const IMAGE_URL = /^(\/uploads\/[\w.-]+|https?:\/\/\S+)$/;
 
 function validateProductBody(body) {
-  const { name, price, category_id, images, allergen_ids, image_url } = body;
+  const { name, price, category_id, images, allergen_ids, ingredient_ids, image_url } = body;
   if (!name || !String(name).trim()) return 'Ad tələb olunur';
   const priceNum = Number(price);
   if (!Number.isFinite(priceNum) || priceNum < 0) return 'Qiymət düzgün deyil';
@@ -18,6 +19,11 @@ function validateProductBody(body) {
   if (allergen_ids !== undefined) {
     if (!Array.isArray(allergen_ids) || allergen_ids.some((id) => !Number.isInteger(id) || id <= 0)) {
       return 'allergen_ids müsbət tam ədədlər massivi olmalıdır';
+    }
+  }
+  if (ingredient_ids !== undefined) {
+    if (!Array.isArray(ingredient_ids) || ingredient_ids.length > MAX_INGREDIENTS || ingredient_ids.some((id) => !Number.isInteger(id) || id <= 0)) {
+      return `ingredient_ids ən çox ${MAX_INGREDIENTS} müsbət tam ədəddən ibarət massiv olmalıdır`;
     }
   }
   return null;
