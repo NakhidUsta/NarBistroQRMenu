@@ -101,3 +101,42 @@ describe('POST/PUT /api/products (qalereya)', () => {
     expect(res.body).toHaveLength(2);
   });
 });
+
+describe('məhsulu gizlət/göstər (is_visible)', () => {
+  const emit = require('../src/sockets/emit');
+
+  beforeEach(() => {
+    productRepository.findAll.mockResolvedValue([]);
+    productRepository.findById.mockResolvedValue({ id: 5, name: 'Pasta', is_visible: false, is_available: true });
+    productRepository.setVisibility.mockImplementation(async (id, v) => ({ id, name: 'Pasta', is_visible: v, is_available: true }));
+  });
+
+  it('müştəri siyahısı gizli məhsulları çıxarır, "Bitib" olanları saxlayır; admin hamısını görür', async () => {
+    await request(app).get('/api/products');
+    expect(productRepository.findAll).toHaveBeenLastCalledWith({ category_id: undefined, includeHidden: false });
+    await request(app).get('/api/products').set('Cookie', cookieFor('MANAGER'));
+    expect(productRepository.findAll).toHaveBeenLastCalledWith({ category_id: undefined, includeHidden: true });
+  });
+
+  it('gizli məhsulun səhifəsi müştəriyə 404, adminə açıqdır', async () => {
+    expect((await request(app).get('/api/products/5')).status).toBe(404);
+    expect((await request(app).get('/api/products/5').set('Cookie', cookieFor('OWNER'))).status).toBe(200);
+  });
+
+  it('PATCH /:id/visibility yalnız OWNER/MANAGER; boolean tələb olunur; audit loga yazılır', async () => {
+    const patch = (role, body) => request(app).patch('/api/products/5/visibility').set('Cookie', cookieFor(role)).send(body);
+    expect((await patch('WAITER', { is_visible: true })).status).toBe(403);
+    expect((await patch('KITCHEN', { is_visible: true })).status).toBe(403);
+    expect((await patch('OWNER', { is_visible: 'bəli' })).status).toBe(400);
+    const res = await patch('MANAGER', { is_visible: true });
+    expect(res.status).toBe(200);
+    expect(res.body.is_visible).toBe(true);
+    expect(require('../src/services/auditService').log).toHaveBeenCalledWith(expect.anything(), 'product.visibility', 'products', 5, { is_visible: false }, { is_visible: true });
+    expect((await request(app).patch('/api/products/5/visibility').send({ is_visible: true })).status).toBe(401);
+  });
+
+  it('gizlədəndə socket hadisəsi verilir (public-ə "deleted" məntiqi emit.js-dədir)', async () => {
+    await productService.setVisibility(5, false);
+    expect(emit.emitProductUpdated).toHaveBeenCalledWith(expect.objectContaining({ id: 5, is_visible: false }), 'updated');
+  });
+});

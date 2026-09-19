@@ -80,8 +80,10 @@ function disconnectSession(sessionId) {
 
 const admins = () => getIO().of('/admin');
 
+// Gizli məhsul müştəri ekranlarından silinir (public-ə "deleted"), admin isə tam məlumatı alır; yenidən göstəriləndə "updated" onu əlavə edir
 function emitProductUpdated(product, action) {
-  send(getIO(), 'product-updated', { product, action });
+  const hidden = product.is_visible === false;
+  send(getIO(), 'product-updated', hidden ? { product: { id: product.id }, action: 'deleted' } : { product, action });
   send(admins().to('admin'), 'product-updated', { product, action });
 }
 

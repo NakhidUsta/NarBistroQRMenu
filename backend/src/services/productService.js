@@ -36,9 +36,10 @@ async function listProducts(filters) {
   return productRepository.findAll(filters);
 }
 
-async function getProduct(id) {
+// Gizli məhsul yalnız adminə görünür; müştəri üçün 404 (varlığı açıqlanmır)
+async function getProduct(id, { isAdmin = false } = {}) {
   const product = await productRepository.findById(id);
-  if (!product) throw new AppError(404, 'Məhsul tapılmadı');
+  if (!product || (product.is_visible === false && !isAdmin)) throw new AppError(404, 'Məhsul tapılmadı');
   return product;
 }
 
@@ -76,6 +77,13 @@ async function setAvailability(id, isAvailable) {
   return product;
 }
 
+async function setVisibility(id, isVisible) {
+  const product = await productRepository.setVisibility(id, isVisible);
+  if (!product) throw new AppError(404, 'Məhsul tapılmadı');
+  emitProductUpdated(product, 'updated');
+  return product;
+}
+
 async function deleteProduct(id) {
   const deleted = await productRepository.remove(id);
   if (!deleted) throw new AppError(404, 'Məhsul tapılmadı');
@@ -89,4 +97,4 @@ async function adjustStock(id, changeQty) {
   return product;
 }
 
-module.exports = { listProducts, getProduct, createProduct, updateProduct, setAvailability, deleteProduct, adjustStock };
+module.exports = { listProducts, getProduct, createProduct, updateProduct, setAvailability, setVisibility, deleteProduct, adjustStock };

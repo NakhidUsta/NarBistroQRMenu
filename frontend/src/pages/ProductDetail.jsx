@@ -7,6 +7,7 @@ import { useT, useLocalize } from '../lib/i18n'
 import Badge from '../components/Badge'
 import FavoriteButton from '../components/FavoriteButton'
 import ShareButton from '../components/ShareButton'
+import Button from '../components/Button'
 import ProductGallery from '../components/ProductGallery'
 import AllergenChips from '../components/AllergenChips'
 
@@ -19,6 +20,7 @@ function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const products = useMenuStore((s) => s.products)
+  const menuStatus = useMenuStore((s) => s.status)
   const product = useMemo(() => products.find((p) => String(p.id) === id), [products, id])
   const addItem = useCartStore((s) => s.addItem)
   const showToast = useUiStore((s) => s.showToast)
@@ -32,9 +34,19 @@ function ProductDetail() {
   }, [id])
 
   if (!product) {
+    // menyu yüklənib, amma məhsul yoxdur (silinib / gizlədilib / səhv link) — sonsuz "..." əvəzinə izahat və çıxış yolu
+    const loaded = menuStatus === 'ready'
     return (
-      <div className="px-5 pt-20 text-center">
-        <p className="text-muted">...</p>
+      <div className="px-5 pt-20 text-center" data-testid="product-missing">
+        {loaded ? (
+          <>
+            <p className="font-display text-xl text-ink mb-1">{t('product_not_found')}</p>
+            <p className="text-[13.5px] text-muted mb-6">{t('product_not_found_body')}</p>
+            <Button to="/menyu">{t('back_to_menu')}</Button>
+          </>
+        ) : (
+          <p className="text-muted">...</p>
+        )}
       </div>
     )
   }

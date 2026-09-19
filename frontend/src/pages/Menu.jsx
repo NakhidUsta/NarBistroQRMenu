@@ -42,16 +42,24 @@ function Menu() {
     }
   }, [])
 
+  const ingredientCatalog = useMenuStore((s) => s.ingredients)
+
   const filtered = useMemo(() => {
     let list = products
     if (query.trim()) {
-      const q = query.trim().toLowerCase()
-      list = list.filter((p) => localize(p, 'name').toLowerCase().includes(q) || localize(p, 'description').toLowerCase().includes(q))
+      // toLocaleLowerCase('az'): "İçkilər" → "içkilər" (adi toLowerCase "i̇" + nöqtə əmələ gətirir və axtarış tapmır)
+      const norm = (v) => String(v || '').toLocaleLowerCase('az')
+      const q = norm(query.trim())
+      // ad, təsvir, kateqoriya adı və tərkib komponentləri (kataloq + köhnə mətn) üzrə axtarış — cari dildə
+      const categoryName = (p) => localize(categories.find((c) => c.id === p.category_id), 'name')
+      const ingredientNames = (p) =>
+        [...(p.ingredient_ids || []).map((id) => localize(ingredientCatalog.find((i) => i.id === id), 'name')), localize(p, 'ingredients')].join(' ')
+      list = list.filter((p) => [localize(p, 'name'), localize(p, 'description'), categoryName(p), ingredientNames(p)].some((field) => norm(field).includes(q)))
     } else if (activeCategory !== 'all') {
       list = list.filter((p) => p.category_id === activeCategory)
     }
     return list
-  }, [products, activeCategory, query, localize])
+  }, [products, categories, ingredientCatalog, activeCategory, query, localize])
 
   const visible = useMemo(() => filtered.filter((p) => !hidesProduct(p, avoid)), [filtered, avoid])
   const hiddenCount = filtered.length - visible.length

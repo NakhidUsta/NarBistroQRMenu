@@ -60,7 +60,7 @@ async function quote({ table_code, items, promo_code }) {
   for (const item of mergeItems(items)) {
     const product = await orderRepository.findProductPrice(pool, item.product_id);
     const price = product ? Number(product.price) : 0;
-    const available = !!product && !!product.is_available;
+    const available = !!product && !!product.is_available && product.is_visible !== false;
     const inStock = !product?.track_inventory || (product.stock_quantity ?? 0) >= item.quantity;
     if (available && inStock) subtotal += price * item.quantity;
     lines.push({ product_id: item.product_id, quantity: item.quantity, price, available: available && inStock });
@@ -116,7 +116,8 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
     for (const item of items) {
       const product = await orderRepository.findProductPrice(transaction, item.product_id);
       if (!product) throw new AppError(400, `Məhsul tapılmadı: ${item.product_id}`);
-      if (!product.is_available) throw new AppError(400, `Məhsul hazırda mövcud deyil: ${item.product_id}`);
+      // gizli məhsul sifariş oluna bilməz (varlığı da açıqlanmır — "mövcud deyil" kimi cavab)
+      if (!product.is_available || product.is_visible === false) throw new AppError(400, `Məhsul hazırda mövcud deyil: ${item.product_id}`);
 
       if (product.track_inventory) {
         const updated = await orderRepository.decrementStockTx(transaction, item.product_id, item.quantity);

@@ -13,7 +13,7 @@ const emptyForm = {
   description: '', description_en: '', description_ru: '', price: '', image_url: '', images: [], allergen_ids: [], ingredient_ids: [],
   ingredients: '', ingredients_en: '', ingredients_ru: '',
   allergens: '', allergens_en: '', allergens_ru: '',
-  prep_time_minutes: '', is_available: true, is_popular: false, sort_order: 0,
+  prep_time_minutes: '', is_available: true, is_visible: true, is_popular: false, sort_order: 0,
   track_inventory: false, stock_quantity: '',
 }
 
@@ -69,6 +69,12 @@ function MenuAdmin() {
     load()
   }
 
+  async function toggleVisibility(product) {
+    await productsApi.setVisibility(product.id, product.is_visible === false)
+    showToast(product.is_visible === false ? 'Məhsul müştərilərə göstərilir' : 'Məhsul müştərilərdən gizlədildi')
+    load()
+  }
+
   async function adjustStock(product, delta) {
     await productsApi.adjustStock(product.id, delta)
     load()
@@ -101,10 +107,10 @@ function MenuAdmin() {
             const cat = categories.find((c) => c.id === p.category_id)?.name || ''
             return [p.name, p.name_en, p.name_ru, cat].some((v) => v && v.toLowerCase().includes(s))
           }).map((p) => (
-            <div key={p.id} className={`flex gap-4 bg-panel rounded-2xl p-3 border border-border/60 ${!p.is_available ? 'opacity-60' : ''}`}>
+            <div key={p.id} className={`flex gap-4 bg-panel rounded-2xl p-3 border border-border/60 ${!p.is_available || p.is_visible === false ? 'opacity-60' : ''}`}>
               <img src={resolveUploadUrl(imageVariants(p.image_url)?.thumb || p.image_url)} alt="" className="w-16 h-16 rounded-xl object-cover bg-blush" />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[14px]">{p.name}</p>
+                <p className="font-semibold text-[14px]">{p.name}{p.is_visible === false && <span className="ml-2 text-[10.5px] font-bold uppercase bg-ink/80 text-cream rounded-full px-2 py-0.5">Gizli</span>}</p>
                 <p className="text-[12px] text-muted">{categories.find((c) => c.id === p.category_id)?.name || '—'} · {Number(p.price).toFixed(2)} ₼</p>
                 {p.track_inventory && (
                   <div className="flex items-center gap-1.5 mt-1">
@@ -117,6 +123,9 @@ function MenuAdmin() {
               <div className="flex flex-col items-end gap-1.5 text-[12.5px] font-semibold shrink-0">
                 <button onClick={() => toggleAvailability(p)} className={p.is_available ? 'text-success' : 'text-danger'}>
                   {p.is_available ? 'Mövcuddur' : 'Bitib'}
+                </button>
+                <button onClick={() => toggleVisibility(p)} className={p.is_visible === false ? 'text-gold' : 'text-muted'} data-testid="visibility-toggle">
+                  {p.is_visible === false ? 'Göstər' : 'Gizlət'}
                 </button>
                 <button onClick={() => startEdit(p)} className="text-burgundy">Redaktə</button>
                 <button onClick={() => handleDelete(p.id)} className="text-danger">Sil</button>
@@ -170,6 +179,10 @@ function MenuAdmin() {
           <label className="flex items-center gap-2 text-[13px] font-semibold">
             <input type="checkbox" checked={form.is_available} onChange={(e) => setForm({ ...form, is_available: e.target.checked })} />
             Mövcuddur
+          </label>
+          <label className="flex items-center gap-2 text-[13px] font-semibold">
+            <input type="checkbox" checked={form.is_visible} onChange={(e) => setForm({ ...form, is_visible: e.target.checked })} />
+            Müştərilərə göstər
           </label>
           <label className="flex items-center gap-2 text-[13px] font-semibold">
             <input type="checkbox" checked={form.is_popular} onChange={(e) => setForm({ ...form, is_popular: e.target.checked })} />

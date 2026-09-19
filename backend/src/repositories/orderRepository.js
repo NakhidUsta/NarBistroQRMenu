@@ -4,7 +4,7 @@ const { TZ } = require('../config/tz');
 async function findProductPrice(transaction, productId) {
   const result = await new sql.Request(transaction)
     .input('id', sql.Int, productId)
-    .query('SELECT id, price, is_available, stock_quantity, track_inventory FROM products WHERE id = @id');
+    .query('SELECT id, price, is_available, is_visible, stock_quantity, track_inventory FROM products WHERE id = @id');
   return result.recordset[0] || null;
 }
 

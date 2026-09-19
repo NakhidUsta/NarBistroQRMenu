@@ -3,7 +3,7 @@ const { sql, poolPromise } = require('../config/db');
 const SELECT_COLUMNS = `
   id, restaurant_id, category_id, name, name_en, name_ru, description, description_en, description_ru,
   price, image_url, ingredients, ingredients_en, ingredients_ru, allergens, allergens_en, allergens_ru,
-  prep_time_minutes, is_available, is_popular, sort_order,
+  prep_time_minutes, is_available, is_visible, is_popular, sort_order,
   stock_quantity, track_inventory, created_at
 `;
 
@@ -94,7 +94,9 @@ async function inTransaction(work) {
   }
 }
 
-async function findAll({ category_id, includeUnavailable = true } = {}) {
+// includeHidden=false (müştəri): gizli məhsullar çıxarılır, "Bitib" (is_available=0) olanlar isə qalır — menyuda "Bitib" kimi göstərilir.
+// onlyAvailable — yalnız sifariş oluna bilənlər (sitemap üçün).
+async function findAll({ category_id, includeHidden = true, onlyAvailable = false } = {}) {
   const pool = await poolPromise;
   const request = pool.request();
   let query = `SELECT ${SELECT_COLUMNS} FROM products`;
@@ -104,9 +106,8 @@ async function findAll({ category_id, includeUnavailable = true } = {}) {
     conditions.push('category_id = @category_id');
     request.input('category_id', sql.Int, category_id);
   }
-  if (!includeUnavailable) {
-    conditions.push('is_available = 1');
-  }
+  if (!includeHidden) conditions.push('is_visible = 1');
+  if (onlyAvailable) conditions.push('is_available = 1');
   if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
   query += ' ORDER BY sort_order ASC, id ASC';
 
@@ -141,6 +142,8 @@ function bindBody(request, body) {
     .input('allergens_ru', sql.NVarChar(sql.MAX), body.allergens_ru || null)
     .input('prep_time_minutes', sql.Int, body.prep_time_minutes || null)
     .input('is_available', sql.Bit, body.is_available === false ? 0 : 1)
+    // verilməyibsə (köhnə klient) mövcud dəyər dəyişmir (UPDATE-də COALESCE), yeni məhsulda defolt görünən
+    .input('is_visible', sql.Bit, body.is_visible === undefined ? null : body.is_visible ? 1 : 0)
     .input('is_popular', sql.Bit, body.is_popular ? 1 : 0)
     .input('sort_order', sql.Int, body.sort_order ?? 0)
     .input('stock_quantity', sql.Int, body.stock_quantity === '' || body.stock_quantity == null ? null : Number(body.stock_quantity))
@@ -155,13 +158,13 @@ async function create(body) {
       INSERT INTO products (
         restaurant_id, category_id, name, name_en, name_ru, description, description_en, description_ru,
         price, image_url, ingredients, ingredients_en, ingredients_ru, allergens, allergens_en, allergens_ru,
-        prep_time_minutes, is_available, is_popular, sort_order, stock_quantity, track_inventory
+        prep_time_minutes, is_available, is_visible, is_popular, sort_order, stock_quantity, track_inventory
       )
       OUTPUT INSERTED.*
       VALUES (
         @restaurant_id, @category_id, @name, @name_en, @name_ru, @description, @description_en, @description_ru,
         @price, @image_url, @ingredients, @ingredients_en, @ingredients_ru, @allergens, @allergens_en, @allergens_ru,
-        @prep_time_minutes, @is_available, @is_popular, @sort_order, @stock_quantity, @track_inventory
+        @prep_time_minutes, @is_available, ISNULL(@is_visible, 1), @is_popular, @sort_order, @stock_quantity, @track_inventory
       )
     `);
     const created = result.recordset[0];
@@ -181,7 +184,7 @@ async function update(id, body) {
           price = @price, image_url = @image_url,
           ingredients = @ingredients, ingredients_en = @ingredients_en, ingredients_ru = @ingredients_ru,
           allergens = @allergens, allergens_en = @allergens_en, allergens_ru = @allergens_ru,
-          prep_time_minutes = @prep_time_minutes, is_available = @is_available,
+          prep_time_minutes = @prep_time_minutes, is_available = @is_available, is_visible = COALESCE(@is_visible, is_visible),
           is_popular = @is_popular, sort_order = @sort_order,
           stock_quantity = @stock_quantity, track_inventory = @track_inventory
       OUTPUT INSERTED.*
@@ -233,6 +236,15 @@ async function setAvailability(id, isAvailable) {
   return withRelations(result.recordset[0]);
 }
 
+async function setVisibility(id, isVisible) {
+  const pool = await poolPromise;
+  const result = await pool.request()
+    .input('id', sql.Int, id)
+    .input('is_visible', sql.Bit, isVisible ? 1 : 0)
+    .query('UPDATE products SET is_visible = @is_visible OUTPUT INSERTED.* WHERE id = @id');
+  return withRelations(result.recordset[0]);
+}
+
 async function remove(id) {
   const pool = await poolPromise;
   const result = await pool.request()
@@ -241,4 +253,4 @@ async function remove(id) {
   return result.rowsAffected[0] > 0;
 }
 
-module.exports = { findAll, findById, create, update, setAvailability, adjustStock, remove };
+module.exports = { findAll, findById, create, update, setAvailability, setVisibility, adjustStock, remove };

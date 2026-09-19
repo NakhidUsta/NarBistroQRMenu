@@ -155,6 +155,17 @@ describe('admin namespace', () => {
     expect(emit.getSocketStats().critical_sent).toBe(before);
   });
 
+  it('gizlədilən məhsul müştəri ekranlarından silinir (deleted), admin isə tam məlumatı alır', async () => {
+    const customer = await connected(newClient());
+    const admin = await connected(newClient('/admin', { extraHeaders: { cookie: 'qrmenu_token=good' } }));
+    const forCustomer = once(customer, 'product-updated');
+    const forAdmin = once(admin, 'product-updated');
+    emit.emitProductUpdated({ id: 3, name: 'Gizli', price: 5, is_visible: false }, 'updated');
+    expect(await forCustomer).toMatchObject({ product: { id: 3 }, action: 'deleted' });
+    expect((await forCustomer).product.name).toBeUndefined();
+    expect(await forAdmin).toMatchObject({ product: { id: 3, name: 'Gizli' }, action: 'updated' });
+  });
+
   it('kimsə onlayn deyilsə itirilən bir şey yoxdur — missing_ack artmır', async () => {
     const before = emit.getSocketStats();
     emit.emitOrderCreated({ id: 50, status: 'NEW' });

@@ -78,6 +78,7 @@ export const productsApi = {
   get: (id) => unwrap(apiClient.get(`/products/${id}`)),
   create: (body) => unwrap(apiClient.post('/products', body)),
   update: (id, body) => unwrap(apiClient.put(`/products/${id}`, body)),
+  setVisibility: (id, is_visible) => unwrap(apiClient.patch(`/products/${id}/visibility`, { is_visible })),
   setAvailability: (id, is_available) => unwrap(apiClient.patch(`/products/${id}/availability`, { is_available })),
   adjustStock: (id, change_qty) => unwrap(apiClient.patch(`/products/${id}/stock`, { change_qty })),
   remove: (id) => apiClient.delete(`/products/${id}`),

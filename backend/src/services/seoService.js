@@ -143,7 +143,7 @@ function injectMeta(html, meta) {
 }
 
 async function sitemap(baseUrl) {
-  const products = await productService.listProducts({ includeUnavailable: false });
+  const products = await productService.listProducts({ includeHidden: false, onlyAvailable: true });
   const urls = [
     `<url><loc>${escapeHtml(`${baseUrl}/menyu`)}</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
     ...products.map((p) => `<url><loc>${escapeHtml(`${baseUrl}/product/${p.id}`)}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`),

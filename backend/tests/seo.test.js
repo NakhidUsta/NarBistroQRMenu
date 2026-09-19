@@ -150,7 +150,7 @@ describe('SPA + dinamik SEO', () => {
     const sm = await request(app).get('/sitemap.xml').set('Host', 'menu.example.az');
     expect(sm.headers['content-type']).toContain('xml');
     expect(sm.text).toContain('<loc>http://menu.example.az/product/7</loc>');
-    expect(productService.listProducts).toHaveBeenCalledWith({ includeUnavailable: false });
+    expect(productService.listProducts).toHaveBeenCalledWith({ includeHidden: false, onlyAvailable: true });
     const rb = await request(app).get('/robots.txt').set('Host', 'menu.example.az');
     expect(rb.text).toContain('Sitemap: http://menu.example.az/sitemap.xml');
     expect(rb.text).not.toContain('DOMAIN.com');
