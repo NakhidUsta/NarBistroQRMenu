@@ -37,7 +37,7 @@ async function insertStockMovementTx(transaction, { product_id, change_qty, reas
 
 async function insertOrder(transaction, {
   restaurant_id, table_id, table_session_id, customer_name, phone, note,
-  subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token,
+  subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token, client_request_id,
 }) {
   const result = await new sql.Request(transaction)
     .input('restaurant_id', sql.Int, restaurant_id)
@@ -56,10 +56,11 @@ async function insertOrder(transaction, {
     .input('promo_code_id', sql.Int, promo_code_id || null)
     .input('promo_code', sql.NVarChar(30), promo_code || null)
     .input('access_token', sql.NVarChar(64), access_token)
+    .input('client_request_id', sql.NVarChar(64), client_request_id || null)
     .query(`
-      INSERT INTO orders (restaurant_id, table_id, table_session_id, customer_name, phone, note, subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token)
+      INSERT INTO orders (restaurant_id, table_id, table_session_id, customer_name, phone, note, subtotal, discount, vat, service_fee, delivery_fee, currency, total, promo_code_id, promo_code, access_token, client_request_id)
       OUTPUT INSERTED.*
-      VALUES (@restaurant_id, @table_id, @table_session_id, @customer_name, @phone, @note, @subtotal, @discount, @vat, @service_fee, @delivery_fee, @currency, @total, @promo_code_id, @promo_code, @access_token)
+      VALUES (@restaurant_id, @table_id, @table_session_id, @customer_name, @phone, @note, @subtotal, @discount, @vat, @service_fee, @delivery_fee, @currency, @total, @promo_code_id, @promo_code, @access_token, @client_request_id)
     `);
   return result.recordset[0];
 }
@@ -119,6 +120,13 @@ async function findById(pool, id) {
   return { ...order, items: itemsResult.recordset, history: historyResult.recordset };
 }
 
+async function findIdByClientRequestId(pool, clientRequestId) {
+  const result = await pool.request()
+    .input('cid', sql.NVarChar(64), clientRequestId)
+    .query('SELECT id, phone FROM orders WHERE client_request_id = @cid');
+  return result.recordset[0] || null;
+}
+
 async function findAll(pool, { status, q, date, limit = 200 } = {}) {
   const request = pool.request().input('limit', sql.Int, limit);
   const where = [];
@@ -174,5 +182,6 @@ module.exports = {
   insertStatusHistory,
   updateStatus,
   findById,
+  findIdByClientRequestId,
   findAll,
 };

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCartStore } from '../store/cartStore'
 import { useMenuStore } from '../store/menuStore'
 import { useTableSessionStore } from '../store/tableSessionStore'
 import { useRestaurantStore } from '../store/restaurantStore'
 import { useMyOrdersStore } from '../store/myOrdersStore'
+import { useOutboxStore, newRequestId } from '../store/outboxStore'
 import { useUiStore } from '../store/uiStore'
 import { ordersApi } from '../lib/api'
 import ResponsiveImage from '../components/ResponsiveImage'
@@ -36,6 +37,9 @@ function Cart() {
   const [submitting, setSubmitting] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [priceChange, setPriceChange] = useState(null) // { previous_total, total } — backend qiymət dəyişikliyi aşkar etdi
+  // Bir checkout cəhdinə bir ID: şəbəkə kəsilib təkrar göndərilsə belə backend ikinci sifariş yaratmır
+  const requestId = useRef(newRequestId())
 
   // Menyu canlı yenilənəndə (socket) qiymət dəyişikliyini səbətə tətbiq et və xəbər ver.
   useEffect(() => {
@@ -75,26 +79,52 @@ function Cart() {
   }, [quoteKey])
   const summary = quote || { subtotal: total, discount: 0, service_fee: 0, vat: 0, delivery_fee: 0, total }
 
-  async function placeOrder() {
+  function buildPayload(expectedTotal) {
+    return {
+      table_code: table?.code,
+      customer_name: form.customer_name,
+      phone: form.phone,
+      note: form.note,
+      promo_code: form.promo_code.trim() || undefined,
+      items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+      // müştərinin gördüyü məbləğ — backend cari məbləğlə fərqlənirsə sifariş yaratmayıb bizə xəbər verir
+      expected_total: expectedTotal ?? (quote && !quote.promo_error ? Number(quote.total) : undefined),
+    }
+  }
+
+  // İnternet yoxdur / sorğu şəbəkədə kəsildi: sifariş cihazda saxlanılır, bağlantı qayıdanda avtomatik göndərilir
+  function queueOrder(payload) {
+    useOutboxStore.getState().enqueue(requestId.current, payload, { count: items.reduce((n, i) => n + i.quantity, 0), total: Number(summary.total) })
+    requestId.current = newRequestId()
+    clear()
+    showToast(t('order_queued'))
+    navigate('/orders')
+  }
+
+  async function placeOrder(expectedTotal) {
+    const payload = buildPayload(expectedTotal)
     if (!navigator.onLine) {
-      showToast(t('offline_order'), 'error')
+      setShowModal(false)
+      queueOrder(payload)
       return
     }
     setSubmitting(true)
     try {
-      const order = await ordersApi.create({
-        table_code: table?.code,
-        customer_name: form.customer_name,
-        phone: form.phone,
-        note: form.note,
-        promo_code: form.promo_code.trim() || undefined,
-        items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
-      })
+      const order = await ordersApi.create({ ...payload, client_request_id: requestId.current })
+      requestId.current = newRequestId()
       addMyOrder(order.id, order.access_token)
       clear()
       navigate(`/order/${order.id}?token=${order.access_token}`)
     } catch (err) {
-      showToast(err.response?.data?.error || 'Sifariş göndərilərkən xəta baş verdi', 'error')
+      const data = err.response?.data
+      if (!err.response) {
+        queueOrder(payload) // şəbəkə xətası: sorğu serverə çatmış ola bilər — eyni ID idempotency ilə qorunur
+      } else if (err.response.status === 409 && data?.code === 'PRICE_CHANGED') {
+        setPriceChange({ previous_total: data.previous_total, total: data.total })
+        if (data.breakdown) setQuote((q) => ({ ...(q || {}), ...data.breakdown }))
+      } else {
+        showToast(data?.error || 'Sifariş göndərilərkən xəta baş verdi', 'error')
+      }
     } finally {
       setSubmitting(false)
       setShowModal(false)
@@ -227,6 +257,27 @@ function Cart() {
         </form>
       )}
 
+      {priceChange && (
+        <div className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" role="dialog" aria-label={t('price_changed_title')}>
+          <div className="bg-panel rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+            <h2 className="font-display text-[20px] font-semibold mb-1">{t('price_changed_title')}</h2>
+            <p className="text-[13px] text-muted mb-4">{t('price_changed_body')}</p>
+            <div className="flex justify-between items-baseline mb-1 text-[13px]">
+              <span className="text-muted">{t('price_was')}</span>
+              <span className="line-through text-muted">{Number(priceChange.previous_total).toFixed(2)} ₼</span>
+            </div>
+            <div className="flex justify-between items-baseline mb-5">
+              <span className="text-[13px] font-semibold">{t('price_now')}</span>
+              <span className="font-display text-[22px] font-bold text-burgundy">{Number(priceChange.total).toFixed(2)} ₼</span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setPriceChange(null)}>{t('cancel')}</Button>
+              <Button variant="accent" className="flex-1" onClick={() => { const total = priceChange.total; setPriceChange(null); placeOrder(total) }}>{t('price_confirm')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showModal && (
         <div className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
           <div className="bg-panel rounded-3xl w-full max-w-sm p-6 shadow-2xl">
@@ -249,7 +300,7 @@ function Cart() {
               <Button variant="outline" className="flex-1" onClick={() => setShowModal(false)} disabled={submitting}>
                 {t('cancel')}
               </Button>
-              <Button variant="accent" className="flex-1" onClick={placeOrder} disabled={submitting}>
+              <Button variant="accent" className="flex-1" onClick={() => placeOrder()} disabled={submitting}>
                 {submitting ? t('sending') : t('confirm')}
               </Button>
             </div>

@@ -3,6 +3,8 @@
 --   1) Boş bir "qr_menu" bazası yaradın (CREATE DATABASE qr_menu;)
 --   2) sqlcmd -S localhost -E -C -f 65001 -d qr_menu -i schema.sql
 
+SET QUOTED_IDENTIFIER ON; -- filtrli unikal indeks üçün lazımdır (sqlcmd defoltda OFF)
+GO
 USE qr_menu;
 GO
 
@@ -179,8 +181,12 @@ CREATE TABLE orders (
     promo_code       NVARCHAR(30) NULL,
     note             NVARCHAR(300) NULL,
     access_token     NVARCHAR(64) NOT NULL,
+    client_request_id NVARCHAR(64) NULL,     -- idempotency açarı: eyni sorğunun təkrarı ikinci sifariş yaratmır
     created_at       DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
+GO
+
+CREATE UNIQUE INDEX UX_orders_client_request_id ON orders (client_request_id) WHERE client_request_id IS NOT NULL;
 GO
 
 CREATE TABLE order_items (

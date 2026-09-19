@@ -7,7 +7,9 @@ const AppError = require('../utils/AppError');
 exports.createOrder = asyncHandler(async (req, res) => {
   const validationError = validateCreateOrderBody(req.body);
   if (validationError) throw new AppError(400, validationError);
-  res.status(201).json(await orderService.createOrder(req.body));
+  const order = await orderService.createOrder(req.body);
+  // təkrar (idempotent) sorğuda yeni resurs yaranmayıb → 200
+  res.status(order.replayed ? 200 : 201).json(order);
 });
 
 exports.quoteOrder = asyncHandler(async (req, res) => {

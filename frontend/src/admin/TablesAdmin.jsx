@@ -94,7 +94,7 @@ function TablesAdmin() {
         <h1 className="font-display text-[24px] font-semibold">Masalar / QR kodlar</h1>
       </div>
 
-      <form onSubmit={handleCreate} className="bg-panel rounded-2xl border border-border/60 p-4 flex items-end gap-3 mb-6">
+      <form onSubmit={handleCreate} className="bg-panel rounded-2xl border border-border/60 p-4 flex flex-wrap items-end gap-3 mb-6">
         <div>
           <label className="text-[12px] font-semibold text-muted mb-1 block">Masa adı</label>
           <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Masa 4"

@@ -185,3 +185,17 @@ describe('admin əməliyyatlarının validasiyası', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('POST /api/orders — idempotency/qiymət sahələrinin validasiyası', () => {
+  const valid = { customer_name: 'Ali', phone: '+994501112233', items: [{ product_id: 1, quantity: 1 }] };
+
+  it.each([
+    ['qısa (təxmin edilə bilən) client_request_id', { client_request_id: '123' }],
+    ['xüsusi simvollu client_request_id', { client_request_id: "abc'; DROP TABLE orders;--xxxxxxxx" }],
+    ['mənfi expected_total', { expected_total: -5 }],
+    ['rəqəm olmayan expected_total', { expected_total: 'çox' }],
+  ])('%s rədd edilir (400)', async (_, extra) => {
+    const res = await request(app).post('/api/orders').send({ ...valid, ...extra });
+    expect(res.status).toBe(400);
+  });
+});

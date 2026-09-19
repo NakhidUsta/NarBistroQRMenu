@@ -316,3 +316,68 @@ describe('orderService.createOrder', () => {
     expect(admin.customer_name).toBe('Ali');
   });
 });
+
+describe('orderService.createOrder — idempotency və qiymət dəyişikliyi', () => {
+  const items = [{ product_id: 1, quantity: 2 }, { product_id: 2, quantity: 1 }];
+  const CID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
+  const base = { customer_name: 'Ali', phone: '+994501112233', items };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sql.Transaction.instances.length = 0;
+    restaurantRepository.find.mockResolvedValue(undefined);
+    orderRepository.findIdByClientRequestId.mockResolvedValue(null);
+    orderRepository.insertOrder.mockImplementation(async (tx, o) => ({ id: 10, ...o }));
+    orderRepository.findProductPrice.mockImplementation(async (tx, id) => ({
+      id, price: id === 1 ? 24 : 9, is_available: true, track_inventory: false, stock_quantity: null,
+    }));
+  });
+
+  it('client_request_id sifarişlə birlikdə saxlanılır', async () => {
+    await orderService.createOrder({ ...base, client_request_id: CID });
+    expect(orderRepository.insertOrder).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ client_request_id: CID }));
+  });
+
+  it('eyni ID ilə təkrar sorğu ikinci sifariş yaratmır, mövcudu qaytarır (replayed)', async () => {
+    orderRepository.findIdByClientRequestId.mockResolvedValue({ id: 77, phone: base.phone });
+    orderRepository.findById.mockResolvedValue({ id: 77, access_token: 'tok', total: 57 });
+    const order = await orderService.createOrder({ ...base, client_request_id: CID });
+    expect(order).toMatchObject({ id: 77, access_token: 'tok', replayed: true });
+    expect(orderRepository.insertOrder).not.toHaveBeenCalled();
+    expect(sql.Transaction.instances).toHaveLength(0);
+  });
+
+  it('başqa telefonla eyni ID sifariş tokenini sızdırmır (409)', async () => {
+    orderRepository.findIdByClientRequestId.mockResolvedValue({ id: 77, phone: '+994559998877' });
+    await expect(orderService.createOrder({ ...base, client_request_id: CID })).rejects.toMatchObject({ status: 409 });
+    expect(orderRepository.findById).not.toHaveBeenCalled();
+  });
+
+  it('eyni anda gələn iki sorğu: unikal indeks pozuntusunda mövcud sifariş qaytarılır', async () => {
+    orderRepository.findIdByClientRequestId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 88, phone: base.phone });
+    orderRepository.insertOrder.mockRejectedValueOnce(Object.assign(new Error('dup'), { number: 2601 }));
+    orderRepository.findById.mockResolvedValue({ id: 88, access_token: 'tok2' });
+    const order = await orderService.createOrder({ ...base, client_request_id: CID });
+    expect(order).toMatchObject({ id: 88, replayed: true });
+    expect(sql.Transaction.instances[0].rollback).toHaveBeenCalled();
+  });
+
+  it('gözlənilən məbləğ cari məbləğə bərabərdirsə sifariş yaranır', async () => {
+    const order = await orderService.createOrder({ ...base, expected_total: 57 });
+    expect(order.total).toBe(57);
+  });
+
+  it('qiymət dəyişibsə 409 PRICE_CHANGED verir, sifariş yaranmır və tranzaksiya geri qaytarılır', async () => {
+    const err = await orderService.createOrder({ ...base, expected_total: 50 }).catch((e) => e);
+    expect(err).toMatchObject({ status: 409, details: { code: 'PRICE_CHANGED', previous_total: 50, total: 57 } });
+    expect(orderRepository.insertOrder).not.toHaveBeenCalled();
+    expect(sql.Transaction.instances[0].rollback).toHaveBeenCalled();
+    expect(sql.Transaction.instances[0].commit).not.toHaveBeenCalled();
+  });
+
+  it('expected_total verilməyibsə (köhnə klient) yoxlama aparılmır', async () => {
+    await expect(orderService.createOrder(base)).resolves.toMatchObject({ total: 57 });
+  });
+});

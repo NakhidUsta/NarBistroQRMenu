@@ -58,9 +58,23 @@ async function quote({ table_code, items, promo_code }) {
   return { ...breakdown, currency: settings.currency, items: lines, promo_error };
 }
 
-async function createOrder({ table_code, customer_name, phone, note, items: rawItems, promo_code }) {
+// Eyni client_request_id ilə təkrar sorğu (offline növbə, şəbəkə kəsilməsi, qoşa klik) ikinci sifariş yaratmır — mövcud sifariş qaytarılır.
+// ID-ni bilməyən kənar şəxsin başqasının sifarişinin tokenini ala bilməməsi üçün telefon da uyğun gəlməlidir.
+async function findReplay(pool, clientRequestId, phone) {
+  if (!clientRequestId) return null;
+  const existing = await orderRepository.findIdByClientRequestId(pool, clientRequestId);
+  if (!existing) return null;
+  if (existing.phone !== phone) throw new AppError(409, 'Bu sorğu ID-si artıq istifadə olunub');
+  return { ...(await orderRepository.findById(pool, existing.id)), replayed: true };
+}
+
+const isUniqueViolation = (err) => err && (err.number === 2601 || err.number === 2627);
+
+async function createOrder({ table_code, customer_name, phone, note, items: rawItems, promo_code, client_request_id, expected_total }) {
   const items = mergeItems(rawItems);
   const pool = await poolPromise;
+  const replay = await findReplay(pool, client_request_id, phone);
+  if (replay) return replay;
   let table = null;
   if (table_code) {
     table = await tableRepository.findByCode(table_code);
@@ -102,6 +116,17 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
     const pricing = pricingService.compute({ subtotal, discount, ...settings, isTakeaway: !table });
     const total = pricing.total;
 
+    // Müştərinin gördüyü məbləğ ilə cari (DB) məbləğ fərqlənirsə sifariş yaradılmır — müştəri yeni məbləği təsdiq etməlidir (PDF 3.6)
+    if (expected_total != null && Math.abs(Number(expected_total) - total) > 0.005) {
+      throw new AppError(409, 'Qiymət dəyişib. Sifarişi yeni məbləğlə yeniləmək istəyirsiniz?', {
+        code: 'PRICE_CHANGED',
+        previous_total: Number(expected_total),
+        total,
+        currency: settings.currency,
+        breakdown: pricing,
+      });
+    }
+
     const order = await orderRepository.insertOrder(transaction, {
       restaurant_id: DEFAULT_RESTAURANT_ID,
       table_id: table?.id,
@@ -119,6 +144,7 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
       promo_code_id: promo?.id,
       promo_code: promo?.code,
       access_token: crypto.randomBytes(16).toString('hex'),
+      client_request_id,
     });
 
     for (const row of priceRows) {
@@ -167,6 +193,10 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
       } catch (rollbackErr) {
         console.error('Rollback xətası:', rollbackErr);
       }
+    }
+    if (client_request_id && isUniqueViolation(err)) {
+      const raced = await findReplay(pool, client_request_id, phone);
+      if (raced) return raced;
     }
     throw err;
   }
