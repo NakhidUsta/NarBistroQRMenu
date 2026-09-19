@@ -39,6 +39,7 @@ CREATE TABLE restaurants (
     id                     INT IDENTITY(1,1) PRIMARY KEY,
     name                   NVARCHAR(120) NOT NULL,
     logo_url               NVARCHAR(MAX),
+    favicon_url            NVARCHAR(500) NULL,
     phone                  NVARCHAR(30),
     whatsapp               NVARCHAR(30),
     address                NVARCHAR(250),

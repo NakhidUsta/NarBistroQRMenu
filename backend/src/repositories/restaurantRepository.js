@@ -1,7 +1,7 @@
 const { sql, poolPromise } = require('../config/db');
 
 const SELECT_COLUMNS = `
-  id, name, name_en, name_ru, logo_url, phone, whatsapp, address, google_maps_link, working_hours,
+  id, name, name_en, name_ru, logo_url, favicon_url, phone, whatsapp, address, google_maps_link, working_hours,
   email, about_text, about_text_en, about_text_ru, instagram_link, facebook_link, tiktok_link,
   allow_tableless_orders, theme, vat_percent, service_fee_percent, delivery_fee, currency, created_at
 `;
@@ -22,6 +22,7 @@ async function update(id, body) {
     .input('name_en', sql.NVarChar(120), body.name_en || null)
     .input('name_ru', sql.NVarChar(120), body.name_ru || null)
     .input('logo_url', sql.NVarChar(sql.MAX), body.logo_url || null)
+    .input('favicon_url', sql.NVarChar(500), body.favicon_url || null)
     .input('phone', sql.NVarChar(30), body.phone || null)
     .input('whatsapp', sql.NVarChar(30), body.whatsapp || null)
     .input('address', sql.NVarChar(250), body.address || null)
@@ -42,7 +43,7 @@ async function update(id, body) {
     .input('currency', sql.NVarChar(3), body.currency || 'AZN')
     .query(`
       UPDATE restaurants
-      SET name = @name, name_en = @name_en, name_ru = @name_ru, logo_url = @logo_url, phone = @phone, whatsapp = @whatsapp,
+      SET name = @name, name_en = @name_en, name_ru = @name_ru, logo_url = @logo_url, favicon_url = @favicon_url, phone = @phone, whatsapp = @whatsapp,
           address = @address, google_maps_link = @google_maps_link, working_hours = @working_hours,
           email = @email, about_text = @about_text, about_text_en = @about_text_en, about_text_ru = @about_text_ru,
           instagram_link = @instagram_link, facebook_link = @facebook_link, tiktok_link = @tiktok_link,

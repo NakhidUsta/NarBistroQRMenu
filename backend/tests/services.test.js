@@ -448,3 +448,22 @@ describe('orderService.hasAccess (socket otağı üçün token yoxlaması)', () 
     expect(await orderService.hasAccess(999, 'x'.repeat(32))).toBe(false);
   });
 });
+
+describe('restaurantService: şəkil linkləri (loqo/favicon)', () => {
+  const restaurantService = require('../src/services/restaurantService');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    restaurantRepository.update.mockImplementation(async (id, b) => ({ id, ...b }));
+  });
+
+  it('düzgün /uploads və https linkləri qəbul edilir, boş dəyər icazəlidir', async () => {
+    await expect(restaurantService.updateRestaurant({ name: 'R', logo_url: '/uploads/m-1-aaaaaaaa.jpg', favicon_url: 'https://cdn.x/f.png' })).resolves.toBeDefined();
+    await expect(restaurantService.updateRestaurant({ name: 'R', logo_url: '', favicon_url: null })).resolves.toBeDefined();
+  });
+
+  it.each(['javascript:alert(1)', 'data:image/svg+xml,<svg onload=alert(1)>', '/uploads/../secret', 'x'.repeat(501)])('favicon %s rədd edilir (400)', async (bad) => {
+    await expect(restaurantService.updateRestaurant({ name: 'R', favicon_url: bad })).rejects.toMatchObject({ status: 400 });
+    expect(restaurantRepository.update).not.toHaveBeenCalled();
+  });
+});

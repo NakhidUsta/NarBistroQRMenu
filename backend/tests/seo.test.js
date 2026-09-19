@@ -156,6 +156,19 @@ describe('SPA + dinamik SEO', () => {
     expect(rb.text).not.toContain('DOMAIN.com');
   });
 
+  it('favicon admin paneldən təyin olunubsa köhnə ikon əvəzlənir, yoxdursa standart ikon qalır', async () => {
+    const withIcon = await request(app).get('/menyu').set('Host', 'menu.example.az');
+    expect(withIcon.text).toContain('href="/favicon.svg"'); // təyin olunmayıb → standart
+    expect(withIcon.text.match(/rel="icon"/g)).toHaveLength(1);
+
+    seoService.clearCache();
+    restaurantService.getRestaurant.mockResolvedValue({ ...RESTAURANT, favicon_url: '/uploads/m-1789815057513-aaaaaaaa.png' });
+    const res = await request(app).get('/product/7').set('Host', 'menu.example.az');
+    expect(res.text).toContain('<link rel="icon" href="http://menu.example.az/uploads/m-1789815057513-aaaaaaaa.png" />');
+    expect(res.text).not.toContain('/favicon.svg');
+    expect(res.text.match(/rel="icon"/g)).toHaveLength(1);
+  });
+
   it('dist yoxdursa router heç nə etmir (dev rejimi)', async () => {
     const dev = express();
     dev.use(createSpaRouter(path.join(os.tmpdir(), 'yoxdur-' + Date.now())));

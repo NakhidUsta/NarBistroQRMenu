@@ -4,7 +4,8 @@ import { useUiStore } from '../store/uiStore'
 import Button from '../components/Button'
 import ImageUploadField from './ImageUploadField'
 import TranslationTabs from './TranslationTabs'
-import { parseTheme, DEFAULT_THEME, FONT_OPTIONS } from '../lib/theme'
+import { parseTheme, DEFAULT_THEME, FONT_OPTIONS, applyFavicon } from '../lib/theme'
+import { imageVariants, resolveUploadUrl } from '../lib/api'
 
 const fieldCls = 'w-full bg-cream border border-border rounded-lg px-3 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-burgundy/30'
 
@@ -104,7 +105,9 @@ function Settings() {
     e.preventDefault()
     setSaving(true)
     try {
-      await update(form)
+      const saved = await update(form)
+      // brauzer tabındakı ikon dərhal yenilənir (müştəri səhifələrində socket ilə avtomatik gəlir)
+      applyFavicon(saved?.favicon_url ? resolveUploadUrl(imageVariants(saved.favicon_url)?.thumb || saved.favicon_url) : null)
       showToast('Ayarlar saxlanıldı')
     } catch (err) {
       showToast(err.response?.data?.error || 'Xəta baş verdi', 'error')
@@ -118,6 +121,7 @@ function Settings() {
       <h1 className="font-display text-[24px] font-semibold mb-5">Restoran ayarları</h1>
       <form onSubmit={handleSubmit} className="bg-panel rounded-2xl border border-border/60 p-6 flex flex-col gap-4">
         <ImageUploadField label="Loqo" value={form.logo_url} onChange={(url) => setForm({ ...form, logo_url: url })} />
+        <ImageUploadField label="Favicon (brauzer tabında görünən kiçik ikon — kvadrat şəkil)" value={form.favicon_url} onChange={(url) => setForm({ ...form, favicon_url: url })} />
 
         <TranslationTabs
           fields={[{ key: 'name', label: 'Restoran adı', required: true }]}

@@ -50,7 +50,8 @@ function restaurantMeta(restaurant, baseUrl) {
     ...(restaurant.working_hours && { openingHours: restaurant.working_hours }),
     ...(sameAs.length && { sameAs }),
   };
-  return { title, description, image, url: `${baseUrl}/menyu`, type: 'website', jsonLd };
+  const favicon = restaurant.favicon_url ? absolute(baseUrl, restaurant.favicon_url) : null;
+  return { title, description, image, url: `${baseUrl}/menyu`, type: 'website', jsonLd, favicon };
 }
 
 function productMeta(product, restaurant, baseUrl) {
@@ -64,6 +65,7 @@ function productMeta(product, restaurant, baseUrl) {
     image,
     url,
     type: 'product',
+    favicon: restaurant.favicon_url ? absolute(baseUrl, restaurant.favicon_url) : null,
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'MenuItem',
@@ -111,6 +113,7 @@ const HEAD_TAG_PATTERNS = [
   /<meta\s+name="description"[^>]*>\s*/gi,
   /<meta\s+name="robots"[^>]*>\s*/gi,
   /<link\s+rel="canonical"[^>]*>\s*/gi,
+  /<link\s+rel="icon"[^>]*>\s*/gi,
   /<meta\s+property="og:[^"]*"[^>]*>\s*/gi,
   /<meta\s+name="twitter:[^"]*"[^>]*>\s*/gi,
 ];
@@ -127,6 +130,8 @@ function injectMeta(html, meta) {
     `<meta name="description" content="${d}" />`,
     meta.noindex ? '<meta name="robots" content="noindex, nofollow" />' : '',
     `<link rel="canonical" href="${url}" />`,
+    // admin paneldən təyin olunmuş favicon; yoxdursa standart ikon (yuxarıda silinmiş olsa da bərpa edilir)
+    meta.favicon ? `<link rel="icon" href="${escapeHtml(meta.favicon)}" />` : '<link rel="icon" type="image/svg+xml" href="/favicon.svg" />',
     `<meta property="og:type" content="${escapeHtml(meta.type)}" />`,
     `<meta property="og:title" content="${t}" />`,
     `<meta property="og:description" content="${d}" />`,

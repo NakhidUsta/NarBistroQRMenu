@@ -12,7 +12,8 @@ import LanguageSwitcher from './LanguageSwitcher'
 import BottomNav from './BottomNav'
 import OfflineBanner from './OfflineBanner'
 import ReviewsSection from './ReviewsSection'
-import { applyTheme, resetTheme, parseTheme } from '../lib/theme'
+import { applyTheme, resetTheme, parseTheme, applyFavicon } from '../lib/theme'
+import { imageVariants, resolveUploadUrl } from '../lib/api'
 import ResponsiveImage from './ResponsiveImage'
 import ShareButton from './ShareButton'
 
@@ -40,6 +41,10 @@ function PublicLayout() {
   const isSubPage = location.pathname !== '/menyu' && location.pathname !== '/'
 
   const theme = parseTheme(restaurant?.theme)
+
+  useEffect(() => {
+    applyFavicon(restaurant?.favicon_url ? resolveUploadUrl(imageVariants(restaurant.favicon_url)?.thumb || restaurant.favicon_url) : null)
+  }, [restaurant?.favicon_url])
 
   useEffect(() => {
     applyTheme(restaurant?.theme)

@@ -57,3 +57,24 @@ export function applyTheme(rawTheme) {
   loadFont(t.font)
   root.setProperty('--font-display', `"${t.font}", serif`)
 }
+
+// Restoran favicon-u (admin paneldən). Təyin olunmayıbsa index.html-dəki standart ikon saxlanılır.
+const DEFAULT_ICON = '/favicon.svg'
+
+export function applyFavicon(url) {
+  if (typeof document === 'undefined') return
+  let link = document.querySelector('link[rel="icon"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  if (!url) {
+    link.type = 'image/svg+xml'
+    link.href = DEFAULT_ICON
+    return
+  }
+  const ext = url.split('?')[0].split('.').pop().toLowerCase()
+  link.type = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }[ext] || ''
+  link.href = url
+}

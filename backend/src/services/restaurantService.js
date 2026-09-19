@@ -45,7 +45,19 @@ async function getRestaurant() {
   return restaurant;
 }
 
+// Yalnız öz yükləmələrimiz (/uploads/...) və http(s) şəkil linkləri — "javascript:" və s. rədd edilir
+const IMAGE_URL = /^(\/uploads\/[\w.-]+|https?:\/\/\S+)$/;
+
+function validateImages(body) {
+  for (const key of ['logo_url', 'favicon_url']) {
+    if (body[key] && (typeof body[key] !== 'string' || body[key].length > 500 || !IMAGE_URL.test(body[key]))) {
+      throw new AppError(400, `${key} düzgün şəkil linki deyil`);
+    }
+  }
+}
+
 async function updateRestaurant(body) {
+  validateImages(body);
   const restaurant = await restaurantRepository.update(DEFAULT_RESTAURANT_ID, { ...body, theme: sanitizeTheme(body.theme) });
   if (!restaurant) throw new AppError(404, 'Restoran tapılmadı');
   emitRestaurantUpdated(restaurant);
