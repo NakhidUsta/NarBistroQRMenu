@@ -134,7 +134,8 @@ CREATE TABLE products (
     allergens_en      NVARCHAR(MAX) NULL,
     allergens_ru      NVARCHAR(MAX) NULL,
     prep_time_minutes INT NULL,
-    is_available      BIT NOT NULL DEFAULT 1,
+    is_available      BIT NOT NULL DEFAULT 1,   -- 0 = "Bitib" (menyuda görünür, sifariş olunmur)
+    is_visible        BIT NOT NULL DEFAULT 1,   -- 0 = müştərilərdən tamamilə gizlidir
     is_popular        BIT NOT NULL DEFAULT 0,
     sort_order        INT NOT NULL DEFAULT 0,
     stock_quantity    INT NULL,               -- NULL = stok izlənmir (limitsiz)
