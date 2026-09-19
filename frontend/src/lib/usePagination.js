@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 // Yaddaşdakı siyahı üçün səhifələmə (admin siyahıları). `resetKey` dəyişəndə (axtarış/filtr) 1-ci səhifəyə qayıdır;
 // element silinib səhifə sayı azalsa cari səhifə avtomatik son səhifəyə çəkilir.
-export function usePagination(items, { pageSize: initialSize = 10, resetKey } = {}) {
+export function usePagination(items, { pageSize: initialSize = 10, resetKey, scroll = true } = {}) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(initialSize)
   const total = items.length
@@ -19,7 +19,7 @@ export function usePagination(items, { pageSize: initialSize = 10, resetKey } = 
 
   function goTo(next) {
     setPage(Math.min(Math.max(1, next), pageCount))
-    if (typeof window !== 'undefined') window.scrollTo?.({ top: 0, behavior: 'smooth' })
+    if (scroll && typeof window !== 'undefined') window.scrollTo?.({ top: 0, behavior: 'smooth' })
   }
 
   return { page: current, pageCount, pageSize, setPageSize, goTo, slice, total, from, to }

@@ -70,39 +70,78 @@ describe('orderStore: kursor səhifələmə', () => {
   })
 })
 
-describe('Menu: tədricən göstərmə (sonsuz sürüşdürmə)', () => {
+describe('Menu: nömrəli səhifələmə (məhsullar və kateqoriyalar)', () => {
   const products = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, category_id: 1, name: `Yemək ${i + 1}`, price: 5, is_available: true, allergen_ids: [] }))
+  const categories = Array.from({ length: 15 }, (_, i) => ({ id: i + 1, name: `Kat ${i + 1}`, sort_order: i + 1 }))
 
   beforeEach(() => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn()
     useMenuStore.setState({ products, categories: [{ id: 1, name: 'Əsas', sort_order: 1 }], allergens: [], status: 'ready' })
     useTableSessionStore.setState({ table: null })
   })
 
   const renderMenu = () => render(<MemoryRouter><Menu /></MemoryRouter>)
 
-  it('əvvəl 12 məhsul göstərilir, "Daha çox göstər" hər dəfə 12 əlavə edir', async () => {
+  it('səhifədə 12 yemək; nömrələr və ‹ › ilə keçid, "1–12 / 30" xülasəsi', async () => {
     renderMenu()
     expect(screen.getAllByRole('link', { name: /Yemək/ })).toHaveLength(12)
-    await userEvent.click(screen.getByRole('button', { name: 'Daha çox göstər' }))
-    expect(screen.getAllByRole('link', { name: /Yemək/ })).toHaveLength(24)
-    await userEvent.click(screen.getByRole('button', { name: 'Daha çox göstər' }))
-    expect(screen.getAllByRole('link', { name: /Yemək/ })).toHaveLength(30)
-    expect(screen.queryByRole('button', { name: 'Daha çox göstər' })).toBeNull()
+    expect(screen.getByTestId('menu-pagination-summary')).toHaveTextContent('1–12 / 30')
+    expect(screen.getByRole('button', { name: 'Əvvəlki səhifə' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Səhifə 2' }))
+    expect(screen.getByText('Yemək 13')).toBeInTheDocument()
+    expect(screen.queryByText('Yemək 1')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Səhifə 2' })).toHaveAttribute('aria-current', 'page')
+    expect(window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: 'Növbəti səhifə' }))
+    expect(screen.getAllByRole('link', { name: /Yemək/ })).toHaveLength(6)
+    expect(screen.getByTestId('menu-pagination-summary')).toHaveTextContent('25–30 / 30')
+    expect(screen.getByRole('button', { name: 'Növbəti səhifə' })).toBeDisabled()
   })
 
-  it('axtarış dəyişəndə yenidən ilk səhifədən başlayır', async () => {
+  it('axtarış dəyişəndə yenidən 1-ci səhifədən başlayır', async () => {
     renderMenu()
-    await userEvent.click(screen.getByRole('button', { name: 'Daha çox göstər' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Səhifə 3' }))
     await userEvent.type(screen.getByPlaceholderText(/axtar/i), 'Yemək 2')
-    // "Yemək 2", "Yemək 20"..."Yemək 29" = 11 nəticə → hamısı ilk səhifəyə sığır
+    // "Yemək 2", "Yemək 20"..."Yemək 29" = 11 nəticə → bir səhifə, səhifələmə paneli yoxdur
     await waitFor(() => expect(screen.getAllByRole('link', { name: /Yemək/ })).toHaveLength(11))
-    expect(screen.queryByRole('button', { name: 'Daha çox göstər' })).toBeNull()
+    expect(screen.queryByTestId('menu-pagination')).toBeNull()
   })
 
-  it('kiçik siyahıda düymə göstərilmir', () => {
+  it('kiçik siyahıda səhifələmə paneli göstərilmir', () => {
     useMenuStore.setState({ products: products.slice(0, 5) })
     renderMenu()
-    expect(screen.queryByRole('button', { name: 'Daha çox göstər' })).toBeNull()
+    expect(screen.queryByTestId('menu-pagination')).toBeNull()
+  })
+
+  it('kateqoriya tab-ları səhifələnir: "Hamısı" sabit qalır, ‹ › ilə digər kateqoriyalar', async () => {
+    useMenuStore.setState({ categories, products: categories.map((c) => ({ id: 100 + c.id, category_id: c.id, name: `Məhsul ${c.id}`, price: 5, is_available: true, allergen_ids: [] })) })
+    renderMenu()
+    // jsdom eni 1024 → kompüter: səhifədə 6 kateqoriya, cəmi 15 → 3 səhifə
+    expect(screen.getByTestId('category-page')).toHaveTextContent('1/3')
+    expect(screen.getByRole('button', { name: 'Hamısı' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kat 6' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kat 7' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Əvvəlki kateqoriyalar' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Növbəti kateqoriyalar' }))
+    expect(screen.getByTestId('category-page')).toHaveTextContent('2/3')
+    expect(screen.getByRole('button', { name: 'Hamısı' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kat 6' })).toBeNull()
+
+    // 2-ci səhifədəki kateqoriya seçilir → yalnız onun məhsulları
+    await userEvent.click(screen.getByRole('button', { name: 'Kat 9' }))
+    expect(screen.getAllByRole('link', { name: /Məhsul/ })).toHaveLength(1)
+    expect(screen.getByText('Məhsul 9')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Növbəti kateqoriyalar' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Növbəti kateqoriyalar' }).closest('div').querySelector('button[aria-label="Əvvəlki kateqoriyalar"]'))
+    expect(screen.getByTestId('category-page')).toHaveTextContent('2/3')
+  })
+
+  it('az kateqoriya olanda tab səhifələməsi göstərilmir', () => {
+    useMenuStore.setState({ categories: categories.slice(0, 4) })
+    renderMenu()
+    expect(screen.queryByTestId('category-page')).toBeNull()
   })
 })
 

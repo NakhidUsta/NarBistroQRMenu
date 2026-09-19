@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMenuStore } from '../store/menuStore'
 import { useTableSessionStore } from '../store/tableSessionStore'
@@ -6,8 +6,8 @@ import { useUiStore } from '../store/uiStore'
 import { useT, useLocalize } from '../lib/i18n'
 import CategoryTabs from '../components/CategoryTabs'
 import ProductCard from '../components/ProductCard'
-import LoadMore from '../components/LoadMore'
-import { useVisibleCount } from '../lib/useInfinite'
+import MenuPagination from '../components/MenuPagination'
+import { usePagination } from '../lib/usePagination'
 import { useAllergenFilterStore, hidesProduct } from '../store/allergenFilterStore'
 
 const PAGE_SIZE = 12
@@ -64,8 +64,13 @@ function Menu() {
   const visible = useMemo(() => filtered.filter((p) => !hidesProduct(p, avoid)), [filtered, avoid])
   const hiddenCount = filtered.length - visible.length
 
-  // Uzun siyahı tədricən göstərilir (sonsuz sürüşdürmə); kateqoriya/axtarış/filtr dəyişəndə yenidən başlayır
-  const { count, hasMore, more, sentinelRef } = useVisibleCount(visible.length, PAGE_SIZE, `${activeCategory}|${query}|${avoid.join(',')}`)
+  // Nömrəli səhifələmə (səhifədə 12 yemək); kateqoriya/axtarış/filtr dəyişəndə 1-ci səhifəyə qayıdır
+  const pagination = usePagination(visible, { pageSize: PAGE_SIZE, resetKey: `${activeCategory}|${query}|${avoid.join(',')}`, scroll: false })
+  const gridRef = useRef(null)
+  function goToPage(p) {
+    pagination.goTo(p)
+    gridRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="pb-2">
@@ -127,7 +132,7 @@ function Menu() {
         </div>
       )}
 
-      <div className="px-5 md:px-8 flex flex-col gap-3.5 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 pb-4">
+      <div ref={gridRef} className="scroll-mt-20 md:scroll-mt-24 px-5 md:px-8 flex flex-col gap-3.5 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 pb-4">
         {status === 'loading' && (
           <>
             {[1, 2, 3].map((i) => (
@@ -161,11 +166,11 @@ function Menu() {
             <p className="text-[13px] text-muted">{t('not_found_body')}</p>
           </div>
         )}
-        {visible.slice(0, count).map((product) => (
+        {pagination.slice.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
-        <LoadMore sentinelRef={sentinelRef} hasMore={hasMore} onMore={more} label={t('load_more')} className="md:col-span-full" />
       </div>
+      <MenuPagination pagination={{ ...pagination, goTo: goToPage }} />
     </div>
   )
 }
