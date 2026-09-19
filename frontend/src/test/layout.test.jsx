@@ -129,3 +129,13 @@ describe('masa etiketi', () => {
     expect(screen.queryByText(/MASA — MASA 1/i)).toBeNull()
   })
 })
+
+describe('tema şrifti', () => {
+  it('Roman serif (Times New Roman) sistem şrifti kimi tətbiq olunur — Google Fonts yüklənmir', async () => {
+    const { applyTheme, FONT_OPTIONS } = await import('../lib/theme')
+    expect(FONT_OPTIONS).toContain('Times New Roman')
+    applyTheme({ font: 'Times New Roman' })
+    expect(document.documentElement.style.getPropertyValue('--font-display')).toContain('"Times New Roman", Times')
+    expect(document.head.querySelector('link[href*="fonts.googleapis.com"][href*="Times"]')).toBeNull()
+  })
+})

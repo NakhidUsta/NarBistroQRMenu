@@ -4,7 +4,7 @@ const { emitRestaurantUpdated } = require('../sockets/emit');
 
 const DEFAULT_RESTAURANT_ID = 1;
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const FONTS = ['Fraunces', 'Playfair Display', 'Cormorant Garamond', 'DM Serif Display', 'Inter'];
+const FONTS = ['Fraunces', 'Playfair Display', 'Cormorant Garamond', 'DM Serif Display', 'Times New Roman', 'Inter'];
 const COLOR_KEYS = ['primary', 'background', 'button'];
 const TEXT_KEYS = { hero_image_url: 500, hero_title: 120, hero_subtitle: 240, banner_text: 200, footer_text: 400 };
 

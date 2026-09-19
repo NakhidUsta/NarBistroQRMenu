@@ -1,4 +1,6 @@
-export const FONT_OPTIONS = ['Fraunces', 'Playfair Display', 'Cormorant Garamond', 'DM Serif Display', 'Inter']
+// 'Times New Roman' — klassik (roman) serif; sistem şriftidir, yükləmə tələb etmir
+export const FONT_OPTIONS = ['Fraunces', 'Playfair Display', 'Cormorant Garamond', 'DM Serif Display', 'Times New Roman', 'Inter']
+const SYSTEM_FONTS = ['Times New Roman']
 
 export const DEFAULT_THEME = {
   primary: '#5c1a2e',
@@ -29,7 +31,7 @@ function shade(hex, factor) {
 let fontLink
 
 function loadFont(font) {
-  if (!font || font === 'Inter' || font === 'Fraunces') return
+  if (!font || font === 'Inter' || font === 'Fraunces' || SYSTEM_FONTS.includes(font)) return
   const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font).replace(/%20/g, '+')}:wght@400;500;600;700&display=swap`
   if (!fontLink) {
     fontLink = document.createElement('link')
@@ -55,7 +57,7 @@ export function applyTheme(rawTheme) {
   root.setProperty('--color-cream', t.background)
   root.setProperty('--color-btn', t.button)
   loadFont(t.font)
-  root.setProperty('--font-display', `"${t.font}", serif`)
+  root.setProperty('--font-display', SYSTEM_FONTS.includes(t.font) ? `"${t.font}", Times, "Liberation Serif", serif` : `"${t.font}", serif`)
 }
 
 // Restoran favicon-u (admin paneldən). Təyin olunmayıbsa index.html-dəki standart ikon saxlanılır.

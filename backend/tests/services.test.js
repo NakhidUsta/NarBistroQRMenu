@@ -166,6 +166,10 @@ describe('restaurantService.sanitizeTheme (CSS/HTML inyeksiyasına qarşı)', ()
     expect(() => sanitizeTheme({ background: '#12' })).toThrow();
   });
 
+  it('Roman serif (Times New Roman) icazəli şriftdir', () => {
+    expect(JSON.parse(sanitizeTheme({ font: 'Times New Roman' })).font).toBe('Times New Roman');
+  });
+
   it('siyahıda olmayan fontu rədd edir', () => {
     expect(() => sanitizeTheme({ font: 'Comic Sans; }' })).toThrow();
   });
