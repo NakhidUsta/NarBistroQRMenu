@@ -15,6 +15,9 @@ import ProtectedAdminRoute from './admin/ProtectedAdminRoute'
 // Müştəri səhifələri əsas paketdədir (oflayn menyu üçün lazımdır — service worker onları birinci girişdə keşləyir).
 // Admin/mətbəx səhifələri yalnız işçilər üçündür və çox böyükdür — ayrı chunk-larda tələb olunanda yüklənir (lazy loading).
 const Login = lazy(() => import('./admin/Login'))
+const ForgotPassword = lazy(() => import('./admin/ForgotPassword'))
+const ResetPassword = lazy(() => import('./admin/ResetPassword'))
+const VerifyEmail = lazy(() => import('./admin/VerifyEmail'))
 const AdminLayout = lazy(() => import('./admin/AdminLayout'))
 const Dashboard = lazy(() => import('./admin/Dashboard'))
 const CategoriesAdmin = lazy(() => import('./admin/CategoriesAdmin'))
@@ -58,6 +61,9 @@ function App() {
           </Route>
 
           <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+          <Route path="/admin/reset-password" element={<ResetPassword />} />
+          <Route path="/admin/verify-email" element={<VerifyEmail />} />
           <Route element={<ProtectedAdminRoute />}>
             <Route path="/kitchen" element={<KitchenDisplay />} />
           </Route>

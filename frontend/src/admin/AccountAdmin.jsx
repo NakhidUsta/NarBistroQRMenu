@@ -22,6 +22,20 @@ function AccountAdmin() {
   const [form, setForm] = useState({ current: '', next: '', repeat: '' })
   const [saving, setSaving] = useState(false)
   const [sessions, setSessions] = useState([])
+  const [mailBusy, setMailBusy] = useState('')
+
+  // E-poçt təsdiqi və SMTP sınağı (Gmail). Xəta mesajı serverdən gəlir (məs. "Tətbiq şifrəsi lazımdır")
+  async function mailAction(kind) {
+    setMailBusy(kind)
+    try {
+      const { message } = await (kind === 'verify' ? authApi.sendVerification() : authApi.testMail())
+      showToast(message)
+    } catch (err) {
+      showToast(err.response?.data?.error || 'E-poçt göndərilmədi', 'error')
+    } finally {
+      setMailBusy('')
+    }
+  }
 
   const loadSessions = useCallback(() => authApi.sessions().then(setSessions).catch(() => {}), [])
   useEffect(() => {
@@ -68,6 +82,29 @@ function AccountAdmin() {
     <div className="max-w-md">
       <h1 className="font-display text-[24px] font-semibold mb-1">Hesabım</h1>
       <p className="text-[13px] text-muted mb-5">{admin?.email} · <span className="font-semibold text-burgundy">{admin?.role}</span></p>
+
+      <div className="bg-panel rounded-2xl border border-border/60 p-5 mb-5" data-testid="email-section">
+        <h2 className="font-semibold text-[15px] mb-1">E-poçt</h2>
+        <p className="text-[13px] mb-3">
+          {admin?.email} ·{' '}
+          {admin?.email_verified
+            ? <span className="font-semibold text-success">✓ təsdiqlənib</span>
+            : <span className="font-semibold text-gold">təsdiqlənməyib</span>}
+        </p>
+        <p className="text-[12px] text-muted mb-3">Təsdiqlənmiş e-poçt ilə şifrəni unutduqda giriş linki ala bilərsiniz.</p>
+        <div className="flex flex-wrap gap-2">
+          {!admin?.email_verified && (
+            <Button type="button" variant="outline" disabled={mailBusy === 'verify'} onClick={() => mailAction('verify')}>
+              {mailBusy === 'verify' ? 'Göndərilir...' : 'Təsdiq məktubu göndər'}
+            </Button>
+          )}
+          {admin?.role === 'OWNER' && (
+            <Button type="button" variant="outline" disabled={mailBusy === 'test'} onClick={() => mailAction('test')}>
+              {mailBusy === 'test' ? 'Göndərilir...' : 'Sınaq məktubu göndər (SMTP yoxla)'}
+            </Button>
+          )}
+        </div>
+      </div>
 
       <form onSubmit={changePassword} className="bg-panel rounded-2xl border border-border/60 p-5 flex flex-col gap-3 mb-5">
         <h2 className="font-semibold text-[15px]">Şifrəni dəyiş</h2>

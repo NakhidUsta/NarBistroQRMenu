@@ -83,6 +83,16 @@ const loginLimiter = rateLimit({
 });
 app.use('/api/auth/login', loginLimiter);
 
+// E-poçt göndərən/token yoxlayan endpoint-lər: IP üzrə sərt limit (spam məktub və token təxminetməyə qarşı)
+const emailFlowLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.EMAIL_FLOW_LIMIT) || 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Çox sayda sorğu göndərildi, 15 dəqiqə sonra yenidən cəhd edin' },
+});
+app.use(['/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/test-mail', '/api/auth/send-verification'], emailFlowLimiter);
+
 app.get('/api/health', async (req, res) => {
   const started = Date.now();
   try {

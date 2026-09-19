@@ -1,5 +1,6 @@
 const authService = require('../services/authService');
 const auditService = require('../services/auditService');
+const accountEmailService = require('../services/accountEmailService');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 
@@ -86,4 +87,46 @@ exports.revokeSession = asyncHandler(async (req, res) => {
   await authService.revokeSession(req.admin.id, id);
   await auditService.log(req, 'auth.session_revoke', 'admin_sessions', id, null, null);
   res.status(204).send();
+});
+
+// E-poçt xidməti qurulubmu (şifrə sıfırlama düyməsini göstərmək üçün). Yalnız bool — həssas məlumat yoxdur.
+exports.config = (req, res) => {
+  res.json({ password_reset: accountEmailService.isAvailable() });
+};
+
+const FORGOT_MESSAGE = 'Bu e-poçt ünvanı qeydiyyatlıdırsa, şifrə sıfırlama linki göndərildi. Gələnlər qutusunu (və spam qovluğunu) yoxlayın.';
+
+// Hesabın mövcudluğu açıqlanmır: e-poçt qeydiyyatlı olsa da olmasa da eyni cavab (200) qaytarılır
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+  if (!email || email.length > 150 || !email.includes('@')) throw new AppError(400, 'Düzgün e-poçt ünvanı daxil edin');
+  await accountEmailService.requestPasswordReset(email);
+  res.json({ message: FORGOT_MESSAGE });
+});
+
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const { token, new_password } = req.body || {};
+  const user = await accountEmailService.resetPassword(token, new_password);
+  req.admin = { id: user.id, email: user.email };
+  await auditService.log(req, 'auth.password_reset_email', 'admin_users', user.id, null, null);
+  clearSessionCookies(res);
+  res.json({ message: 'Şifrə dəyişdirildi. İndi yeni şifrə ilə daxil ola bilərsiniz.' });
+});
+
+exports.sendVerification = asyncHandler(async (req, res) => {
+  await accountEmailService.sendVerification(req.admin.id);
+  res.json({ message: 'Təsdiq məktubu göndərildi — e-poçtunuzu yoxlayın.' });
+});
+
+exports.verifyEmail = asyncHandler(async (req, res) => {
+  const user = await accountEmailService.verifyEmail(req.body?.token);
+  req.admin = { id: user.id, email: user.email };
+  await auditService.log(req, 'auth.email_verified', 'admin_users', user.id, null, { email: user.email });
+  res.json({ message: 'E-poçt təsdiqləndi.' });
+});
+
+// SMTP ayarlarını yoxlamaq: sınaq məktubu öz ünvanına (yalnız OWNER)
+exports.testMail = asyncHandler(async (req, res) => {
+  const { to } = await accountEmailService.sendTestMail(req.admin.id);
+  res.json({ message: `Sınaq məktubu göndərildi: ${to}` });
 });

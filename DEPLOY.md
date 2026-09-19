@@ -30,6 +30,8 @@ ADMIN_SESSION_HOURS=12                     # refresh token-in boş qalma müddə
 ADMIN_SESSION_MAX_DAYS=7                   # sessiyanın mütləq ömrü (gün)
 ACCESS_TOKEN_MINUTES=15                    # access token ömrü
 LOG_DIR=/var/log/qrmenu                    # xəta jurnalı (defolt: backend/logs)
+SMTP_USER=restoran@gmail.com               # şifrə sıfırlama / təsdiq məktubları (Gmail)
+SMTP_PASS=<16 simvollu Google Tətbiq şifrəsi>   # adi Gmail şifrəsi işləmir; README → "E-poçt / Gmail"
 BACKUP_DIR=/var/backups/qrmenu             # SQL Server maşınında yazıla bilən yol
 ```
 
@@ -106,6 +108,7 @@ Refresh cookie-si (`qrmenu_refresh`) yalnız `/api/auth` yoluna göndərilir —
 - Səhifənin mənbəyində (`view-source:`) `og:title`, `og:image` və `application/ld+json` restoranınızın məlumatlarıdır; `/sitemap.xml` məhsulları göstərir, `/robots.txt` real domeni.
 - WhatsApp/Instagram-da məhsul linki (`/product/1`) şəkil və qiymətlə önizlənir. (Köhnə önizləmə keşlənibsə Facebook Sharing Debugger ilə yeniləyin.)
 - Admin girişi işləyir, sifariş verildikdə admin/mətbəx ekranında canlı görünür (WebSocket keçir). `/api/health` → `sockets.admin_clients` panel açıq olanda 1+ göstərir.
+- Hesabım → **Sınaq məktubu göndər** uğurludur (Gmail SMTP işləyir; server 465 portuna çıxış icazəsi verməlidir), "Şifrəni unutdunuz?" məktubundakı link real domenlə açılır (`PUBLIC_URL`).
 - 15 dəqiqədən sonra admin panel çıxış etdirmir (səssiz refresh işləyir); Hesabım → Aktiv cihazlarda cari cihaz görünür.
 - `npm run backup` əl ilə işlədilir və gündəlik tapşırığa (cron / `schtasks`) əlavə olunur; bir dəfə bərpa sınağı edin.
 - Firewall: yalnız 80/443 açıq; SQL Server (1433) internetə **açıq deyil**.
@@ -119,4 +122,4 @@ cd ../frontend && npm ci && npm run build
 pm2 restart qrmenu
 ```
 
-Yeniləmədən əvvəl `backend/database/migrations/` qovluğunda əvvəlki versiyanızdan sonrakı nömrələri (011–015: idempotency, bildiriş statusu, sessiyalar, görünürlük, favicon) tətbiq edin; əl ilə `sqlcmd` işlədirsinizsə `-I` bayrağını unutmayın. Miqrasiyalar əlavə-yönlüdür və təkrar işlədilə bilər (`IF NOT EXISTS`).
+Yeniləmədən əvvəl `backend/database/migrations/` qovluğunda əvvəlki versiyanızdan sonrakı nömrələri (011–016: idempotency, bildiriş statusu, sessiyalar, görünürlük, favicon, e-poçt tokenləri) tətbiq edin; əl ilə `sqlcmd` işlədirsinizsə `-I` bayrağını unutmayın. Miqrasiyalar əlavə-yönlüdür və təkrar işlədilə bilər (`IF NOT EXISTS`).

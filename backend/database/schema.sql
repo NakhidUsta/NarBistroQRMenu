@@ -10,6 +10,7 @@ GO
 
 -- ============ CƏDVƏLLƏR ============
 
+IF OBJECT_ID('email_tokens', 'U') IS NOT NULL DROP TABLE email_tokens;
 IF OBJECT_ID('refresh_tokens', 'U') IS NOT NULL DROP TABLE refresh_tokens;
 IF OBJECT_ID('admin_sessions', 'U') IS NOT NULL DROP TABLE admin_sessions;
 IF OBJECT_ID('product_ingredients', 'U') IS NOT NULL DROP TABLE product_ingredients;
@@ -74,6 +75,7 @@ CREATE TABLE admin_users (
     token_version   INT NOT NULL DEFAULT 0,   -- artırılanda köhnə sessiyalar etibarsız olur
     failed_attempts INT NOT NULL DEFAULT 0,
     locked_until    DATETIME2 NULL,
+    email_verified_at DATETIME2 NULL,         -- e-poçt təsdiq linki ilə (və ya şifrə sıfırlama e-poçtu ilə) doldurulur
     created_at    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
@@ -100,6 +102,19 @@ CREATE TABLE refresh_tokens (
     used_at     DATETIME2 NULL,                -- rotasiya olunub (təkrar istifadəsi oğurluq əlamətidir)
     CONSTRAINT UQ_refresh_tokens_hash UNIQUE (token_hash)
 );
+GO
+
+CREATE TABLE email_tokens (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    admin_user_id INT NOT NULL FOREIGN KEY REFERENCES admin_users(id) ON DELETE CASCADE,
+    purpose       NVARCHAR(20) NOT NULL CHECK (purpose IN (N'reset', N'verify')),
+    token_hash    CHAR(64) NOT NULL,           -- SHA-256(token); tokenin özü heç vaxt saxlanılmır
+    created_at    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    expires_at    DATETIME2 NOT NULL,
+    used_at       DATETIME2 NULL,
+    CONSTRAINT UQ_email_tokens_hash UNIQUE (token_hash)
+);
+CREATE INDEX IX_email_tokens_user ON email_tokens (admin_user_id, purpose, created_at);
 GO
 
 CREATE TABLE categories (

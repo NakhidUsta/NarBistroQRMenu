@@ -4,7 +4,7 @@ async function findByEmail(email) {
   const pool = await poolPromise;
   const result = await pool.request()
     .input('email', sql.NVarChar(150), email)
-    .query('SELECT id, restaurant_id, email, password_hash, role, token_version, failed_attempts, locked_until FROM admin_users WHERE email = @email');
+    .query('SELECT id, restaurant_id, email, password_hash, role, token_version, failed_attempts, locked_until, email_verified_at FROM admin_users WHERE email = @email');
   return result.recordset[0] || null;
 }
 
@@ -13,7 +13,7 @@ async function findAuthState(id) {
   const pool = await poolPromise;
   const result = await pool.request()
     .input('id', sql.Int, id)
-    .query('SELECT id, restaurant_id, email, role, token_version FROM admin_users WHERE id = @id');
+    .query('SELECT id, restaurant_id, email, role, token_version, email_verified_at FROM admin_users WHERE id = @id');
   return result.recordset[0] || null;
 }
 
@@ -31,6 +31,11 @@ async function registerFailure(id, maxAttempts, lockMinutes) {
       WHERE id = @id
     `);
   return result.recordset[0];
+}
+
+async function setEmailVerified(id) {
+  const pool = await poolPromise;
+  await pool.request().input('id', sql.Int, id).query('UPDATE admin_users SET email_verified_at = COALESCE(email_verified_at, SYSUTCDATETIME()) WHERE id = @id');
 }
 
 async function resetFailures(id) {
@@ -124,5 +129,5 @@ async function countByRole(role) {
 
 module.exports = {
   findByEmail, findById, findAuthState, findAll, create, update, remove, countByRole,
-  registerFailure, resetFailures, updatePassword, bumpTokenVersion,
+  registerFailure, resetFailures, updatePassword, bumpTokenVersion, setEmailVerified,
 };

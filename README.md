@@ -18,7 +18,7 @@ sqlcmd -S localhost -E -C -f 65001 -d qr_menu -i backend/database/schema.sql
 
 Seed: 1 restoran, 1 OWNER (`admin@qrmenu.local` / `ChangeMe123!` — **production-da mütləq dəyişdirin**), kateqoriyalar, məhsullar, 3 masa, `XOSGEL10` promo kodu.
 
-Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər, 010 tərkib kataloqu, 011 sifariş idempotency, 012 bildiriş statusu, 013 sessiyalar/refresh token, 014 məhsul görünürlüyü, 015 favicon).
+Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər, 010 tərkib kataloqu, 011 sifariş idempotency, 012 bildiriş statusu, 013 sessiyalar/refresh token, 014 məhsul görünürlüyü, 015 favicon, 016 e-poçt tokenləri).
 
 > Əl ilə `sqlcmd` ilə `orders` cədvəlinə yazı/silmə əməliyyatı edirsinizsə `-I` bayrağı mütləqdir (filtrli unikal indeks `QUOTED_IDENTIFIER ON` tələb edir): `sqlcmd -S localhost -E -I -f 65001 -d qr_menu -Q "..."`. Tətbiqin öz bağlantısı bunu avtomatik edir.
 
@@ -50,11 +50,11 @@ npm run dev
 
 - **Sessiya (access + refresh token):** qısa ömürlü access token (defolt 15 dəq, `ACCESS_TOKEN_MINUTES`) və **hər yenilənmədə rotasiya olunan** refresh token (httpOnly cookie, yalnız `/api/auth` yoluna göndərilir, DB-də yalnız SHA-256 hash-i). Panel açıq olduqca səssiz yenilənir (401 alanda avtomatik refresh + sorğunun təkrarı). Refresh 12 saat fəaliyyətsiz qalanda (`ADMIN_SESSION_HOURS`) və ən çox 7 gün (`ADMIN_SESSION_MAX_DAYS`) sonra bitir. **Oğurluq aşkarı:** artıq istifadə olunmuş refresh token (10 saniyəlik paralel-tab pəncərəsindən sonra) təkrar təqdim edilsə həmin cihazın bütün sessiyası bağlanır. Hər sorğuda DB-də sessiya, token versiyası və **cari rol** yoxlanılır. **Hesabım** səhifəsində aktiv cihazlar siyahısı var: tək cihazı bağlamaq (o cihazın socket-ləri də kəsilir), "Bütün cihazlardan çıxış" və şifrə dəyişəndə digər cihazların bağlanması.
 - **Giriş qorunması:** IP üzrə 5 uğursuz cəhd / 15 dəq limiti + hesab üzrə 5 uğursuz cəhddən sonra 15 dəqiqəlik bloklama; bcrypt hash; cavab vaxtı ilə istifadəçi adı aşkar olmur.
-- **Şifrəni unutdunuz (e-poçt xidməti olmadan):** OWNER işçi şifrəsini **İşçilər** səhifəsindən dəyişə bilər; OWNER özü unudubsa server maşınında:
+- **Şifrəni unutdunuz:** Gmail qoşulubsa girişdə **"Şifrəni unutdunuz?"** linki görünür (aşağıda "E-poçt / Gmail"). Qoşulmayıbsa OWNER işçi şifrəsini **İşçilər** səhifəsindən dəyişə bilər; OWNER özü unudubsa server maşınında:
   ```bash
   cd backend && npm run reset-password -- admin@qrmenu.local YeniSifre123
   ```
-  Bütün köhnə sessiyalar bağlanır və hesab bloku götürülür. (E-poçt ilə "sıfırlama linki" və e-poçt təsdiqi üçün SMTP/e-poçt provayderi lazımdır — hələ qoşulmayıb.)
+  Bütün köhnə sessiyalar bağlanır və hesab bloku götürülür.
 - **DB backup:** `cd backend && npm run backup` — sıxılmış, CHECKSUM ilə tam backup (`BACKUP_DIR`, defolt SQL Server-in backup qovluğu), 14 gündən köhnələri silinir. Gündəlik işə salmaq üçün (Windows):
   ```bash
   schtasks /Create /SC DAILY /ST 03:00 /TN "QRMenuBackup" /TR "cmd /c cd /d C:\path\to\qr-menu\backend && npm run backup"
@@ -99,6 +99,27 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 - **kəsmə** (`POST /api/media/:id/crop`, nisbət `1:1 | 4:3 | 16:9`, fokus `attention | centre`) orijinalı saxlayıb yeni şəkil yaradır;
 - **silmə** — istifadədə olan (məhsul/tema şəkli) şəkil üçün `409`; silinəndə bütün variantlar da silinir;
 - məhsul/tema formalarında “Kitabxanadan seç” ilə əsas şəkil seçilir; müştəri UI-ı `<picture>` (AVIF → WebP → orijinal) və `srcset` istifadə edir. Köhnə yükləmələr və xarici URL-lər olduğu kimi göstərilir.
+
+## E-poçt / Gmail (şifrə sıfırlama və e-poçt təsdiqi)
+
+Sistem məktubları **Gmail SMTP** ilə göndərir. Gmail adi şifrə qəbul etmir — 16 simvollu **Tətbiq şifrəsi** (App Password) lazımdır:
+
+1. Google hesabında **2 addımlı doğrulamanı** aktiv edin (Təhlükəsizlik bölməsi) — bunsuz Tətbiq şifrəsi yaradıla bilmir.
+2. https://myaccount.google.com/apppasswords → ad verin (məs. "QR Menu") → **Yarat**. Google 16 simvollu şifrə göstərir (boşluqlar olsa da olar).
+3. `backend/.env` faylına yazın (**bu şifrəni heç kimə göndərməyin, git-ə qoymayın** — `.env` artıq `.gitignore`-dadır):
+   ```ini
+   SMTP_USER=restoran@gmail.com
+   SMTP_PASS=abcd efgh ijkl mnop
+   # MAIL_FROM="Savora <restoran@gmail.com>"   # istəyə bağlı (Gmail göndərən ünvanı öz hesabınıza çevirə bilər)
+   PUBLIC_URL=https://menu.example.az          # linklər bu ünvanla qurulur (local-da CLIENT_ORIGIN istifadə olunur)
+   ```
+4. Backend-i yenidən başladın. Admin → **Hesabım → "Sınaq məktubu göndər (SMTP yoxla)"** (yalnız OWNER) — Gmail ayarlarını yoxlayır; səhv olsa səbəbi (məs. "Tətbiq şifrəsi olmalıdır") göstərilir.
+
+Necə işləyir:
+- **Şifrə sıfırlama:** giriş → "Şifrəni unutdunuz?" → e-poçt → məktubdakı link (**30 dəq, yalnız 1 dəfə**) → yeni şifrə. Sıfırlanandan sonra bütün cihazlardan çıxış edilir, hesab bloku götürülür, e-poçt təsdiqlənmiş sayılır.
+- **E-poçt təsdiqi:** Hesabım → "Təsdiq məktubu göndər" (link 24 saat, 1 dəfə).
+- **Təhlükəsizlik:** tokenlər 256 bitdir, DB-də yalnız SHA-256 hash-i; hər hesabda eyni anda bir etibarlı link; saatda ən çox 3 məktub/hesab, 15 dəqiqədə 10 sorğu/IP; "unutdum" sorğusu hesabın mövcudluğunu **açmır** (həmişə eyni cavab, məktub arxa planda göndərilir — vaxt fərqi də yoxdur); link Host başlığından yox, `PUBLIC_URL`-dən qurulur. SMTP qurulmayıbsa "Şifrəni unutdunuz?" görünmür, heç nə çökmür.
+- Gmail-in gündəlik limiti (adi hesab ~500 məktub) bu istifadə üçün kifayətdir. Yalnız **dev** üçün `MAIL_DRIVER=console` — məktub göndərilmir, mətni (tokenli link daxil) konsola yazılır; production-da işlətməyin.
 
 ## Real-time etibarlılığı, offline və sifariş təhlükəsizliyi
 

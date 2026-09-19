@@ -29,7 +29,7 @@ describe('authService.login', () => {
   it('düzgün şifrə: token (tv daxil) qaytarır və uğursuz cəhdləri sıfırlayır', async () => {
     repo.findByEmail.mockResolvedValue(admin());
     const { token, admin: a } = await authService.login('a@b.co', 'Correct123!');
-    expect(a).toEqual({ id: 7, email: 'a@b.co', role: 'MANAGER', restaurant_id: 1 });
+    expect(a).toEqual({ id: 7, email: 'a@b.co', role: 'MANAGER', restaurant_id: 1, email_verified: false });
     expect(jwt.verify(token, process.env.JWT_SECRET)).toMatchObject({ id: 7, tv: 2, sid: 11 });
     expect(repo.resetFailures).toHaveBeenCalledWith(7);
   });

@@ -47,7 +47,7 @@ function signAccess(admin, sessionId) {
 }
 
 function publicAdmin(admin) {
-  return { id: admin.id, email: admin.email, role: admin.role, restaurant_id: admin.restaurant_id };
+  return { id: admin.id, email: admin.email, role: admin.role, restaurant_id: admin.restaurant_id, email_verified: !!admin.email_verified_at };
 }
 
 // Yeni refresh token yaradır (yalnız hash saxlanılır); vaxtı sessiyanın mütləq ömründən uzun ola bilməz
@@ -130,7 +130,10 @@ async function authenticate(token) {
   if (!state || state.row.token_version !== payload.tv) {
     throw new AppError(401, 'Sessiya etibarsızdır, yenidən daxil olun');
   }
-  return { id: state.row.id, email: state.row.email, role: state.row.role, restaurant_id: state.row.restaurant_id, sid: payload.sid };
+  return {
+    id: state.row.id, email: state.row.email, role: state.row.role, restaurant_id: state.row.restaurant_id,
+    email_verified: !!state.row.email_verified_at, sid: payload.sid,
+  };
 }
 
 // Refresh token ilə yeni access + yeni refresh token (rotasiya)
@@ -213,6 +216,14 @@ async function changePassword(adminId, currentPassword, newPassword, meta = {}) 
   return { token, refreshToken, admin: publicAdmin(full) };
 }
 
+// E-poçtla şifrə sıfırlama: cari şifrəni bilmədən yenisini təyin edir, bütün sessiyaları bağlayır, bloku götürür
+async function resetPasswordByEmail(adminId, newPassword) {
+  if (!newPassword || newPassword.length < 8) throw new AppError(400, 'Yeni şifrə ən azı 8 simvol olmalıdır');
+  await adminUserRepository.updatePassword(adminId, await bcrypt.hash(newPassword, 10)); // token versiyasını da artırır
+  await sessionRepository.revokeAllForUser(adminId);
+  revokeSessions(adminId);
+}
+
 async function logoutEverywhere(adminId) {
   const token_version = await adminUserRepository.bumpTokenVersion(adminId);
   await sessionRepository.revokeAllForUser(adminId);
@@ -221,6 +232,6 @@ async function logoutEverywhere(adminId) {
 }
 
 module.exports = {
-  login, refresh, logout, authenticate, changePassword, logoutEverywhere, listSessions, revokeSession,
+  login, refresh, logout, authenticate, changePassword, resetPasswordByEmail, logoutEverywhere, listSessions, revokeSession,
   invalidate, revokeSessions, SESSION_HOURS, ACCESS_MINUTES, SESSION_MAX_DAYS, REUSE_GRACE_MS, hashToken,
 };
