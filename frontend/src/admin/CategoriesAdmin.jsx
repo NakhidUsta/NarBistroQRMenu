@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { categoriesApi } from '../lib/api'
 import { useUiStore } from '../store/uiStore'
 import Button from '../components/Button'
+import Pagination from '../components/Pagination'
+import { usePagination } from '../lib/usePagination'
 
 const emptyForm = { id: null, name: '', name_en: '', name_ru: '', slug: '', sort_order: 0, is_active: true }
 
@@ -18,6 +20,7 @@ function CategoriesAdmin() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const showToast = useUiStore((s) => s.showToast)
+  const pagination = usePagination(categories, { pageSize: 10 })
 
   async function load() {
     setCategories(await categoriesApi.list(true))
@@ -66,14 +69,14 @@ function CategoriesAdmin() {
   }
 
   return (
-    <div className="grid md:grid-cols-[1fr_320px] gap-6">
+    <div className="grid md:grid-cols-[minmax(0,1fr)_320px] gap-6">
       <div>
         <div className="flex items-center justify-between mb-5">
           <h1 className="font-display text-[24px] font-semibold">Kateqoriyalar</h1>
           <Button onClick={startNew}>+ Yeni</Button>
         </div>
         <div className="bg-panel rounded-2xl border border-border/60 overflow-hidden">
-          {categories.map((cat) => (
+          {pagination.slice.map((cat) => (
             <div key={cat.id} className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 last:border-0">
               <div>
                 <p className="font-semibold text-[14px]">{cat.name}</p>
@@ -87,6 +90,7 @@ function CategoriesAdmin() {
           ))}
           {categories.length === 0 && <p className="px-5 py-6 text-muted text-[13.5px]">Hələ kateqoriya yoxdur</p>}
         </div>
+        <Pagination pagination={pagination} label="kateqoriya" />
       </div>
 
       <form onSubmit={handleSubmit} className="bg-panel rounded-2xl border border-border/60 p-5 h-fit">

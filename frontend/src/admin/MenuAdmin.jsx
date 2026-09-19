@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { productsApi, categoriesApi, ingredientsApi, imageVariants, resolveUploadUrl } from '../lib/api'
 import { useMenuStore } from '../store/menuStore'
 import { useUiStore } from '../store/uiStore'
 import Button from '../components/Button'
+import Pagination from '../components/Pagination'
+import { usePagination } from '../lib/usePagination'
 import ImageGalleryField from './ImageGalleryField'
 import AllergenPicker from './AllergenPicker'
 import IngredientPicker from './IngredientPicker'
@@ -24,6 +26,16 @@ function MenuAdmin() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const showToast = useUiStore((s) => s.showToast)
+
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase()
+    if (!s) return products
+    return products.filter((p) => {
+      const cat = categories.find((c) => c.id === p.category_id)?.name || ''
+      return [p.name, p.name_en, p.name_ru, cat].some((v) => v && v.toLowerCase().includes(s))
+    })
+  }, [products, categories, search])
+  const pagination = usePagination(filtered, { pageSize: 10, resetKey: search })
 
   async function load() {
     const [p, c, ingredients] = await Promise.all([productsApi.list(), categoriesApi.list(true), ingredientsApi.list().catch(() => null)])
@@ -88,7 +100,7 @@ function MenuAdmin() {
   }
 
   return (
-    <div className="grid md:grid-cols-[1fr_360px] gap-6">
+    <div className="grid md:grid-cols-[minmax(0,1fr)_360px] gap-6">
       <div>
         <div className="flex items-center justify-between mb-5">
           <h1 className="font-display text-[24px] font-semibold">Menyu</h1>
@@ -101,12 +113,7 @@ function MenuAdmin() {
           className="w-full mb-4 bg-panel border border-border rounded-full px-4 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-burgundy/30"
         />
         <div className="flex flex-col gap-3">
-          {products.filter((p) => {
-            const s = search.trim().toLowerCase()
-            if (!s) return true
-            const cat = categories.find((c) => c.id === p.category_id)?.name || ''
-            return [p.name, p.name_en, p.name_ru, cat].some((v) => v && v.toLowerCase().includes(s))
-          }).map((p) => (
+          {pagination.slice.map((p) => (
             <div key={p.id} className={`flex gap-4 bg-panel rounded-2xl p-3 border border-border/60 ${!p.is_available || p.is_visible === false ? 'opacity-60' : ''}`}>
               <img src={resolveUploadUrl(imageVariants(p.image_url)?.thumb || p.image_url)} alt="" className="w-16 h-16 rounded-xl object-cover bg-blush" />
               <div className="flex-1 min-w-0">
@@ -133,7 +140,9 @@ function MenuAdmin() {
             </div>
           ))}
           {products.length === 0 && <p className="text-muted text-[13.5px]">Hələ məhsul yoxdur</p>}
+          {products.length > 0 && filtered.length === 0 && <p className="text-muted text-[13.5px]">Axtarışa uyğun məhsul tapılmadı</p>}
         </div>
+        <Pagination pagination={pagination} label="məhsul" />
       </div>
 
       <form onSubmit={handleSubmit} className="bg-panel rounded-2xl border border-border/60 p-5 h-fit flex flex-col gap-3">

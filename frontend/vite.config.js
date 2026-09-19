@@ -12,6 +12,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.js'],
     css: false,
+    testTimeout: 15000, // yavaş maşında (paralel işləyən fayllar) kütləvi render testləri 5 san-ni aşa bilir
     exclude: ['e2e/**', 'node_modules/**'],
   },
 })

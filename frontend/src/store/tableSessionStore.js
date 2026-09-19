@@ -1,7 +1,17 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { tablesApi } from '../lib/api'
 
+const KEY = 'qrmenu_table_session'
+// Köhnə versiyalar masanı localStorage-də saxlayırdı (brauzer bağlansa da qalırdı) — indi istifadə olunmur
+try {
+  localStorage.removeItem(KEY)
+} catch {
+  // yaddaş bağlıdırsa keç
+}
+
+// Masa yalnız QR ilə açılmış SƏHİFƏ SESSİYASINA aiddir (sessionStorage): QR oxudulan tabda səbət/sifariş axını boyunca
+// (yeniləmə, səhifələr arası keçid) qalır; adi linklə yeni açılışda isə masa yoxdur.
 export const useTableSessionStore = create(
   persist(
     (set) => ({
@@ -17,6 +27,6 @@ export const useTableSessionStore = create(
         set({ table: null })
       },
     }),
-    { name: 'qrmenu_table_session' },
+    { name: KEY, storage: createJSONStorage(() => sessionStorage) },
   ),
 )
