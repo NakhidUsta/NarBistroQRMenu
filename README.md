@@ -103,6 +103,10 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 - **Allergenlər:** AB-nin 14 standart allergeni (`allergens`, AZ/EN/RU adları + ikon), məhsula `allergen_ids: [1, 7]` ilə bağlanır (`product_allergens`); `GET /api/allergens` açıqdır. Müştəri menyuda "Allergen filteri" ilə qaçınmaq istədiyi allergenləri seçir və onları ehtiva edən yeməklər gizlədilir (seçim cihazda saxlanılır). Köhnə sərbəst mətn sahəsi ("Digər allergen qeydləri") ehtiyat/qeyd üçün qalır — filtr yalnız kataloqdan seçilmiş allergenlərə işləyir, ona görə istifadəçiyə ofisiantla dəqiqləşdirmək tövsiyə olunur.
 - Tərkib (ingredients) hələlik tərcümə olunan sərbəst mətn olaraq qalır.
 
+## Deploy
+
+Production-a çıxarış (HTTPS, nginx, pm2, backup) — [DEPLOY.md](DEPLOY.md).
+
 ## Struktur
 
 ```
