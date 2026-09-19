@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { resolveUploadUrl } from '../lib/api'
+import ResponsiveImage from './ResponsiveImage'
 import { useT, useLocalize } from '../lib/i18n'
 import Badge from './Badge'
 import FavoriteButton from './FavoriteButton'
@@ -19,9 +19,10 @@ function ProductCard({ product }) {
       }`}
     >
       <div className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-blush">
-        <img
-          src={resolveUploadUrl(product.image_url)}
+        <ResponsiveImage
+          src={product.image_url}
           alt={name}
+          thumb
           loading="lazy"
           className="w-full h-full object-cover"
         />

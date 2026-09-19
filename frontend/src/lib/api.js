@@ -144,3 +144,25 @@ export function resolveUploadUrl(url) {
   const apiOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/api\/?$/, '')
   return `${apiOrigin}${url}`
 }
+
+export const mediaApi = {
+  list: () => unwrap(apiClient.get('/media')),
+  crop: (id, aspect, focus) => unwrap(apiClient.post(`/media/${id}/crop`, { aspect, focus })),
+  remove: (id) => unwrap(apiClient.delete(`/media/${id}`)),
+}
+
+// Media Library-də yaradılan şəkillərin (m-<vaxt>-<hex>.<ext>) hazır variantları var; köhnə/xarici URL-lər olduğu kimi qalır.
+const MEDIA_URL_RE = /^(\/uploads\/m-\d{13}-[a-f0-9]{8})\.[a-z]+$/
+
+export function imageVariants(url) {
+  const m = MEDIA_URL_RE.exec(url || '')
+  if (!m) return null
+  const base = m[1]
+  return {
+    thumb: `${base}-thumb.webp`,
+    md: `${base}-md.webp`,
+    lg: `${base}-lg.webp`,
+    mdAvif: `${base}-md.avif`,
+    lgAvif: `${base}-lg.avif`,
+  }
+}

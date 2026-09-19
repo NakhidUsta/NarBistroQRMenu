@@ -13,7 +13,7 @@ import BottomNav from './BottomNav'
 import OfflineBanner from './OfflineBanner'
 import ReviewsSection from './ReviewsSection'
 import { applyTheme, resetTheme, parseTheme } from '../lib/theme'
-import { resolveUploadUrl } from '../lib/api'
+import ResponsiveImage from './ResponsiveImage'
 
 function PublicLayout() {
   const location = useLocation()
@@ -76,7 +76,7 @@ function PublicLayout() {
       {!isSubPage && theme.hero_image_url && (
         <div className="px-5 mb-4">
           <div className="relative rounded-3xl overflow-hidden h-40">
-            <img src={resolveUploadUrl(theme.hero_image_url)} alt="" className="w-full h-full object-cover" />
+            <ResponsiveImage src={theme.hero_image_url} alt="" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/15 to-transparent" />
             <div className="absolute bottom-4 left-5 right-5 text-cream">
               {theme.hero_title && <p className="font-display text-[22px] font-semibold leading-tight">{theme.hero_title}</p>}

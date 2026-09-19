@@ -1,5 +1,6 @@
 const fs = require('fs/promises');
-const path = require('path');
+const mediaService = require('../services/mediaService');
+const auditService = require('../services/auditService');
 
 const ALLOWED_TYPES = {
   jpg: 'image/jpeg',
@@ -8,7 +9,7 @@ const ALLOWED_TYPES = {
   gif: 'image/gif',
 };
 
-exports.uploadFile = async (req, res) => {
+exports.uploadFile = async (req, res, next) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Şəkil tapılmadı' });
   }
@@ -26,17 +27,12 @@ exports.uploadFile = async (req, res) => {
       return res.status(400).json({ error: 'Yalnız JPG, PNG, WEBP və ya GIF şəkilləri qəbul olunur' });
     }
 
-    const safeExt = `.${detected.ext}`;
-    if (path.extname(filePath).toLowerCase() !== safeExt) {
-      const safePath = filePath.slice(0, -path.extname(filePath).length) + safeExt;
-      await fs.rename(filePath, safePath);
-      req.file.filename = path.basename(safePath);
-    }
-
-    res.status(201).json({ url: `/uploads/${req.file.filename}` });
+    // Media Library: metaməlumat təmizlənir, thumb/md/lg (WebP/AVIF) variantları yaradılır
+    const media = await mediaService.register(filePath, detected.ext);
+    await auditService.log(req, 'media.upload', 'media', media.id, null, { url: media.url, size: media.size_bytes });
+    res.status(201).json({ url: media.url, media });
   } catch (err) {
     await fs.unlink(filePath).catch(() => {});
-    console.error(err);
-    res.status(500).json({ error: 'Şəkil yoxlanılarkən xəta baş verdi' });
+    next(err);
   }
 };

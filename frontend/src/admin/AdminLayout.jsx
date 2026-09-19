@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/kitchen', label: 'Mətbəx ekranı', icon: '👨‍🍳', roles: ALL },
   { to: '/admin/menu', label: 'Menyu', icon: '🍽️', roles: ['OWNER', 'MANAGER'] },
   { to: '/admin/categories', label: 'Kateqoriyalar', icon: '🏷️', roles: ['OWNER', 'MANAGER'] },
+  { to: '/admin/media', label: 'Media', icon: '🖼️', roles: ['OWNER', 'MANAGER'] },
   { to: '/admin/tables', label: 'Masalar / QR', icon: '📱', roles: ['OWNER', 'MANAGER', 'WAITER'] },
   { to: '/admin/promotions', label: 'Promosyonlar', icon: '🎟️', roles: ['OWNER', 'MANAGER'] },
   { to: '/admin/inventory', label: 'Stok', icon: '📦', roles: ['OWNER', 'MANAGER'] },

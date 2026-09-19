@@ -107,3 +107,30 @@ describe('Cart', () => {
     expect(screen.getByText('Sifarişi təsdiqləyirsiniz?')).toBeInTheDocument()
   })
 })
+
+describe('ResponsiveImage / imageVariants', () => {
+  it('Media Library URL-i üçün AVIF+WebP <picture> qurur', async () => {
+    const { default: ResponsiveImage } = await import('../components/ResponsiveImage')
+    const { container } = render(<ResponsiveImage src="/uploads/m-1789815057513-e58f5022.jpg" alt="x" />)
+    const sources = [...container.querySelectorAll('source')]
+    expect(sources.map((s) => s.type)).toEqual(['image/avif', 'image/webp'])
+    expect(sources[0].srcset).toContain('m-1789815057513-e58f5022-md.avif 640w')
+    expect(container.querySelector('img').src).toContain('-md.webp')
+  })
+
+  it('thumb rejimində yalnız kiçik WebP <img>', async () => {
+    const { default: ResponsiveImage } = await import('../components/ResponsiveImage')
+    const { container } = render(<ResponsiveImage src="/uploads/m-1789815057513-e58f5022.png" alt="x" thumb />)
+    expect(container.querySelector('picture')).toBeNull()
+    expect(container.querySelector('img').src).toContain('-thumb.webp')
+  })
+
+  it('köhnə/xarici URL-lər dəyişməz qalır (picture yoxdur)', async () => {
+    const { default: ResponsiveImage } = await import('../components/ResponsiveImage')
+    const { container } = render(<ResponsiveImage src="https://images.unsplash.com/a.jpg" alt="x" />)
+    expect(container.querySelector('picture')).toBeNull()
+    expect(container.querySelector('img').src).toBe('https://images.unsplash.com/a.jpg')
+    const old = render(<ResponsiveImage src="/uploads/1789755438798-666334605.png" alt="y" />)
+    expect(old.container.querySelector('img').src).toContain('/uploads/1789755438798-666334605.png')
+  })
+})

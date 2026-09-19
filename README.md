@@ -88,6 +88,15 @@ E2E, PDF-in 23 addımlı ssenarisini icra edir (admin məhsul yaradır → müş
 - `robots.txt` / `sitemap.xml` daxilində `DOMAIN.com` yer tutucusunu deploy zamanı real domenlə əvəz edin.
 - Qeyd: WhatsApp/sosial şəbəkə önizləməsi SPA-nın statik `index.html` meta teqlərindən oxuyur; restorana xas dinamik OG üçün server-side inyeksiya lazımdır (hələ yoxdur).
 
+## Media kitabxanası
+
+Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload`, bayt-imza yoxlaması ilə) `media` cədvəlinə yazılır və `backend/uploads/`-də saxlanılır:
+
+- orijinal (EXIF/GPS silinmiş, `m-<vaxt>-<hex>.<ext>`) + **thumb 240px / md 640px / lg 1280px** WebP və **md/lg AVIF** variantları (kiçik şəkil böyüdülmür);
+- **kəsmə** (`POST /api/media/:id/crop`, nisbət `1:1 | 4:3 | 16:9`, fokus `attention | centre`) orijinalı saxlayıb yeni şəkil yaradır;
+- **silmə** — istifadədə olan (məhsul/tema şəkli) şəkil üçün `409`; silinəndə bütün variantlar da silinir;
+- məhsul/tema formalarında “Kitabxanadan seç” ilə əsas şəkil seçilir; müştəri UI-ı `<picture>` (AVIF → WebP → orijinal) və `srcset` istifadə edir. Köhnə yükləmələr və xarici URL-lər olduğu kimi göstərilir.
+
 ## Struktur
 
 ```

@@ -8,6 +8,7 @@ GO
 
 -- ============ CƏDVƏLLƏR ============
 
+IF OBJECT_ID('media', 'U') IS NOT NULL DROP TABLE media;
 IF OBJECT_ID('reviews', 'U') IS NOT NULL DROP TABLE reviews;
 IF OBJECT_ID('promo_usage', 'U') IS NOT NULL DROP TABLE promo_usage;
 IF OBJECT_ID('stock_movements', 'U') IS NOT NULL DROP TABLE stock_movements;
@@ -193,6 +194,21 @@ CREATE TABLE order_status_history (
     changed_by INT NULL FOREIGN KEY REFERENCES admin_users(id),
     note       NVARCHAR(300) NULL,
     created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+GO
+
+CREATE TABLE media (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    restaurant_id INT NOT NULL FOREIGN KEY REFERENCES restaurants(id),
+    base_name     NVARCHAR(80) NOT NULL,
+    ext           NVARCHAR(5) NOT NULL,
+    mime          NVARCHAR(30) NOT NULL,
+    width         INT NOT NULL,
+    height        INT NOT NULL,
+    size_bytes    INT NOT NULL,
+    parent_id     INT NULL,
+    created_at    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_media_base_name UNIQUE (base_name)
 );
 GO
 

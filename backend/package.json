@@ -13,7 +13,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFiles": ["<rootDir>/tests/setupEnv.js"]
+    "setupFiles": [
+      "<rootDir>/tests/setupEnv.js"
+    ]
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -26,6 +28,7 @@
     "jsonwebtoken": "^9.0.3",
     "mssql": "^12.7.2",
     "multer": "^2.4.0",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

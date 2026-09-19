@@ -20,6 +20,7 @@ const auditRoutes = require('./routes/audit');
 const staffRoutes = require('./routes/staff');
 const uploadRoutes = require('./routes/upload');
 const reviewRoutes = require('./routes/reviews');
+const mediaRoutes = require('./routes/media');
 const insightRoutes = require('./routes/insights');
 
 const app = express();
@@ -49,7 +50,13 @@ app.use('/api', (req, res, next) => {
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5174', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+  maxAge: '30d',
+  immutable: true,
+  setHeaders: (res, file) => {
+    if (file.endsWith('.avif')) res.setHeader('Content-Type', 'image/avif');
+  },
+}));
 
 // Ümumi sorğu limiti — sui-istifadə/flood hücumlarına qarşı (bütün /api yollarına)
 const generalLimiter = rateLimit({
@@ -102,6 +109,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/media', mediaRoutes);
 app.use('/api/insights', insightRoutes);
 
 app.use((req, res) => {

@@ -6,7 +6,8 @@ import { useTableSessionStore } from '../store/tableSessionStore'
 import { useRestaurantStore } from '../store/restaurantStore'
 import { useMyOrdersStore } from '../store/myOrdersStore'
 import { useUiStore } from '../store/uiStore'
-import { ordersApi, resolveUploadUrl } from '../lib/api'
+import { ordersApi } from '../lib/api'
+import ResponsiveImage from '../components/ResponsiveImage'
 import { useT } from '../lib/i18n'
 import Button from '../components/Button'
 import PriceBreakdown from '../components/PriceBreakdown'
@@ -143,7 +144,7 @@ function Cart() {
               key={item.product_id}
               className={`flex gap-3 bg-panel rounded-2xl p-3 border ${unavailable ? 'border-danger/40 opacity-70' : 'border-border/60'}`}
             >
-              <img src={resolveUploadUrl(item.image_url)} alt={item.name} className="w-16 h-16 rounded-xl object-cover" />
+              <ResponsiveImage src={item.image_url} alt={item.name} thumb className="w-16 h-16 rounded-xl object-cover" />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-[14.5px] truncate">{item.name}</h3>
                 <p className="text-burgundy font-bold text-[13.5px]">{item.price.toFixed(2)} ₼</p>

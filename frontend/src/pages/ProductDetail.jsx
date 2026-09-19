@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMenuStore } from '../store/menuStore'
 import { useCartStore } from '../store/cartStore'
 import { useUiStore } from '../store/uiStore'
-import { resolveUploadUrl } from '../lib/api'
+import ResponsiveImage from '../components/ResponsiveImage'
 import { useT, useLocalize } from '../lib/i18n'
 import Badge from '../components/Badge'
 import FavoriteButton from '../components/FavoriteButton'
@@ -52,9 +52,10 @@ function ProductDetail() {
   return (
     <div className="pb-28">
       <div className="relative">
-        <img
-          src={resolveUploadUrl(product.image_url)}
+        <ResponsiveImage
+          src={product.image_url}
           alt={name}
+          sizes="(min-width: 768px) 768px, 100vw"
           className="w-full h-80 object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent" />
