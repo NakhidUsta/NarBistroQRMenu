@@ -26,7 +26,10 @@ PUBLIC_URL=https://menu.example.az         # OG/sitemap/robots-da real domen
 JWT_SECRET=<uzun təsadüfi sətir: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
 DB_SERVER=...  DB_NAME=qr_menu  DB_USER=qr_menu_app  DB_PASSWORD=...
 TZ_OFFSET_HOURS=4
-ADMIN_SESSION_HOURS=12
+ADMIN_SESSION_HOURS=12                     # refresh token-in boş qalma müddəti (saat)
+ADMIN_SESSION_MAX_DAYS=7                   # sessiyanın mütləq ömrü (gün)
+ACCESS_TOKEN_MINUTES=15                    # access token ömrü
+LOG_DIR=/var/log/qrmenu                    # xəta jurnalı (defolt: backend/logs)
 BACKUP_DIR=/var/backups/qrmenu             # SQL Server maşınında yazıla bilən yol
 ```
 
@@ -94,13 +97,16 @@ sudo certbot --nginx -d menu.example.az   # sertifikat + avtomatik yenilənmə
 
 Cloudflare istifadə edirsinizsə: SSL rejimi **Full (strict)**, WebSockets **açıq**.
 
+Refresh cookie-si (`qrmenu_refresh`) yalnız `/api/auth` yoluna göndərilir — reverse proxy-də bu yolu və `Cookie`/`Set-Cookie` başlıqlarını dəyişdirməyin. Sifariş/audit siyahıları `X-Has-More` cavab başlığı ilə səhifələnir (backend özü CORS-da açır; proxy onu silməməlidir). Xəta jurnalı (`LOG_DIR`) və `backend/uploads/` backup/rotasiya siyasətinə daxil edilməlidir.
+
 ## 7. Yoxlama siyahısı
 
 - `https://menu.example.az/api/health` → `status: ok`, DB gecikməsi.
 - `/menyu` açılır, brauzerdə "Quraşdır/Ana ekrana əlavə et" təklifi çıxır (service worker aktivdir).
 - Səhifənin mənbəyində (`view-source:`) `og:title`, `og:image` və `application/ld+json` restoranınızın məlumatlarıdır; `/sitemap.xml` məhsulları göstərir, `/robots.txt` real domeni.
 - WhatsApp/Instagram-da məhsul linki (`/product/1`) şəkil və qiymətlə önizlənir. (Köhnə önizləmə keşlənibsə Facebook Sharing Debugger ilə yeniləyin.)
-- Admin girişi işləyir, sifariş verildikdə admin/mətbəx ekranında canlı görünür (WebSocket keçir).
+- Admin girişi işləyir, sifariş verildikdə admin/mətbəx ekranında canlı görünür (WebSocket keçir). `/api/health` → `sockets.admin_clients` panel açıq olanda 1+ göstərir.
+- 15 dəqiqədən sonra admin panel çıxış etdirmir (səssiz refresh işləyir); Hesabım → Aktiv cihazlarda cari cihaz görünür.
 - `npm run backup` əl ilə işlədilir və gündəlik tapşırığa (cron / `schtasks`) əlavə olunur; bir dəfə bərpa sınağı edin.
 - Firewall: yalnız 80/443 açıq; SQL Server (1433) internetə **açıq deyil**.
 
@@ -113,4 +119,4 @@ cd ../frontend && npm ci && npm run build
 pm2 restart qrmenu
 ```
 
-Miqrasiyalar əlavə-yönlüdür və təkrar işlədilə bilər (`IF NOT EXISTS`).
+Yeniləmədən əvvəl `backend/database/migrations/` qovluğunda əvvəlki versiyanızdan sonrakı nömrələri (011–015: idempotency, bildiriş statusu, sessiyalar, görünürlük, favicon) tətbiq edin; əl ilə `sqlcmd` işlədirsinizsə `-I` bayrağını unutmayın. Miqrasiyalar əlavə-yönlüdür və təkrar işlədilə bilər (`IF NOT EXISTS`).

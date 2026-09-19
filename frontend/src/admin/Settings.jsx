@@ -6,6 +6,7 @@ import ImageUploadField from './ImageUploadField'
 import TranslationTabs from './TranslationTabs'
 import { parseTheme, DEFAULT_THEME, FONT_OPTIONS, applyFavicon } from '../lib/theme'
 import { imageVariants, resolveUploadUrl } from '../lib/api'
+import { shareLink } from '../lib/share'
 
 const fieldCls = 'w-full bg-cream border border-border rounded-lg px-3 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-burgundy/30'
 
@@ -48,13 +49,25 @@ function ThemeEditor({ form, setForm }) {
   )
 }
 
-function InstagramBioLink() {
+export function InstagramBioLink() {
   const showToast = useUiStore((s) => s.showToast)
+  const restaurant = useRestaurantStore((s) => s.restaurant)
   const link = `${window.location.origin}/menyu`
 
-  function copy() {
-    navigator.clipboard.writeText(link)
-    showToast('Link kopyalandı')
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link)
+      showToast('Link kopyalandı')
+    } catch {
+      showToast('Kopyalamaq mümkün olmadı — linki əl ilə seçin', 'error')
+    }
+  }
+
+  // Instagram-ın veb paylaşım intent-i yoxdur: mobildə sistem paylaşım pəncərəsi (Instagram orada seçilir), digər yerdə link kopyalanır
+  async function share() {
+    const result = await shareLink({ title: restaurant?.name || 'Menyu', text: `${restaurant?.name || ''} — rəqəmsal menyu`.trim(), url: link })
+    if (result === 'copied') showToast('Link kopyalandı — Instagram bio-ya və ya story-yə yapışdırın')
+    else if (result === 'failed') showToast('Paylaşmaq mümkün olmadı', 'error')
   }
 
   return (
@@ -63,9 +76,10 @@ function InstagramBioLink() {
       <p className="text-[12.5px] text-muted mb-3">
         Bu link heç bir masaya bağlı deyil — Instagram/Facebook bio-ya və ya WhatsApp-a qoyula bilər.
       </p>
-      <div className="flex gap-2">
-        <input readOnly value={link} className="flex-1 bg-cream border border-border rounded-lg px-3 py-2.5 text-[13px] text-muted" />
+      <div className="flex flex-wrap gap-2">
+        <input readOnly value={link} className="flex-1 min-w-[200px] bg-cream border border-border rounded-lg px-3 py-2.5 text-[13px] text-muted" />
         <Button type="button" variant="outline" onClick={copy}>Linki kopyala</Button>
+        <Button type="button" onClick={share}>Instagram-da paylaş</Button>
       </div>
     </div>
   )

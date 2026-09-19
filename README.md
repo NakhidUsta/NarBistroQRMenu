@@ -18,7 +18,9 @@ sqlcmd -S localhost -E -C -f 65001 -d qr_menu -i backend/database/schema.sql
 
 Seed: 1 restoran, 1 OWNER (`admin@qrmenu.local` / `ChangeMe123!` — **production-da mütləq dəyişdirin**), kateqoriyalar, məhsullar, 3 masa, `XOSGEL10` promo kodu.
 
-Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər, 010 tərkib kataloqu).
+Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər, 010 tərkib kataloqu, 011 sifariş idempotency, 012 bildiriş statusu, 013 sessiyalar/refresh token, 014 məhsul görünürlüyü, 015 favicon).
+
+> Əl ilə `sqlcmd` ilə `orders` cədvəlinə yazı/silmə əməliyyatı edirsinizsə `-I` bayrağı mütləqdir (filtrli unikal indeks `QUOTED_IDENTIFIER ON` tələb edir): `sqlcmd -S localhost -E -I -f 65001 -d qr_menu -Q "..."`. Tətbiqin öz bağlantısı bunu avtomatik edir.
 
 ### 2. Backend
 
@@ -46,7 +48,7 @@ npm run dev
 
 ## Təhlükəsizlik və əməliyyat
 
-- **Sessiya:** JWT httpOnly cookie, defolt 12 saat (`ADMIN_SESSION_HOURS`). Hər sorğuda DB-də token versiyası və **cari rol** yoxlanılır: şifrə dəyişəndə, "Bütün cihazlardan çıxış" edəndə, rol dəyişəndə/istifadəçi silinəndə köhnə sessiyalar və açıq socket bağlantıları dərhal bağlanır (admin paneldə **Hesabım**).
+- **Sessiya (access + refresh token):** qısa ömürlü access token (defolt 15 dəq, `ACCESS_TOKEN_MINUTES`) və **hər yenilənmədə rotasiya olunan** refresh token (httpOnly cookie, yalnız `/api/auth` yoluna göndərilir, DB-də yalnız SHA-256 hash-i). Panel açıq olduqca səssiz yenilənir (401 alanda avtomatik refresh + sorğunun təkrarı). Refresh 12 saat fəaliyyətsiz qalanda (`ADMIN_SESSION_HOURS`) və ən çox 7 gün (`ADMIN_SESSION_MAX_DAYS`) sonra bitir. **Oğurluq aşkarı:** artıq istifadə olunmuş refresh token (10 saniyəlik paralel-tab pəncərəsindən sonra) təkrar təqdim edilsə həmin cihazın bütün sessiyası bağlanır. Hər sorğuda DB-də sessiya, token versiyası və **cari rol** yoxlanılır. **Hesabım** səhifəsində aktiv cihazlar siyahısı var: tək cihazı bağlamaq (o cihazın socket-ləri də kəsilir), "Bütün cihazlardan çıxış" və şifrə dəyişəndə digər cihazların bağlanması.
 - **Giriş qorunması:** IP üzrə 5 uğursuz cəhd / 15 dəq limiti + hesab üzrə 5 uğursuz cəhddən sonra 15 dəqiqəlik bloklama; bcrypt hash; cavab vaxtı ilə istifadəçi adı aşkar olmur.
 - **Şifrəni unutdunuz (e-poçt xidməti olmadan):** OWNER işçi şifrəsini **İşçilər** səhifəsindən dəyişə bilər; OWNER özü unudubsa server maşınında:
   ```bash
@@ -58,6 +60,7 @@ npm run dev
   schtasks /Create /SC DAILY /ST 03:00 /TN "QRMenuBackup" /TR "cmd /c cd /d C:\path\to\qr-menu\backend && npm run backup"
   ```
   Bərpanı sınayın: `RESTORE VERIFYONLY FROM DISK = N'...bak' WITH CHECKSUM` (sysadmin ilə).
+- **Xəta jurnalı və xəbərdarlıq:** gözlənilməz server xətaları `backend/logs/error-YYYY-MM-DD.log`-a (JSON sətirləri, stack trace yalnız orada — istifadəçiyə heç vaxt) yazılır və sahib/menecerə admin paneldə "Sistem xətası" bildirişi gedir (eyni xəta 10 dəq-də bir). Arxa plan monitoru DB-nin ardıcıl 2 yoxlamada cavab verməməsini xəbər verir (DB çöküb bildiriş yazıla bilmirsə canlı, yazılmamış xəbərdarlıq göndərilir). Yanlış JSON kimi müştəri xətaları 4xx qaytarır, xəbərdarlıq yaratmır.
 - **Monitorinq:** `/api/health` (DB gecikməsi, uptime), 1 saniyədən yavaş API sorğuları konsola `[YAVAŞ]` kimi yazılır, bütün admin dəyişiklikləri **Audit Log**-da.
 - **HTTPS:** deploy zamanı reverse proxy (nginx/Cloudflare) ilə; `NODE_ENV=production` olanda cookie `secure`+`SameSite=None` və `trust proxy` aktiv olur.
 
@@ -75,7 +78,7 @@ npm run dev
 ## Testlər
 
 ```bash
-cd backend  && npm test            # Jest + Supertest (DB-siz: API icazələri, validasiya, servis məntiqi)
+cd backend  && npm test            # Jest + Supertest (DB-siz: API icazələri, validasiya, servis məntiqi, real Socket.io serveri ilə inteqrasiya)
 cd frontend && npm test            # Vitest + React Testing Library
 cd frontend && npx playwright test # E2E — backend (:4000) və frontend (:5174) işləyərkən, real DB üzərində
 ```
@@ -96,6 +99,17 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 - **kəsmə** (`POST /api/media/:id/crop`, nisbət `1:1 | 4:3 | 16:9`, fokus `attention | centre`) orijinalı saxlayıb yeni şəkil yaradır;
 - **silmə** — istifadədə olan (məhsul/tema şəkli) şəkil üçün `409`; silinəndə bütün variantlar da silinir;
 - məhsul/tema formalarında “Kitabxanadan seç” ilə əsas şəkil seçilir; müştəri UI-ı `<picture>` (AVIF → WebP → orijinal) və `srcset` istifadə edir. Köhnə yükləmələr və xarici URL-lər olduğu kimi göstərilir.
+
+## Real-time etibarlılığı, offline və sifariş təhlükəsizliyi
+
+- **Socket:** hər hadisə unikal `_eid` daşıyır (klient təkrar hadisəni atır); sifariş/bildiriş hadisələri `_ack` daşıyır və klient `event-ack` göndərir — təsdiq alınmayanlar `/api/health → sockets.missing_ack` və jurnalda görünür. Eksponensial geri çəkilmə (1s→30s + jitter, sonsuz cəhd), heartbeat (ping 25s/timeout 20s), 2 dəq-ə qədər kəsilmələrdə itirilmiş hadisələrin və otaq üzvlüyünün bərpası (admin-də JWT orta qatı bərpada da işləyir). Bərpa olunmayıbsa klient menyu/sifarişləri/bildirişləri serverdən səssiz yenidən yükləyir.
+- **Sifariş otaqları:** müştəri `order:<id>` otağına yalnız sifarişin gizli tokenini bildirəndə qoşulur; müştəri otaqlarına gedən hadisələrdə yalnız `id` və `status` var (telefon, ad, token, qeyd yox).
+- **Offline sifariş növbəsi:** internet yoxdursa (və ya sorğu şəbəkədə kəsilibsə) sifariş cihazda saxlanılır və bağlantı qayıdanda avtomatik göndərilir. Hər sifarişin `client_request_id`-si var — backend eyni ID-ni təkrar qəbul etsə ikinci sifariş yaratmır (idempotency; telefon uyğun gəlməlidir). "Sifarişlərim"də gözləyən/rədd edilən sifarişlər görünür. GET sorğuları şəbəkə xətasında 2 dəfə təkrar cəhd olunur.
+- **Qiymət dəyişikliyi:** klient gördüyü məbləği (`expected_total`) göndərir; backend cari məbləğlə fərqlənirsə sifariş yaratmır, `409 PRICE_CHANGED` (köhnə/yeni məbləğ) qaytarır — müştəri "Qiymət dəyişib" dialoqunda yeni məbləği təsdiqləyir.
+- **Call Waiter / Request Bill:** admin bildiriş mərkəzində `Gözləyir → Qəbul edildi → Həll edildi` (kim qəbul etdi göstərilir, digər adminlərdə canlı yenilənir); masada həll olunmamış eyni sorğu təkrar yaranmır. Yeni bildiriş növləri: **Məhsul bitib** (stok 0 və ya əl ilə "Bitib"), **Stok azalır**, **Sistem xətası** (yalnız sahib/menecerə).
+- **Siyahılar:** admin paneldə səhifələr lazy-load olunur; sifarişlər və audit log kursor səhifələmə (`?limit=&before=`, `X-Has-More` başlığı) və sonsuz sürüşdürmə ilə, müştəri menyusu və media kitabxanası tədricən göstərilir.
+- **Məhsul görünürlüyü:** "Bitib" (`is_available=0`) məhsul menyuda **Bitib** kimi görünür, "Gizli" (`is_visible=0`) isə müştəriyə heç göstərilmir (siyahı, səhifə, sitemap, sifariş). Admin siyahıda "Gizlət/Göstər" düyməsi var.
+- **Favicon:** Ayarlar → Favicon; brauzer tabında dinamik dəyişir və server tərəfdə `<head>`-ə yeridilir. **Ümumi link:** `/menu` → `/menyu` (sorğu parametrləri saxlanılır); admində "Instagram-da paylaş" düyməsi (mobildə paylaşım pəncərəsi, digər yerdə kopyalama).
 
 ## Məhsul şəkilləri və allergenlər
 

@@ -81,9 +81,21 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     await card.getByRole('button', { name: /Hazırlanır/ }).click()
     await expect(customer.getByText('✓')).toHaveCount(3)
 
-    // 14-15. Admin "Ready" edir → müştəridə avtomatik
-    await card.getByRole('button', { name: /Hazırdır/ }).click()
-    await expect(customer.getByText('✓')).toHaveCount(4)
+    // Mətbəx (KDS): aşpaz bütün admin panelə girmədən /kitchen ekranında sifarişi görür və "Hazırdır" edir (PDF 4.11, 4.13)
+    const kitchen = await adminCtx.newPage()
+    try {
+      await kitchen.goto('/kitchen')
+      const kitchenCard = kitchen.locator('article', { hasText: `#${orderId}` }).first()
+      await expect(kitchenCard).toBeVisible()
+      await expect(kitchenCard).toContainText(NAME)
+      await kitchenCard.getByRole('button', { name: 'Hazırdır' }).click()
+      // 14-15. Hazır → müştərinin ekranında avtomatik (refresh yoxdur) və admin lövhəsində də dərhal
+      await expect(customer.getByText('✓')).toHaveCount(4)
+      await expect(kitchen.locator('article', { hasText: `#${orderId}` }).getByRole('button', { name: 'Təhvil verildi' })).toBeVisible()
+      await expect(card.getByText('Hazırdır', { exact: true })).toBeVisible()
+    } finally {
+      await kitchen.close()
+    }
 
     // 16-17. Admin məhsulu "Bitib" edir → müştərinin açıq menyusunda dərhal "Bitib"
     await customer.goto(`/menyu?table=${table.code}&t=${table.qr_token}`)
