@@ -14,6 +14,7 @@ import OfflineBanner from './OfflineBanner'
 import ReviewsSection from './ReviewsSection'
 import { applyTheme, resetTheme, parseTheme } from '../lib/theme'
 import ResponsiveImage from './ResponsiveImage'
+import ShareButton from './ShareButton'
 
 function PublicLayout() {
   const location = useLocation()
@@ -106,6 +107,7 @@ function PublicLayout() {
             {restaurant.tiktok_link && <a href={restaurant.tiktok_link} target="_blank" rel="noreferrer">TikTok</a>}
             {restaurant.google_maps_link && <a href={restaurant.google_maps_link} target="_blank" rel="noreferrer">Xəritə</a>}
           </p>
+          <ShareButton path="/menyu" title={restaurant.name} text={restaurant.name} label className="mx-auto mt-3 px-4 py-2 rounded-full border border-border text-[12.5px] font-semibold text-burgundy" />
         </footer>
       )}
       <BottomNav />

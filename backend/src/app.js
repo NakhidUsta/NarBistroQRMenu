@@ -22,6 +22,7 @@ const uploadRoutes = require('./routes/upload');
 const reviewRoutes = require('./routes/reviews');
 const mediaRoutes = require('./routes/media');
 const insightRoutes = require('./routes/insights');
+const createSpaRouter = require('./routes/spa');
 
 const app = express();
 const SLOW_REQUEST_MS = 1000;
@@ -111,6 +112,9 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/insights', insightRoutes);
+
+// Production: build olunmuş frontend + dinamik SEO meta (dist yoxdursa heç nə etmir)
+app.use(createSpaRouter());
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint tapılmadı' });

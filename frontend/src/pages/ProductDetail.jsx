@@ -7,6 +7,7 @@ import ResponsiveImage from '../components/ResponsiveImage'
 import { useT, useLocalize } from '../lib/i18n'
 import Badge from '../components/Badge'
 import FavoriteButton from '../components/FavoriteButton'
+import ShareButton from '../components/ShareButton'
 
 function splitList(text) {
   if (!text) return []
@@ -68,6 +69,7 @@ function ProductDetail() {
             <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        <ShareButton path={`/product/${product.id}`} title={name} text={`${name} — ${Number(product.price).toFixed(2)} ₼`} className="absolute top-5 right-16 w-10 h-10 rounded-full bg-panel/90 backdrop-blur shadow-md text-ink" />
         <FavoriteButton productId={product.id} className="absolute top-5 right-5 !w-10 !h-10 bg-panel/90 backdrop-blur shadow-md text-ink" />
         {product.is_popular && (
           <span className="absolute bottom-4 left-5">

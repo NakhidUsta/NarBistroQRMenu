@@ -86,7 +86,8 @@ E2E, PDF-in 23 addımlı ssenarisini icra edir (admin məhsul yaradır → müş
 
 - `public/manifest.webmanifest`, `public/sw.js` (menyu API-si network-first, şəkillər stale-while-revalidate, offline səhifə), ikonlar `public/icons/`. Service worker yalnız **production build**-də (`npm run build && npm run preview`) qeydiyyatdan keçir.
 - `robots.txt` / `sitemap.xml` daxilində `DOMAIN.com` yer tutucusunu deploy zamanı real domenlə əvəz edin.
-- Qeyd: WhatsApp/sosial şəbəkə önizləməsi SPA-nın statik `index.html` meta teqlərindən oxuyur; restorana xas dinamik OG üçün server-side inyeksiya lazımdır (hələ yoxdur).
+- **Dinamik SEO/OG:** `npm run build` (frontend) sonrası backend `frontend/dist`-i özü təqdim edir (`FRONTEND_DIST` ilə dəyişmək olar) və hər səhifənin `<head>`-inə DB-dən restoran/məhsul üzrə OG, Twitter, canonical və JSON-LD (Restaurant / MenuItem) yeridir. `/sitemap.xml` məhsullardan avtomatik yaranır, `/robots.txt` real domeni yazır. Admin/səbət/sifariş səhifələri `noindex` alır. Domen üçün backend `.env`-də `PUBLIC_URL=https://menu.example.az` qoyun (yoxdursa Host başlığından alınır); frontend build-də `VITE_API_URL`-i real API ünvanına təyin edin. Dev rejimində (Vite) bu işləmir — yalnız production-da.
+- **Paylaş:** məhsul səhifəsində və menyunun altında "Paylaş" düyməsi — mobildə sistem paylaşım pəncərəsi (Instagram/WhatsApp orada seçilir), digər yerdə link kopyalanır. Paylaşılan link masa kodu daşımır.
 
 ## Media kitabxanası
 
