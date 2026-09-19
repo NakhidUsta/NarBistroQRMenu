@@ -58,4 +58,8 @@ export function bindAdminSocket() {
     playAlert()
     browserNotify(notification.title, notification.body || '')
   })
+  // Başqa admin çağırışı qəbul/həll edəndə hamıda status dərhal yenilənir
+  adminSocket.on('notification-updated', (notification) => {
+    useNotificationStore.getState().replace(notification)
+  })
 }

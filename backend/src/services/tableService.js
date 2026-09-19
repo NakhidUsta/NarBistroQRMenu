@@ -75,7 +75,7 @@ async function deleteTable(id) {
 async function callWaiter(code) {
   const table = await tableRepository.findByCode(code);
   if (!table) throw new AppError(404, 'Masa tapılmadı');
-  return notificationService.create({
+  return notificationService.createOnce({
     type: 'call_waiter',
     title: `${table.label} — Ofisiant çağırılır`,
     entity_type: 'table',
@@ -86,7 +86,7 @@ async function callWaiter(code) {
 async function requestBill(code) {
   const table = await tableRepository.findByCode(code);
   if (!table) throw new AppError(404, 'Masa tapılmadı');
-  return notificationService.create({
+  return notificationService.createOnce({
     type: 'request_bill',
     title: `${table.label} — hesab istəyir`,
     entity_type: 'table',

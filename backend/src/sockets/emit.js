@@ -52,8 +52,18 @@ function emitRestaurantUpdated(restaurant) {
   getIO().emit('restaurant-updated', restaurant);
 }
 
+// Sistem xətaları yalnız sahib/menecerə (bax: notificationService.RESTRICTED_TYPES), qalanları bütün adminlərə
+function adminTargets(notification) {
+  const admins = getIO().of('/admin');
+  return notification.type === 'system_error' ? admins.to('role:OWNER').to('role:MANAGER') : admins.to('admin');
+}
+
 function emitNotificationCreated(notification) {
-  getIO().of('/admin').to('admin').emit('notification-created', notification);
+  adminTargets(notification).emit('notification-created', notification);
+}
+
+function emitNotificationUpdated(notification) {
+  adminTargets(notification).emit('notification-updated', notification);
 }
 
 module.exports = {
@@ -68,4 +78,5 @@ module.exports = {
   emitOrderStatusUpdated,
   emitRestaurantUpdated,
   emitNotificationCreated,
+  emitNotificationUpdated,
 };

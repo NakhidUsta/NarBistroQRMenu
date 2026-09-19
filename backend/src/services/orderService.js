@@ -12,6 +12,30 @@ const { emitOrderCreated, emitOrderStatusUpdated, emitProductUpdated } = require
 
 const DEFAULT_RESTAURANT_ID = 1;
 
+const LOW_STOCK_THRESHOLD = 5; // dashboard-dakı "az qalan stok" həddi ilə eyni
+
+// Stok 0-a düşəndə (məhsul avtomatik "Bitib" olur) və ya həddi keçəndə (ilk dəfə) admin bildirişi
+async function notifyStockLevel(product, orderedQty) {
+  const remaining = Number(product.stock_quantity);
+  if (remaining <= 0) {
+    await notificationService.create({
+      type: 'out_of_stock',
+      title: `Məhsul bitib: ${product.name}`,
+      body: 'Stok 0-a düşdü — məhsul müştərilər üçün avtomatik bağlandı',
+      entity_type: 'product',
+      entity_id: product.id,
+    });
+  } else if (remaining <= LOW_STOCK_THRESHOLD && remaining + orderedQty > LOW_STOCK_THRESHOLD) {
+    await notificationService.create({
+      type: 'low_stock',
+      title: `Stok azalır: ${product.name}`,
+      body: `Qalıb: ${remaining} ədəd`,
+      entity_type: 'product',
+      entity_id: product.id,
+    });
+  }
+}
+
 // Eyni məhsulun təkrarlanan sətirlərini birləşdirir (PDF 3.6 — duplicate item merging).
 function mergeItems(items) {
   const map = new Map();
@@ -177,13 +201,23 @@ async function createOrder({ table_code, customer_name, phone, note, items: rawI
     const fullOrder = { ...order, items: priceRows, table_code: table?.code };
     emitOrderCreated(fullOrder);
     stockUpdatedProducts.forEach((p) => emitProductUpdated(p, 'updated'));
-    await notificationService.create({
-      type: 'order_created',
-      title: table ? `Yeni sifariş — ${table.label}` : 'Yeni sifariş',
-      body: `${priceRows.reduce((n, r) => n + r.quantity, 0)} məhsul · ${total.toFixed(2)} ₼`,
-      entity_type: 'order',
-      entity_id: order.id,
-    });
+
+    // Sifariş artıq commit olunub — bildiriş xətası müştəriyə 500 kimi qayıtmamalıdır (best-effort)
+    try {
+      await notificationService.create({
+        type: 'order_created',
+        title: table ? `Yeni sifariş — ${table.label}` : 'Yeni sifariş',
+        body: `${priceRows.reduce((n, r) => n + r.quantity, 0)} məhsul · ${total.toFixed(2)} ₼`,
+        entity_type: 'order',
+        entity_id: order.id,
+      });
+      for (const product of stockUpdatedProducts) {
+        const ordered = priceRows.find((r) => r.product_id === product.id)?.quantity || 0;
+        await notifyStockLevel(product, ordered);
+      }
+    } catch (notifyErr) {
+      console.error('Bildiriş yaradıla bilmədi:', notifyErr.message);
+    }
 
     return fullOrder;
   } catch (err) {

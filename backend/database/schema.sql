@@ -305,12 +305,15 @@ CREATE TABLE notifications (
     id            INT IDENTITY(1,1) PRIMARY KEY,
     restaurant_id INT NOT NULL FOREIGN KEY REFERENCES restaurants(id),
     type          NVARCHAR(40) NOT NULL
-                  CHECK (type IN (N'order_created', N'call_waiter', N'request_bill', N'low_stock')),
+                  CONSTRAINT CK_notifications_type CHECK (type IN (N'order_created', N'call_waiter', N'request_bill', N'low_stock', N'out_of_stock', N'system_error')),
     title         NVARCHAR(150) NOT NULL,
     body          NVARCHAR(500) NULL,
     entity_type   NVARCHAR(60) NULL,
     entity_id     INT NULL,
     is_read       BIT NOT NULL DEFAULT 0,
+    status        NVARCHAR(20) NOT NULL DEFAULT N'OPEN' CONSTRAINT CK_notifications_status CHECK (status IN (N'OPEN', N'ACCEPTED', N'RESOLVED')), -- Call Waiter / Request Bill iş axını
+    handled_by    INT NULL FOREIGN KEY REFERENCES admin_users(id) ON DELETE SET NULL,
+    handled_at    DATETIME2 NULL,
     created_at    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO

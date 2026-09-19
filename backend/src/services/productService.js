@@ -1,6 +1,7 @@
 const productRepository = require('../repositories/productRepository');
 const allergenService = require('./allergenService');
 const ingredientService = require('./ingredientService');
+const notificationService = require('./notificationService');
 const AppError = require('../utils/AppError');
 const { emitProductUpdated } = require('../sockets/emit');
 
@@ -58,6 +59,20 @@ async function setAvailability(id, isAvailable) {
   const product = await productRepository.setAvailability(id, isAvailable);
   if (!product) throw new AppError(404, 'Məhsul tapılmadı');
   emitProductUpdated(product, 'updated');
+  if (!isAvailable) {
+    // mətbəx/menecer məhsulu "Bitib" edəndə digər adminlər də görsün (best-effort)
+    try {
+      await notificationService.create({
+        type: 'out_of_stock',
+        title: `Məhsul bitib: ${product.name}`,
+        body: 'Məhsul "Bitib" olaraq işarələndi',
+        entity_type: 'product',
+        entity_id: product.id,
+      });
+    } catch (err) {
+      console.error('Bildiriş yaradıla bilmədi:', err.message);
+    }
+  }
   return product;
 }
 

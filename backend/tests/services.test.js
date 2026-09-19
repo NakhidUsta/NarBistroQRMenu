@@ -381,3 +381,51 @@ describe('orderService.createOrder — idempotency və qiymət dəyişikliyi', (
     await expect(orderService.createOrder(base)).resolves.toMatchObject({ total: 57 });
   });
 });
+
+describe('orderService — stok bildirişləri', () => {
+  const notificationService = require('../src/services/notificationService');
+  const base = { customer_name: 'Ali', phone: '+994501112233' };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    notificationService.create.mockResolvedValue({});
+    restaurantRepository.find.mockResolvedValue(undefined);
+    orderRepository.findIdByClientRequestId.mockResolvedValue(null);
+    orderRepository.insertOrder.mockImplementation(async (tx, o) => ({ id: 10, ...o }));
+    orderRepository.findProductPrice.mockResolvedValue({ id: 1, price: 10, is_available: true, track_inventory: true, stock_quantity: 10 });
+  });
+
+  const order = (qty, remaining) => {
+    orderRepository.decrementStockTx.mockResolvedValue({ id: 1, name: 'Pasta', stock_quantity: remaining });
+    return orderService.createOrder({ ...base, items: [{ product_id: 1, quantity: qty }] });
+  };
+  const types = () => notificationService.create.mock.calls.map(([n]) => n.type);
+
+  it('stok 0-a düşəndə out_of_stock bildirişi yaranır', async () => {
+    await order(3, 0);
+    expect(types()).toEqual(['order_created', 'out_of_stock']);
+    expect(notificationService.create).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Məhsul bitib: Pasta', entity_type: 'product', entity_id: 1 }));
+  });
+
+  it('stok həddi (5) ilk dəfə keçiləndə low_stock bildirişi yaranır', async () => {
+    await order(2, 4); // əvvəl 6 idi
+    expect(types()).toEqual(['order_created', 'low_stock']);
+  });
+
+  it('artıq hədd altında olan stokda təkrar low_stock bildirişi yaranmır', async () => {
+    await order(1, 3); // əvvəl 4 idi
+    expect(types()).toEqual(['order_created']);
+  });
+
+  it('kifayət qədər stok varsa yalnız sifariş bildirişi', async () => {
+    await order(1, 9);
+    expect(types()).toEqual(['order_created']);
+  });
+
+  it('bildiriş yaradıla bilməsə sifariş yenə də uğurlu qayıdır (artıq commit olunub)', async () => {
+    notificationService.create.mockRejectedValue(new Error('notif db xətası'));
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(order(1, 9)).resolves.toMatchObject({ id: 10 });
+    spy.mockRestore();
+  });
+});

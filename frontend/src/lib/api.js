@@ -71,6 +71,7 @@ export const tablesApi = {
 export const notificationsApi = {
   list: () => unwrap(apiClient.get('/notifications')),
   markRead: (id) => unwrap(apiClient.patch(`/notifications/${id}/read`)),
+  setStatus: (id, status) => unwrap(apiClient.patch(`/notifications/${id}/status`, { status })),
   markAllRead: () => apiClient.patch('/notifications/read-all'),
   remove: (id) => apiClient.delete(`/notifications/${id}`),
   clearRead: () => apiClient.delete('/notifications/read'),
