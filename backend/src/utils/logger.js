@@ -32,4 +32,10 @@ function error(message, err, context = {}) {
   writeFile(entry);
 }
 
-module.exports = { error, LOG_DIR };
+function warn(message, context = {}) {
+  const entry = { time: new Date().toISOString(), level: 'warn', message, ...context };
+  console.warn(`[XƏBƏRDARLIQ] ${message}`);
+  writeFile(entry);
+}
+
+module.exports = { error, warn, LOG_DIR };

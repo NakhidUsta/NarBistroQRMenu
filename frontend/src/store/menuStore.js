@@ -8,8 +8,9 @@ export const useMenuStore = create((set, get) => ({
   ingredients: [],
   status: 'idle',
 
-  async fetchAll(params) {
-    set({ status: 'loading' })
+  // silent — arxa plan sinxronu: skeleton göstərilmir, xəta olarsa mövcud (keşlənmiş) menyu saxlanılır
+  async fetchAll(params, { silent = false } = {}) {
+    if (!silent) set({ status: 'loading' })
     try {
       const [categories, products, allergens, ingredients] = await Promise.all([
         categoriesApi.list(),
@@ -20,7 +21,7 @@ export const useMenuStore = create((set, get) => ({
       ])
       set({ categories, products, allergens, ingredients, status: 'ready' })
     } catch {
-      set({ status: 'error' })
+      if (!silent) set({ status: 'error' })
     }
   },
 

@@ -247,6 +247,16 @@ async function getOrder(id, { isAdmin, token } = {}) {
   return order;
 }
 
+// Socket otağına qoşulma icazəsi: sifarişin gizli tokeni (sabit vaxtda müqayisə)
+async function hasAccess(id, token) {
+  const pool = await poolPromise;
+  const expected = await orderRepository.findAccessToken(pool, id);
+  if (!expected || typeof token !== 'string') return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(token);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 async function listOrders(filters) {
   const pool = await poolPromise;
   return orderRepository.findAll(pool, filters);
@@ -279,4 +289,4 @@ async function updateStatus(id, status, adminId, note) {
   }
 }
 
-module.exports = { createOrder, quote, getOrder, listOrders, updateStatus };
+module.exports = { createOrder, quote, getOrder, hasAccess, listOrders, updateStatus };

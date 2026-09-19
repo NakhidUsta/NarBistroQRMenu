@@ -1,6 +1,16 @@
 const { Server } = require('socket.io');
 const authService = require('../services/authService');
-const { setIO } = require('./emit');
+const orderService = require('../services/orderService');
+const { setIO, recordAck } = require('./emit');
+
+// Heartbeat: server 25 san-də bir ping göndərir, 20 san ərzində pong gəlməsə bağlantı ölü sayılır.
+// Qısa (2 dəq) kəsilmələrdə itirilmiş hadisələr və otaq üzvlükləri bərpa olunur (connectionStateRecovery);
+// admin namespace-də orta qat (JWT yoxlaması) bərpa zamanı da işləyir — ləğv edilmiş sessiya bərpa oluna bilməz.
+const SOCKET_OPTIONS = {
+  pingInterval: 25000,
+  pingTimeout: 20000,
+  connectionStateRecovery: { maxDisconnectionDuration: 2 * 60 * 1000, skipMiddlewares: false },
+};
 
 function parseCookie(cookieHeader, name) {
   if (!cookieHeader) return null;
@@ -13,8 +23,11 @@ function parseCookie(cookieHeader, name) {
   return null;
 }
 
+const reply = (ack, payload) => typeof ack === 'function' && ack(payload);
+
 function initSockets(httpServer) {
   const io = new Server(httpServer, {
+    ...SOCKET_OPTIONS,
     cors: {
       origin: process.env.CLIENT_ORIGIN || 'http://localhost:5174',
       credentials: true,
@@ -24,15 +37,24 @@ function initSockets(httpServer) {
   // Müştəri (public) namespace — masa QR-i ilə açılan menyu/sifariş-izləmə ekranları
   io.on('connection', (socket) => {
     const table = socket.handshake.query?.table;
-    if (table) socket.join(`table:${table}`);
+    if (table) socket.join(`table:${String(table).slice(0, 60)}`);
 
-    const orderId = socket.handshake.query?.orderId;
-    if (orderId) socket.join(`order:${orderId}`);
-
-    socket.on('join-order', (id) => {
-      if (id) socket.join(`order:${id}`);
+    // Sifariş otağına yalnız sifarişin gizli tokenini bilən qoşula bilər (ID təxmin edilə bilər, token edilə bilməz).
+    // Cavab (ack) klientə qoşulmanın uğurlu olduğunu bildirir — bağlantı bərpasında otaq yenidən tələb olunur.
+    socket.on('join-order', async (payload, ack) => {
+      try {
+        const id = Number(typeof payload === 'object' && payload ? payload.id : payload);
+        const token = typeof payload === 'object' && payload ? payload.token : undefined;
+        if (!Number.isInteger(id) || id <= 0 || typeof token !== 'string') return reply(ack, { ok: false, error: 'invalid' });
+        if (!(await orderService.hasAccess(id, token))) return reply(ack, { ok: false, error: 'forbidden' });
+        socket.join(`order:${id}`);
+        reply(ack, { ok: true });
+      } catch {
+        reply(ack, { ok: false, error: 'server' });
+      }
     });
 
+    socket.on('event-ack', recordAck);
     socket.on('disconnect', () => {});
   });
 
@@ -57,6 +79,7 @@ function initSockets(httpServer) {
       socket.join(`role:${socket.admin.role}`);
     }
 
+    socket.on('event-ack', recordAck);
     socket.on('disconnect', () => {});
   });
 
@@ -64,4 +87,4 @@ function initSockets(httpServer) {
   return io;
 }
 
-module.exports = { initSockets };
+module.exports = { initSockets, SOCKET_OPTIONS };

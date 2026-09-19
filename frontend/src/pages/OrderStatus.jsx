@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useOrderStore } from '../store/orderStore'
-import { publicSocket } from '../lib/socket'
+import { publicSocket, joinOrder } from '../lib/socket'
 import { useT } from '../lib/i18n'
 import Button from '../components/Button'
 import PriceBreakdown from '../components/PriceBreakdown'
@@ -26,8 +26,8 @@ function OrderStatus() {
   useEffect(() => {
     fetchOrder(id, token)
     if (!publicSocket.connected) publicSocket.connect()
-    publicSocket.emit('join-order', id)
-  }, [id])
+    joinOrder(id, token) // token olmadan backend otağa buraxmır; yenidən qoşulmada avtomatik təkrarlanır
+  }, [id, token])
 
   if (!order) {
     return (

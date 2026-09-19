@@ -120,6 +120,11 @@ async function findById(pool, id) {
   return { ...order, items: itemsResult.recordset, history: historyResult.recordset };
 }
 
+async function findAccessToken(pool, id) {
+  const result = await pool.request().input('id', sql.Int, id).query('SELECT access_token FROM orders WHERE id = @id');
+  return result.recordset[0]?.access_token || null;
+}
+
 async function findIdByClientRequestId(pool, clientRequestId) {
   const result = await pool.request()
     .input('cid', sql.NVarChar(64), clientRequestId)
@@ -183,5 +188,6 @@ module.exports = {
   updateStatus,
   findById,
   findIdByClientRequestId,
+  findAccessToken,
   findAll,
 };

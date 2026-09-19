@@ -17,7 +17,7 @@ function OfflineBanner() {
     }
     const goOnline = () => {
       setOnline(true)
-      useMenuStore.getState().fetchAll()
+      useMenuStore.getState().fetchAll(undefined, { silent: true })
       sendQueued()
     }
     if (navigator.onLine) sendQueued() // tətbiq açılanda əvvəlki sessiyadan qalan növbə

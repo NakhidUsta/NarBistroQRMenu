@@ -429,3 +429,22 @@ describe('orderService — stok bildirişləri', () => {
     spy.mockRestore();
   });
 });
+
+describe('orderService.hasAccess (socket otağı üçün token yoxlaması)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('düzgün token qəbul edilir, yanlış/boş/uzunluğu fərqli token rədd edilir', async () => {
+    orderRepository.findAccessToken.mockResolvedValue('a1b2c3d4e5f60718293a4b5c6d7e8f90');
+    expect(await orderService.hasAccess(5, 'a1b2c3d4e5f60718293a4b5c6d7e8f90')).toBe(true);
+    expect(await orderService.hasAccess(5, 'a1b2c3d4e5f60718293a4b5c6d7e8f91')).toBe(false);
+    expect(await orderService.hasAccess(5, 'qisa')).toBe(false);
+    expect(await orderService.hasAccess(5, '')).toBe(false);
+    expect(await orderService.hasAccess(5, undefined)).toBe(false);
+    expect(await orderService.hasAccess(5, { $ne: 1 })).toBe(false);
+  });
+
+  it('mövcud olmayan sifariş üçün həmişə rədd', async () => {
+    orderRepository.findAccessToken.mockResolvedValue(null);
+    expect(await orderService.hasAccess(999, 'x'.repeat(32))).toBe(false);
+  });
+});

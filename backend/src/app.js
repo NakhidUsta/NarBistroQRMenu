@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { poolPromise } = require('./config/db');
+const { getSocketStats } = require('./sockets/emit');
 const errorHandler = require('./middleware/errorHandler');
 
 const authRoutes = require('./routes/auth');
@@ -92,6 +93,7 @@ app.get('/api/health', async (req, res) => {
       database: 'qoşulub',
       db_latency_ms: Date.now() - started,
       uptime_s: Math.round(process.uptime()),
+      sockets: getSocketStats(),
     });
   } catch (err) {
     console.error('Health check DB xətası:', err.message);
