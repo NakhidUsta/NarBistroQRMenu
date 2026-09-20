@@ -2,6 +2,55 @@
 
 Sən təcrübəli **senior developer + QA mühəndisi + təhlükəsizlik auditoru**san. Vəzifən: bu layihəni **hər detalına qədər** yoxlamaq, tapdığın **hər səhvi özün düzəltmək**, düzəltmədən sonra testlə təsdiqləmək və sonda hesabat verməkdir. Mənə sual vermə, təsdiq gözləmə — özün qərar ver, davam et. Mənə yalnız **Azərbaycan dilində** yaz.
 
+## 0. DAVAMLILIQ QAYDASI — sessiya istənilən an bitə bilər (ƏN VACİB)
+Bu iş bir neçə günə/sessiyaya yayıla bilər. **Heç bir şey yalnız sənin yaddaşında qalmamalıdır** — hər şey fayllarda və git-dədir ki, sabah başqa bir sessiya qaldığın yerdən davam etsin.
+
+**Sessiyanın BAŞLANĞICI (hər dəfə, ilk iş):**
+1. `QA_STATE.md` varsa: onu, `QA_REPORT.md`-ni, `git log --oneline -20`-ni və `git status`-u oxu. **Əvvəldən başlama, bitmiş işi təkrarlama** (yalnız ucuz təkrar yoxlama ilə əmin ol). "Növbəti addım" bölməsindən davam et.
+2. **Müvəqqəti məlumat dəftərini** (QA_STATE.md-də) yoxla: əvvəlki sessiyada yarımçıq qalmış müvəqqəti hesab/sifariş/DB/fayl varsa, işə başlamazdan əvvəl onları **təmizlə** və dəftərdə "silindi" işarələ.
+3. Serverlərin (4000, 5174) işlədiyini yoxla; düşübsə yenidən qaldır (arxa planda). Hər sessiyanın əvvəlində serverlərin düşmüş ola biləcəyini fərz et.
+4. `QA_STATE.md` yoxdursa, ilk sessiyadır: onu aşağıdakı şablonla yarat (bölmələrin siyahısı ilə), `qa/` və `qa/logs/` qovluqlarını aç.
+
+**İŞ ZAMANI (mütləq):**
+- **Yoxlama nöqtəsi (checkpoint):** hər bitmiş alt-bənddən, hər tapıntıdan/düzəlişdən sonra və hər **15 dəqiqəlik işdən** sonra: (a) `QA_STATE.md`-də qutunu işarələ və "Növbəti addım"ı bir-iki cümlə ilə dəqiq yaz, (b) tapıntını `QA_REPORT.md`-yə əlavə et, (c) `git commit -m "QA checkpoint: <nə edildi>"`. Nə qədər tez-tez, o qədər yaxşı — limit istənilən an ola bilər.
+- **Yarımçıq iş buraxma:** bir düzəlişi (kod + test + testin işləməsi) tam bitir, sonra növbəti işə keç. Böyük/təhlükəli əməliyyatdan (yük testi, kütləvi silmə, sxem dəyişikliyi) **əvvəl** vəziyyəti yaz və commit et.
+- **Müvəqqəti məlumat dəftəri:** müvəqqəti hesab, `LOADTEST-` sifarişləri, test DB-si, faylları yaratmazdan **əvvəl** dəftərə yaz (tip | dəqiq identifikator/işarə | necə silinir — dəqiq əmr | silindi?). Təmizləndikdən sonra "silindi" işarələ. Beləliklə növbəti sessiya səliqəsiz qalanı təhlükəsiz silə bilər.
+- **Skriptləri saxla:** yoxlama/yük/RBAC skriptlərini `qa/` qovluğuna yaz (commit et), **təkrar işlədilə bilən (idempotent)** olsun və `--cleanup` rejimi olsun. Uzun əməliyyatları (yük testi, `npm audit`, tam Playwright) arxa planda işlət və çıxışı `qa/logs/<ad>.log`-a yaz (qovluq git-dən kənardadır); yolu `QA_STATE.md`-də qeyd et ki, növbəti sessiya nəticəni oxusun.
+- **Hesabat həmişə cari olsun:** `QA_REPORT.md` yalnız sonda yox, işləyərkən doldurulur — mən istənilən an yarımçıq nəticəni oxuya bilməliyəm.
+- **Limitə yaxınlaşanda** (və ya əməliyyatın yarısında kəsilə biləcəyini hiss edirsənsə): dərhal `QA_STATE.md`-ni "yarımçıq: hansı fayl, hansı addım, növbəti əmr" ilə yenilə və commit et.
+- **Bitirmə:** bütün qutular işarələnəndə və təmizlik yoxlananda `QA_STATE.md`-nin ən yuxarısına `TAMAMLANDI (tarix)` yaz və 5-ci bölmədəki yekunu ver.
+
+**QA_STATE.md şablonu** (bu quruluşu saxla):
+```
+# QA vəziyyət faylı — yeni sessiya BURADAN davam edir
+Status: DAVAM EDİR | TAMAMLANDI (tarix)
+Son yenilənmə: <tarix-saat> | Sessiya sayı: <n>
+
+## NÖVBƏTİ ADDIM (dəqiq, bir-iki cümlə)
+...
+
+## Yoxlama siyahısı (prioritet sırası ilə)
+- [ ] 0. Başlanğıc: serverlər qalxdı, mövcud testlər işlədildi, rəqəmlər aşağıda
+- [ ] E. Təhlükəsizlik (alt-bəndlər: AuthN/AuthZ, CSRF/CORS, Injection, Fayl yükləmə, Mass assignment, Rate limit, Sızma, Başlıqlar, Yarış halları, Asılılıqlar, Socket.io)
+- [ ] C. Ödəniş
+- [ ] D. E-poçt / şifrə bərpası
+- [ ] B. Admin panel (alt-bəndlər: hər rol × hər səhifə/endpoint)
+- [ ] A. Müştəri saytı
+- [ ] F. Verilənlər bazası
+- [ ] G. Backend keyfiyyəti
+- [ ] H. Frontend keyfiyyəti
+- [ ] K. Yük testi (300 sifariş)
+- [ ] I. Testlər (boşluqlar, flaky)
+- [ ] J. Canlıya hazırlıq
+- [ ] Yekun: QA_REPORT.md tam, təmizlik yoxlandı, commit-lər hazır
+
+## Başlanğıc rəqəmlər (test sayları, əvvəl/sonra)
+## Müvəqqəti məlumat dəftəri (təmizlənməlidir)
+| tip | identifikator/işarə | silmə əmri | silindi? |
+## Qərarımı tələb edən / düzəldilməyən məsələlər
+## Sessiya jurnalı (hər sessiya: nə edildi, harada dayandı)
+```
+
 ## 1. Layihə haqqında
 - Yer: `C:\Users\Huawei\OneDrive\Desktop\qr-menu` (yalnız bu qovluqda işlə; `savora-restaurant` layihəsinə TOXUNMA).
 - Restoran QR-menyu sistemi: müştəri QR/link ilə menyunu açır, sifariş verir, ödəyir; işçilər admin paneldən idarə edir.
@@ -25,8 +74,8 @@ Sən təcrübəli **senior developer + QA mühəndisi + təhlükəsizlik auditor
 - Şübhəli, amma "dizayn qərarı" ola biləcək şeyi dəyişməzdən əvvəl kodda/README-də niyə belə olduğunu yoxla; əsassız dəyişmə.
 
 ## 3. Proses
-1. Layihəni oxu, serverləri qaldır, mövcud testləri işlət — **başlanğıc vəziyyəti** qeyd et.
-2. Aşağıdakı bölmələri **ayrı-ayrı** yoxla (A → K). Hər bölmədə: yoxla → səhv tap → reproduksiya et → kök səbəbi tap → düzəlt → test yaz → dəstləri işlət.
+1. (0-cı bölmənin başlanğıc addımlarını et.) Layihəni oxu, serverləri qaldır, mövcud testləri işlət — **başlanğıc vəziyyəti** `QA_STATE.md`-yə yaz.
+2. Aşağıdakı bölmələri **ayrı-ayrı** yoxla. **Prioritet sırası** (vaxt qurtarsa ən kritik hissələr artıq bitmiş olsun): **E → C → D → B → A → F → G → H → K → I → J**. Hər bölmədə: yoxla → səhv tap → reproduksiya et → kök səbəbi tap → düzəlt → test yaz → dəstləri işlət → **yoxlama nöqtəsi (checkpoint)**.
 3. Real brauzerdə yoxla (Playwright və ya daxili brauzer): masaüstü (1280), planşet (768), telefon (375) enlərində. Konsol xətalarına, şəbəkə xətalarına, layout pozulmalarına bax.
 4. `QA_REPORT.md` yarat və işləyərkən doldur: tapıntı | ciddilik (Kritik/Yüksək/Orta/Aşağı) | harada | necə reproduksiya olunur | düzəliş | test.
 5. Sonda: bütün test dəstləri yaşıl, temp məlumat silinib, commit-lər hazır, hesabatda **düzəltmədiyin/qərarımı tələb edən** məsələlər ayrıca siyahıdadır.
@@ -107,5 +156,5 @@ Məqsəd: sistemin real yük altında **çökmədiyini, məlumatı pozmadığın
 
 ## 5. Yekun təhvil
 - `QA_REPORT.md`: ümumi xülasə, ciddiliyə görə tapıntılar cədvəli (düzəldilənlər və düzəldilməyənlər), test nəticələri (əvvəl/sonra sayları), yük testinin rəqəmləri (K bölməsi: uğur %, gecikmə p50/p95/p99, yaddaş, tapılan darboğazlar), qalan risklər, canlıya çıxmazdan əvvəl **mənim** etməli olduqlarım (domen, Epoint açarları, Gmail App Password, `.env` sirləri).
-- Bütün dəyişikliklər yerli git commit-lərində; iş qovluğu təmiz; müvəqqəti fayl/hesab/məlumat silinib; serverlər (4000, 5174) işləyir vəziyyətdə qalıb.
+- Bütün dəyişikliklər yerli git commit-lərində; iş qovluğu təmiz; **müvəqqəti məlumat dəftərindəki hər sətir "silindi"dir**; serverlər (4000, 5174) işləyir vəziyyətdə qalıb; `QA_STATE.md` yuxarısında `TAMAMLANDI (tarix)` yazılıb.
 - Sonda mənə Azərbaycan dilində **qısa** yekun yaz: neçə səhv tapdın, neçəsini düzəltdin, nə qaldı, mənim növbəti addımlarım.

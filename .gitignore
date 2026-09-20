@@ -7,3 +7,6 @@ frontend/dist/
 .DS_Store
 frontend/test-results/
 frontend/playwright-report/
+
+# QA yoxlamasının uzun çıxış jurnalları (nəticə yolu QA_STATE.md-də qeyd olunur)
+qa/logs/
