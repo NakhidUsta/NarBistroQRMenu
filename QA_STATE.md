@@ -4,13 +4,13 @@ Status: DAVAM EDİR
 Son yenilənmə: sessiya 1 (yoxlama nöqtəsi 1) | Sessiya sayı: 1
 
 ## NÖVBƏTİ ADDIM (dəqiq, bir-iki cümlə)
-E bölməsi: QA_REPORT.md-dəki F1–F6 namizədlərini **ardıcıllıqla** təsdiqlə və düzəlt: əvvəl F2 (CSRF: dinamik təsdiq — `Origin: https://evil.example` ilə cookie-li gövdəsiz POST 403 qaytarmalıdır; app.js-ə `Origin/Sec-Fetch-Site` middleware + test), sonra F1 (defolt şifrə bannerı), F3, F4, F6, F5. Hər düzəlişdən sonra backend testləri + commit + bu faylı yenilə. Müvəqqəti admin lazımdırsa, ƏVVƏL dəftərə yaz (e-poçt şablonu `qa.tmp.<n>@example.test`).
+F2 BİTDİ. Növbəti: F6 (jwt.verify `algorithms: ['HS256']`), F4 (`GET /api/tables` → authorize OWNER/MANAGER/WAITER), F3 (call-waiter/request-bill üçün QR tokeni tələb et: backend tableService/controller + frontend tableSessionStore token saxlasın, TableActions göndərsin, testləri yenilə), F1 (defolt şifrə ilə girişdə panel bannerı + server xəbərdarlığı), F5 (HSTS production-da; CSP ehtiyatla). Sonra E-nin qalan alt-bəndləri: dinamik rol matrisi, injection, fayl yükləmə, mass assignment, rate limit, sızma, asılılıqlar (npm audit), socket. Hər düzəlişdən sonra backend testləri + commit + bu faylı yenilə.
 
 ## Yoxlama siyahısı (prioritet sırası ilə)
 - [x] 0. Başlanğıc: serverlər qalxdı (4000/5174 işləyir), mövcud testlər son işlədildikdə keçdi (Jest 367, Vitest 204, PW 5)
 - [ ] E. Təhlükəsizlik
   - [~] AuthN/AuthZ: route xəritəsi çıxarıldı (F1, F3, F4, F6 namizədləri); dinamik rol matrisi HƏLƏ EDİLMƏYİB
-  - [~] CSRF/CORS: F2 tapıldı (kod oxundu), dinamik təsdiq və düzəliş gözləyir
+  - [x] CSRF/CORS: F2 düzəldildi və canlı təsdiqləndi (csrfGuard). CORS origin sabit — problem yoxdur
   - [ ] Injection (SQL, XSS, CSV, header/log, SSRF/open redirect)
   - [ ] Fayl yükləmə
   - [ ] Mass assignment
@@ -64,4 +64,5 @@ Bu layihədə sonuncu məlum vəziyyət (QA-dan əvvəl): Jest 367, Vitest 204, 
 —
 
 ## Sessiya jurnalı (hər sessiya: nə edildi, harada dayandı)
+- Sessiya 1 (nöqtə 2): F2 CSRF düzəldildi (csrfGuard + 5 test), backend yenidən başladıldı, E2E keçdi. Commit: "QA: CSRF guard".
 - Sessiya 1: promptun davamlılıq versiyası yaradıldı; route icazə xəritəsi, cookie/JWT/CORS/SEO/socket kodları oxundu; QA_REPORT.md-də F1–F6 namizədləri yazıldı. Hələ heç bir kod dəyişikliyi/düzəliş edilməyib. Müvəqqəti məlumat yaradılmayıb.

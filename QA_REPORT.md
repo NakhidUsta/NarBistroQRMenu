@@ -7,7 +7,7 @@ Son yenilənmə: sessiya 1. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəzi
 | # | Ciddilik | Vəziyyət | Harada | Reproduksiya / izah | Düzəliş | Test |
 |---|---|---|---|---|---|---|
 | F1 | Yüksək (canlıda Kritik) | TƏSDİQ GÖZLƏYİR | admin hesabı `admin@qrmenu.local` | E2E testi defolt `ChangeMe123!` şifrəsi ilə real DB-də girir → real OWNER hesabının şifrəsi ictimai olan defoltdur (README/E2E-də yazılıb) | Planlaşdırılıb: defolt şifrə ilə girişdə panel bannerı + server açılışında xəbərdarlıq (şifrəni SƏN dəyiş; QA onu dəyişmir) | — |
-| F2 | Yüksək | TƏSDİQ GÖZLƏYİR | `backend/src/app.js`, cookie `SameSite=None` (production) | Cookie ilə autentifikasiya olan, gövdəsiz "sadə" POST-lar (məs. `POST /api/orders/:id/refund`, `/api/tables/:id/regenerate`, `/api/auth/logout-all`) başqa saytdan CSRF ilə çağırıla bilər (CORS yalnız cavabı gizlədir, sorğunu dayandırmır) | Planlaşdırılıb: `Origin`/`Sec-Fetch-Site` yoxlaması (cross-site state-dəyişən sorğu → 403) | — |
+| F2 | Yüksək | DÜZƏLDİLDİ | `backend/src/app.js`, cookie `SameSite=None` (production) | Cookie ilə autentifikasiya olan, gövdəsiz "sadə" POST-lar (məs. `POST /api/orders/:id/refund`, `/api/tables/:id/regenerate`, `/api/auth/logout-all`) başqa saytdan CSRF ilə çağırıla bilər (CORS yalnız cavabı gizlədir, sorğunu dayandırmır) | `middleware/csrfGuard.js`: state-dəyişən sorğularda Origin (CLIENT_ORIGIN, PUBLIC_URL, öz host-u) və Sec-Fetch-Site yoxlanılır; callback istisnadır | `tests/csrf.test.js` (5 test; düzəlişdən əvvəl 3-ü uğursuz idi). Canlı serverdə və E2E-də təsdiqləndi |
 | F3 | Orta | TƏSDİQ GÖZLƏYİR | `POST /api/tables/:code/call-waiter`, `/request-bill` | Yalnız təxmin edilə bilən masa kodu (`table_001`) lazımdır; QR tokeni yoxdur → kənardan istənilən masaya çağırış/hesab bildirişi yaratmaq olar | Planlaşdırılıb: sürət məhdudiyyəti və/və ya QR tokeni | — |
 | F4 | Aşağı | TƏSDİQ GÖZLƏYİR | `GET /api/tables` | `qr_token`-lər bütün işçi rollarına (KITCHEN daxil) qaytarılır; UI-da Masalar səhifəsi KITCHEN-ə bağlıdır, API isə açıq | Planlaşdırılıb: `authorize('OWNER','MANAGER','WAITER')` | — |
 | F5 | Orta | TƏSDİQ GÖZLƏYİR | `backend/src/app.js` | CSP və HSTS başlıqları yoxdur (yalnız nosniff/X-Frame/Referrer) | Planlaşdırılıb (production-da HSTS; CSP diqqətlə — inline splash, Google Fonts, Unsplash şəkilləri) | — |
@@ -22,3 +22,4 @@ Son yenilənmə: sessiya 1. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəzi
 
 ## Test nəticələri
 Başlanğıc (QA-dan əvvəl): Jest 367, Vitest 204, Playwright 5 keçir (+PWA atlanır).
+Yoxlama nöqtəsi 2: Jest 372 (20 dəst), Playwright 5 keçir.

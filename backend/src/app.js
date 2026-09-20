@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const { poolPromise } = require('./config/db');
 const { getSocketStats } = require('./sockets/emit');
 const errorHandler = require('./middleware/errorHandler');
+const csrfGuard = require('./middleware/csrfGuard');
 
 const authRoutes = require('./routes/auth');
 const restaurantRoutes = require('./routes/restaurant');
@@ -54,6 +55,7 @@ app.use('/api', (req, res, next) => {
 });
 
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5174', credentials: true, exposedHeaders: ['X-Has-More'] }));
+app.use('/api', csrfGuard); // cross-site state-dəyişən sorğular (CSRF) — şərh üçün middleware/csrfGuard.js
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
