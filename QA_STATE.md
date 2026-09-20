@@ -58,7 +58,7 @@ Bu layihədə sonuncu məlum vəziyyət (QA-dan əvvəl): Jest 367, Vitest 204, 
 ## Müvəqqəti məlumat dəftəri (təmizlənməlidir)
 | tip | identifikator/işarə | silmə əmri | silindi? |
 |---|---|---|---|
-| — | — | — | — |
+| müvəqqəti admin hesabları (4 rol) | `qa.tmp.rbac.<ROL>@example.test` (OWNER/MANAGER/WAITER/KITCHEN) + onların `audit_logs`/`admin_sessions` qeydləri | `cd backend && node ../qa/rbac-matrix.js --cleanup` | HƏLƏ YARADILMAYIB (skript işləyəndə yaranır, sonda özü silir) |
 
 ## Qərarımı tələb edən / düzəldilməyən məsələlər
 - Admin şifrəsi hələ də defoltdur — SAHİB dəyişməlidir (QA dəyişmir).
