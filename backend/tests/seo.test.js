@@ -146,6 +146,14 @@ describe('SPA + dinamik SEO', () => {
     expect(page.headers['cache-control']).toBe('no-cache');
   });
 
+  it('HTML səhifə CSP başlığı daşıyır (framing və plugin bağlı, inline skript yoxdur → script-src yalnız self)', async () => {
+    const page = await request(app).get('/menyu');
+    const csp = page.headers['content-security-policy'];
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+  });
+
   it('sitemap.xml məhsulları DB-dən yaradır; robots.txt sitemap-ə real domeni yazır', async () => {
     const sm = await request(app).get('/sitemap.xml').set('Host', 'menu.example.az');
     expect(sm.headers['content-type']).toContain('xml');

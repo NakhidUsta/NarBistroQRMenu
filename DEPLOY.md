@@ -107,7 +107,8 @@ Refresh cookie-si (`qrmenu_refresh`) yalnız `/api/auth` yoluna göndərilir —
 - `/menyu` açılır, brauzerdə "Quraşdır/Ana ekrana əlavə et" təklifi çıxır (service worker aktivdir).
 - Səhifənin mənbəyində (`view-source:`) `og:title`, `og:image` və `application/ld+json` restoranınızın məlumatlarıdır; `/sitemap.xml` məhsulları göstərir, `/robots.txt` real domeni.
 - WhatsApp/Instagram-da məhsul linki (`/product/1`) şəkil və qiymətlə önizlənir. (Köhnə önizləmə keşlənibsə Facebook Sharing Debugger ilə yeniləyin.)
-- Admin girişi işləyir, sifariş verildikdə admin/mətbəx ekranında canlı görünür (WebSocket keçir). `/api/health` → `sockets.admin_clients` panel açıq olanda 1+ göstərir.
+- Admin girişi işləyir, sifariş verildikdə admin/mətbəx ekranında canlı görünür (WebSocket keçir). `/api/health` → `sockets.admin_clients` panel açıq olanda 1+ göstərir (ətraflı statistika yalnız OWNER/MANAGER kimi daxil olmuş brauzerdə görünür; girişsiz yalnız `status`/`database`).
+- Təhlükəsizlik başlıqları: `curl -sI https://menu.example.az/menyu` → `Content-Security-Policy` (script-src yalnız `'self'` + splash skriptinin hash-i) və `Strict-Transport-Security` (yalnız `NODE_ENV=production`-da). `PUBLIC_URL` mütləq təyin olunmalıdır — CSP `connect-src` və WebSocket ondan qurulur. Frontend-ə üçüncü tərəf skript/şriftlə (analitika, xəritə iframe və s.) əlavə etsəniz `backend/src/middleware/securityHeaders.js`-də `buildPageCsp` icazələrini də genişləndirin, əks halda brauzer onları bloklayacaq.
 - Hesabım → **Sınaq məktubu göndər** uğurludur (Gmail SMTP işləyir; server 465 portuna çıxış icazəsi verməlidir), "Şifrəni unutdunuz?" məktubundakı link real domenlə açılır (`PUBLIC_URL`).
 - 15 dəqiqədən sonra admin panel çıxış etdirmir (səssiz refresh işləyir); Hesabım → Aktiv cihazlarda cari cihaz görünür.
 - `npm run backup` əl ilə işlədilir və gündəlik tapşırığa (cron / `schtasks`) əlavə olunur; bir dəfə bərpa sınağı edin.

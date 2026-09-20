@@ -4,6 +4,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const asyncHandler = require('../utils/asyncHandler');
 const seoService = require('../services/seoService');
+const { buildPageCsp } = require('../middleware/securityHeaders');
 
 // Production-da build olunmuş React tətbiqini (frontend/dist) təqdim edir və hər səhifənin <head>-inə
 // restoran/məhsula xas OG/Twitter/JSON-LD teqlərini yeridir (WhatsApp, Instagram, Google robotları üçün).
@@ -42,6 +43,7 @@ function createSpaRouter(distDir = DIST_DIR) {
       console.warn('SEO meta yeridilə bilmədi, statik index.html verilir:', err.message);
     }
     res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Security-Policy', buildPageCsp(out, process.env, baseUrlOf(req)));
     res.type('html').send(out);
   }));
 

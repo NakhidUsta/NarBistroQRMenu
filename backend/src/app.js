@@ -9,6 +9,7 @@ const { getSocketStats } = require('./sockets/emit');
 const errorHandler = require('./middleware/errorHandler');
 const csrfGuard = require('./middleware/csrfGuard');
 const { optionalAdmin } = require('./middleware/auth');
+const { securityHeaders } = require('./middleware/securityHeaders');
 
 const authRoutes = require('./routes/auth');
 const restaurantRoutes = require('./routes/restaurant');
@@ -38,12 +39,7 @@ const SLOW_REQUEST_MS = 1000;
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
 app.disable('x-powered-by');
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  next();
-});
+app.use(securityHeaders);
 
 // API cavab monitorinqi: yavaş sorğuları (>1s) logla
 app.use('/api', (req, res, next) => {
