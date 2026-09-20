@@ -32,4 +32,10 @@ describe('e-poçt axını IP limiti', () => {
     const res = await request(app).post('/api/auth/reset-password').send({ token: 'x', new_password: 'YeniSifre123' });
     expect(res.status).toBe(429);
   });
+
+  // QA: sahibin Ayarlar səhifəsi /api/mail-settings-i təkrar oxuyur; yalnız oxuma limitə sayılmamalıdır (limit artıq tükənib)
+  it('GET /api/mail-settings limitə sayılmır, POST isə hələ də 429 alır', async () => {
+    for (let i = 0; i < 4; i++) expect((await request(app).get('/api/mail-settings')).status).toBe(401);
+    expect((await request(app).post('/api/auth/reset-password').send({ token: 'x', new_password: 'YeniSifre123' })).status).toBe(429);
+  });
 });

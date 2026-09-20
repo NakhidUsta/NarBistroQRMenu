@@ -1,6 +1,6 @@
 const orderService = require('../services/orderService');
 const auditService = require('../services/auditService');
-const { validateCreateOrderBody, validateStatus, validateId, VALID_STATUSES } = require('../validators/orderValidator');
+const { validateCreateOrderBody, validateItems, validateStatus, validateId, VALID_STATUSES } = require('../validators/orderValidator');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const { parsePage, sendPage } = require('../utils/pagination');
@@ -16,11 +16,8 @@ exports.createOrder = asyncHandler(async (req, res) => {
 exports.quoteOrder = asyncHandler(async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items) || items.length === 0) throw new AppError(400, 'Səbət boşdur');
-  for (const item of items) {
-    if (!Number.isInteger(item.product_id) || !Number.isInteger(Number(item.quantity)) || Number(item.quantity) <= 0) {
-      throw new AppError(400, 'Hər element düzgün product_id və quantity daşımalıdır');
-    }
-  }
+  const limitError = validateItems(items);
+  if (limitError) throw new AppError(400, limitError);
   res.json(await orderService.quote(req.body));
 });
 

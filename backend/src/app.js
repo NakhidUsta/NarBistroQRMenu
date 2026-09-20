@@ -8,6 +8,7 @@ const { poolPromise } = require('./config/db');
 const { getSocketStats } = require('./sockets/emit');
 const errorHandler = require('./middleware/errorHandler');
 const csrfGuard = require('./middleware/csrfGuard');
+const { optionalAdmin } = require('./middleware/auth');
 
 const authRoutes = require('./routes/auth');
 const restaurantRoutes = require('./routes/restaurant');
@@ -95,21 +96,26 @@ const emailFlowLimiter = rateLimit({
   limit: Number(process.env.EMAIL_FLOW_LIMIT) || 10,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'GET', // yalnız oxuma (sahibin Ayarlar səhifəsi) limitə sayılmasın; məktub göndərən/token yoxlayan POST/PUT/DELETE limitlənir
   message: { error: 'Çox sayda sorğu göndərildi, 15 dəqiqə sonra yenidən cəhd edin' },
 });
 app.use(['/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/test-mail', '/api/auth/send-verification', '/api/auth/change-email', '/api/mail-settings'], emailFlowLimiter);
 
-app.get('/api/health', async (req, res) => {
+// İctimai sağlamlıq yoxlaması yalnız status verir; uptime/socket statistikası yalnız OWNER/MANAGER-ə (QA: məlumat sızması)
+app.get('/api/health', optionalAdmin, async (req, res) => {
   const started = Date.now();
   try {
     const pool = await poolPromise;
     await pool.request().query('SELECT 1 AS ok');
+    const detailed = req.admin && ['OWNER', 'MANAGER'].includes(req.admin.role);
     res.json({
       status: 'ok',
       database: 'qoşulub',
-      db_latency_ms: Date.now() - started,
-      uptime_s: Math.round(process.uptime()),
-      sockets: getSocketStats(),
+      ...(detailed && {
+        db_latency_ms: Date.now() - started,
+        uptime_s: Math.round(process.uptime()),
+        sockets: getSocketStats(),
+      }),
     });
   } catch (err) {
     console.error('Health check DB xətası:', err.message);

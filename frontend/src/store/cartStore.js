@@ -1,18 +1,24 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+// Server bir məhsuldan ən çox 99 ədəd qəbul edir (backend orderValidator.MAX_QUANTITY) — səbət də eyni həddə saxlanılır
+export const MAX_QUANTITY = 99
+const clampQty = (q) => Math.min(Math.max(Math.floor(Number(q)) || 0, 0), MAX_QUANTITY)
+
 export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [], // { product_id, name, price, image_url, quantity }
 
-      addItem(product, quantity = 1) {
+      addItem(product, rawQuantity = 1) {
+        const quantity = clampQty(rawQuantity)
+        if (quantity <= 0) return
         const items = get().items
         const existing = items.find((i) => i.product_id === product.id)
         if (existing) {
           set({
             items: items.map((i) =>
-              i.product_id === product.id ? { ...i, quantity: i.quantity + quantity } : i,
+              i.product_id === product.id ? { ...i, quantity: clampQty(i.quantity + quantity) } : i,
             ),
           })
         } else {
@@ -31,11 +37,12 @@ export const useCartStore = create(
         }
       },
 
-      updateQuantity(productId, quantity) {
-        if (quantity <= 0) {
+      updateQuantity(productId, rawQuantity) {
+        if (Number(rawQuantity) <= 0) {
           set({ items: get().items.filter((i) => i.product_id !== productId) })
           return
         }
+        const quantity = clampQty(rawQuantity)
         set({ items: get().items.map((i) => (i.product_id === productId ? { ...i, quantity } : i)) })
       },
 

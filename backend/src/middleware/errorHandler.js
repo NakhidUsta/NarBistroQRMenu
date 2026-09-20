@@ -11,6 +11,14 @@ function errorHandler(err, req, res, next) {
     return res.status(status).json({ error: status === 413 ? 'Sorğu çox böyükdür' : 'Yanlış sorğu' });
   }
 
+  // Müştərinin göndərdiyi dəyər DB parametrinə sığmır (INT aşımı, çox uzun mətn) — server xətası deyil, 400.
+  // (mssql: EPARAM = parametr doğrulaması; 2628/8152 = "string or binary data would be truncated";
+  //  NVarChar(N) parametrə N-dən uzun mətn verəndə SQL Server "TDS ... Data type 0xE7 has an invalid data length" qaytarır)
+  const tooLongForParam = err.code === 'EREQUEST' && /Data type 0x[0-9A-F]+ has an invalid data length/i.test(err.message || '');
+  if (err.code === 'EPARAM' || tooLongForParam || (err.code === 'EREQUEST' && [2628, 8152].includes(err.number))) {
+    return res.status(400).json({ error: 'Göndərilən dəyər yolverilən həddi aşır və ya düzgün deyil' });
+  }
+
   logger.error('Gözlənilməyən server xətası', err, { method: req.method, url: String(req.originalUrl || '').split('?')[0] });
   // Sahib/menecerə canlı xəbərdarlıq (sorğu-cavab dövrəsini gecikdirmir, xətası yutulur)
   try {

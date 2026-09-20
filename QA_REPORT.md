@@ -1,6 +1,6 @@
 # QA hesabatı (işləyərkən doldurulur)
 
-Son yenilənmə: sessiya 1, yoxlama nöqtəsi 5. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
+Son yenilənmə: sessiya 1, yoxlama nöqtəsi 6. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
 
 ## Tapıntılar
 
@@ -14,8 +14,19 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 5. Ciddilik: Kritik / Yüksək / O
 | F6 | Aşağı | DÜZƏLDİLDİ | `authService.js` | `jwt.verify` alqoritmi sabitləmirdi | `jwt.verify(..., { algorithms: ['HS256'] })` | `qaSecurity.test.js` (HS512, `none`, yanlış imza, saxta rol, vaxtı keçmiş → 401) |
 | F7 | Aşağı | DÜZƏLDİLDİ | `tableService.scanTable` | QR tokeni `!==` ilə müqayisə olunurdu (vaxt fərqi ilə təxmin) | `crypto.timingSafeEqual` | `qaSecurity.test.js` |
 | F8 | Yüksək (canlıda) | DÜZƏLDİLDİ (sahibin açarı dəyişməsi qalır) | `backend/.env` `JWT_SECRET` | Açar 36 simvoldur, lakin `secret` və `12345` ehtiva edir (təxmin edilə bilən). JWT_SECRET həm giriş tokenlərini imzalayır, həm də bazada saxlanan Gmail App Password-un şifrələmə açarıdır | `config/secretsCheck.js`: production-da zəif/qısa/söz ehtiva edən açarla server BAŞLAMIR (inkişafda xəbərdarlıq); PUBLIC_URL/`PAYMENT_PROVIDER=test` xəbərdarlıqları. **QA `.env`-i dəyişmədi** | `backend/tests/secretsCheck.test.js`. Canlı: `NODE_ENV=production` ilə server imtina etdi |
+| F9 | Orta | DÜZƏLDİLDİ | `POST /api/orders`, `/api/orders/quote` | Girişsiz istənilən şəxs 500 sətirli sifariş yarada bilirdi; 5000 simvollu ad → 500; miqdar/sətir/uzunluq limiti yox idi | `orderValidator`: ad ≤120, telefon ≤30, qeyd ≤300, ≤50 sətir, miqdar ≤99, ID SQL INT daxilində; `quote` eyni `validateItems`-dən istifadə edir; səbət (frontend) miqdarı 99-da saxlayır | `backend/tests/qaInputs.test.js`; probes.js canlı təsdiq |
+| F10 | Orta | DÜZƏLDİLDİ | `middleware/errorHandler.js` | Nəhəng ID (`/api/products/9999…`) və uzun masa kodu (`/api/tables/<50+ simvol>/scan`) DB parametr xətası ilə **500** verirdi; hər 500 sahib/menecerə "Sistem xətası" bildirişi yaradır → kənar şəxs bildiriş yağışı yarada bilərdi (probes zamanı 9 saxta bildiriş yarandı, silindi) | mssql `EPARAM`, 8152/2628 və "TDS invalid data length" xətaları 400 (daxili detal sızmadan); digər DB xətaları hələ də 500 | `qaInputs.test.js` (deadlock 500 qalır, detal sızmır) |
+| F11 | Aşağı | DÜZƏLDİLDİ | `GET /api/health` | Girişsiz uptime, DB gecikməsi və socket bağlantı sayı açıq idi | Girişsiz/aşağı rol yalnız `status`+`database`; ətraflı yalnız OWNER/MANAGER | `qaInputs.test.js` |
+| F12 | Aşağı | DÜZƏLDİLDİ | `app.js` `emailFlowLimiter` | Limit (10/15 dəq) `GET /api/mail-settings`-i də sayırdı — sahib Ayarlar səhifəsini bir neçə dəfə açanda 15 dəqiqəlik bloklanırdı (matris skripti də əsl serverdə bunu tetikledi) | `skip: GET`; e-poçt göndərən/token yoxlayan POST/PUT/DELETE limitdə qalır | `emailLimiter.test.js` |
 
 ## Yoxlanıb, problem YOXDUR (sübutla)
+- Rol matrisi: 398 kombinasiya (4 rol + girişsiz × 60 endpoint; `/api/staff/`, böyük hərflə, `//`, `;.css`, `%20` yol variantları; HEAD; `X-HTTP-Method-Override`; yanlış imza/kəsilmiş/boş/Bearer/refresh-token-access-yerinə tokenlər; saxta rol başlığı; rol API ilə endiriləndə köhnə token dərhal aşağı səviyyədə; logout-all sonrası token ölür) — bypass yoxdur (`qa/rbac-matrix.js`).
+- Sifariş IDOR: tokensiz/yanlış tokenlə `GET /api/orders/:id`, ödəniş start/verify, rəy → rədd; düzgün token işləyir.
+- Mass assignment: `status`, `payment_status`, `total`, `subtotal`, `price`, `id`, `restaurant_id`, `paid_at`, `__proto__` müştəri sorğusundan qəbul edilmir; məbləği server məhsul qiymətindən hesablayır.
+- Fayl yükləmə (magic bytes): HTML→`.png`, SVG+script, PHP→`.png`, `x.html` adı, `../../evil.png`, PNG+`<script>` polyglot, 6MB, `.exe` — hamısı rədd/təhlükəsiz; saxlanan ad təhlükəsiz uzantıdır, HTML/SVG kimi xidmət olunmur.
+- Socket: `join-order` tokensiz/yanlış tokenlə rədd; `/admin` girişsiz rədd; public klient yeni sifarişdə telefon/ad/token almır.
+- Sızma: `/.env`, `/uploads/..%2f..%2f.env`, `/package.json`, kataloq siyahısı, X-Powered-By, səhv JSON, 300KB gövdə — heç bir sirr/stack trace yoxdur; login cavabında token/hash yoxdur.
+- React-də `dangerouslySetInnerHTML` yoxdur.
 - `npm audit --omit=dev`: backend 0, frontend 0 zəiflik.
 - Git tarixçəsində `.env` və ya sirr yoxdur (`.env` heç vaxt commit olunmayıb; yalnız `.example` faylları və test sirri `test-secret`). Koda sərt kodlanmış parol/açar yoxdur.
 - SEO inyeksiyası: `escapeHtml` + `safeJson` (`<`, `>`, `&` escape) — JSON-LD/meta XSS yoxdur (kod oxundu; dinamik test hələ də edilməlidir).
@@ -30,6 +41,7 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 5. Ciddilik: Kritik / Yüksək / O
 - Yoxlama nöqtəsi 3: Jest 378 (21 dəst), Vitest 208 (24 fayl).
 - Yoxlama nöqtəsi 4: Jest 382 (22 dəst), Vitest 210 (24 fayl).
 - Yoxlama nöqtəsi 5: Jest 387 (23 dəst).
+- Yoxlama nöqtəsi 6: Jest 397 (24 dəst), Vitest 210 (24 fayl).
 
 ## Sahibin (istifadəçinin) etməli olduqları — QA-dan
 2. **`JWT_SECRET`-i canlıya çıxmadan yeni təsadüfi açarla əvəz edin**: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` → `backend/.env`. (Canlıda zəif açarla server artıq başlamayacaq.)
