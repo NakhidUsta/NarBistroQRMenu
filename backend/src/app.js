@@ -4,6 +4,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = rateLimit;
 const { poolPromise } = require('./config/db');
 const { getSocketStats } = require('./sockets/emit');
 const errorHandler = require('./middleware/errorHandler');
@@ -75,16 +76,38 @@ const generalLimiter = rateLimit({
 });
 app.use('/api', generalLimiter);
 
-// Sərt limit — admin girişini brute-force hücumlarından qorumaq üçün
+// Admin girişini brute-force hücumlarından qorumaq üçün iki qat (yalnız UĞURSUZ cəhdlər sayılır):
+//  1) IP + e-poçt cütü üzrə 5/15 dəq — bir hesabı hədəf alan təxmin dayanır (hesab özü də 5 uğursuz cəhddən sonra kilidlənir);
+//  2) yalnız IP üzrə 50/15 dəq — çoxlu hesabı yoxlayan hücum dayanır.
+// Əvvəl yalnız IP üzrə 5 idi: restoran Wi-Fi-ında (bütün işçilər bir IP) bir müştəri/unudulmuş şifrə 15 dəqiqə HAMININ girişini bloklayırdı
+// və şifrəni e-poçtla sıfırlayan işçi də yeni şifrəsi ilə daxil ola bilmirdi (QA tapıntısı).
+const loginKeyByIpAndEmail = (req) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 150) : '';
+  return `${ipKeyGenerator(req.ip)}|${email}`;
+};
+const loginLimitMessage = { error: 'Çox sayda uğursuz giriş cəhdi. 15 dəqiqə sonra yenidən cəhd edin' };
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 5,
+  limit: Number(process.env.LOGIN_LIMIT) || 5,
+  keyGenerator: loginKeyByIpAndEmail,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
-  message: { error: 'Çox sayda uğursuz giriş cəhdi. 15 dəqiqə sonra yenidən cəhd edin' },
+  message: loginLimitMessage,
 });
-app.use('/api/auth/login', loginLimiter);
+const loginIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.LOGIN_IP_LIMIT) || 50,
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  standardHeaders: false,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: loginLimitMessage,
+});
+// Sıra vacibdir: cütlük limiti əvvəl gəlir — artıq bloklanmış hesaba göndərilən sorğular IP sayğacını doldurmur
+app.use('/api/auth/login', loginLimiter, loginIpLimiter);
+// Şifrə e-poçtla sıfırlananda həmin IP+e-poçt sayğacı təmizlənir: əks halda istifadəçi yeni şifrəsi ilə 15 dəqiqə daxil ola bilmirdi
+app.locals.resetLoginLimit = (req, email) => loginLimiter.resetKey(loginKeyByIpAndEmail({ ip: req.ip, body: { email } }));
 
 // E-poçt göndərən/token yoxlayan endpoint-lər: IP üzrə sərt limit (spam məktub və token təxminetməyə qarşı)
 const emailFlowLimiter = rateLimit({

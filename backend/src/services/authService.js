@@ -5,6 +5,7 @@ const adminUserRepository = require('../repositories/adminUserRepository');
 const sessionRepository = require('../repositories/adminSessionRepository');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
+const { assertPasswordAcceptable } = require('../utils/passwordPolicy');
 const { disconnectAdmin, disconnectSession } = require('../sockets/emit');
 
 // Token modeli:
@@ -234,7 +235,7 @@ async function revokeSession(userId, sessionId) {
 }
 
 async function changePassword(adminId, currentPassword, newPassword, meta = {}) {
-  if (!newPassword || newPassword.length < 8) throw new AppError(400, 'Yeni şifrə ən azı 8 simvol olmalıdır');
+  assertPasswordAcceptable(newPassword, 'Yeni şifrə');
   if (newPassword === currentPassword) throw new AppError(400, 'Yeni şifrə köhnə şifrədən fərqli olmalıdır');
 
   const state = await adminUserRepository.findAuthState(adminId);
@@ -254,7 +255,7 @@ async function changePassword(adminId, currentPassword, newPassword, meta = {}) 
 
 // E-poçtla şifrə sıfırlama: cari şifrəni bilmədən yenisini təyin edir, bütün sessiyaları bağlayır, bloku götürür
 async function resetPasswordByEmail(adminId, newPassword) {
-  if (!newPassword || newPassword.length < 8) throw new AppError(400, 'Yeni şifrə ən azı 8 simvol olmalıdır');
+  assertPasswordAcceptable(newPassword, 'Yeni şifrə');
   defaultPasswordCache.delete(adminId);
   await adminUserRepository.updatePassword(adminId, await bcrypt.hash(newPassword, 10)); // token versiyasını da artırır
   await sessionRepository.revokeAllForUser(adminId);

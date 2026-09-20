@@ -2,20 +2,19 @@ const bcrypt = require('bcryptjs');
 const adminUserRepository = require('../repositories/adminUserRepository');
 const authService = require('./authService');
 const AppError = require('../utils/AppError');
+const { assertPasswordAcceptable } = require('../utils/passwordPolicy');
 
 const DEFAULT_RESTAURANT_ID = 1;
 const ROLES = ['OWNER', 'MANAGER', 'WAITER', 'KITCHEN'];
 
-function validatePassword(password) {
-  if (!password || password.length < 8) throw new AppError(400, 'Şifrə ən azı 8 simvol olmalıdır');
-}
+const validatePassword = (password) => assertPasswordAcceptable(password, 'Şifrə');
 
 async function list() {
   return adminUserRepository.findAll();
 }
 
 async function create({ email, password, role }) {
-  if (!email || !/^\S+@\S+\.\S+$/.test(email)) throw new AppError(400, 'Düzgün e-poçt tələb olunur');
+  if (typeof email !== 'string' || email.length > 150 || !/^\S+@\S+\.\S+$/.test(email)) throw new AppError(400, 'Düzgün e-poçt tələb olunur');
   if (!ROLES.includes(role)) throw new AppError(400, `Rol bunlardan biri olmalıdır: ${ROLES.join(', ')}`);
   validatePassword(password);
   if (await adminUserRepository.findByEmail(email)) throw new AppError(409, 'Bu e-poçt artıq istifadə olunur');

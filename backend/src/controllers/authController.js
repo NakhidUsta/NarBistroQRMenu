@@ -111,6 +111,7 @@ exports.resetPassword = asyncHandler(async (req, res) => {
   const { token, new_password } = req.body || {};
   const user = await accountEmailService.resetPassword(token, new_password);
   req.admin = { id: user.id, email: user.email };
+  req.app.locals.resetLoginLimit?.(req, user.email);
   await auditService.log(req, 'auth.password_reset_email', 'admin_users', user.id, null, null);
   clearSessionCookies(res);
   res.json({ message: 'Şifrə dəyişdirildi. İndi yeni şifrə ilə daxil ola bilərsiniz.' });

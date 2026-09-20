@@ -8,6 +8,17 @@ const mailTemplates = require('./mailTemplates');
 const restaurantService = require('./restaurantService');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
+const { assertPasswordAcceptable } = require('../utils/passwordPolicy');
+
+// Eyni açar üçün əməliyyatları növbəyə düzür (bir proses): "say → token yarat" cütü paralel sorğularda yarışmasın
+// (QA: 8 sürətli sorğu saatda 3 məktub limitini aşırdı — hamısı sayı eyni anda "2" görürdü)
+const chains = new Map();
+function serialize(key, fn) {
+  const next = (chains.get(key) || Promise.resolve()).catch(() => {}).then(fn);
+  chains.set(key, next);
+  next.catch(() => {}).finally(() => { if (chains.get(key) === next) chains.delete(key); });
+  return next;
+}
 
 // E-poçtla şifrə sıfırlama və e-poçt təsdiqi.
 // Təhlükəsizlik: token təsadüfi (256 bit), DB-də yalnız SHA-256 hash-i; birdəfəlik; qısa ömürlü; hər hesab üçün eyni anda
@@ -50,8 +61,11 @@ async function requestPasswordReset(email) {
   const work = (async () => {
     const admin = await adminUserRepository.findByEmail(String(email).trim());
     if (!admin) return;
-    if ((await emailTokenRepository.countRecent(admin.id, 'reset', 60)) >= MAX_TOKENS_PER_HOUR) return; // sui-istifadə: saatda ən çox 3 məktub
-    const token = await issueToken(admin.id, 'reset', RESET_MINUTES * 60 * 1000);
+    const token = await serialize(`reset:${admin.id}`, async () => {
+      if ((await emailTokenRepository.countRecent(admin.id, 'reset', 60)) >= MAX_TOKENS_PER_HOUR) return null; // sui-istifadə: saatda ən çox 3 məktub
+      return issueToken(admin.id, 'reset', RESET_MINUTES * 60 * 1000);
+    });
+    if (!token) return;
     const restaurant = await restaurantName();
     const link = `${baseUrl()}/admin/reset-password?token=${encodeURIComponent(token)}`;
     await mailService.send({ to: admin.email, senderName: restaurant, ...mailTemplates.passwordReset({ link, restaurant, minutes: RESET_MINUTES }) });
@@ -70,7 +84,7 @@ async function consumeToken(rawToken, purpose) {
 }
 
 async function resetPassword(rawToken, newPassword) {
-  if (!newPassword || newPassword.length < 8) throw new AppError(400, 'Yeni şifrə ən azı 8 simvol olmalıdır');
+  assertPasswordAcceptable(newPassword, 'Yeni şifrə'); // token yandırılmazdan ƏVVƏL yoxlanır
   const row = await consumeToken(rawToken, 'reset');
   await authService.resetPasswordByEmail(row.admin_user_id, newPassword);
   await adminUserRepository.setEmailVerified(row.admin_user_id); // sıfırlama linkini aça bilməsi ünvanın sahibi olduğunu sübut edir
@@ -100,7 +114,8 @@ async function verifyEmail(rawToken) {
 // Öz e-poçtunu dəyişir (şifrəni unutdda məktub real ünvana getsin). Cari şifrə tələb olunur (oğurlanmış sessiya ünvanı dəyişib hesabı
 // ələ keçirməsin). Köhnə ünvana verilmiş bütün açıq linklər (sıfırlama/təsdiq) ləğv edilir; yeni ünvan təsdiqlənənə qədər "təsdiqlənməyib".
 async function changeEmail(adminId, currentPassword, newEmailRaw) {
-  const newEmail = String(newEmailRaw || '').trim();
+  if (typeof newEmailRaw !== 'string') throw new AppError(400, 'Düzgün e-poçt ünvanı yazın'); // massiv/rəqəm String()-lə "ünvan"a çevrilirdi (QA)
+  const newEmail = newEmailRaw.trim();
   if (!/^\S+@\S+\.\S+$/.test(newEmail) || newEmail.length > 150) throw new AppError(400, 'Düzgün e-poçt ünvanı yazın');
   const state = await adminUserRepository.findAuthState(adminId);
   if (!state) throw new AppError(404, 'İstifadəçi tapılmadı');
