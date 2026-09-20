@@ -3,6 +3,8 @@ const { sql, poolPromise } = require('../config/db');
 const { TZ } = require('../config/tz');
 const LOCAL = `DATEADD(HOUR, ${TZ}, o.created_at)`;
 const RANGE = `CAST(${LOCAL} AS DATE) BETWEEN @from AND @to`;
+// Gəlir sayılan sifarişlər: ləğv olunmamış VƏ ödənişi yarımçıq/uğursuz/geri qaytarılmış onlayn sifariş deyil
+const COUNTED = `o.status <> 'CANCELLED' AND NOT (o.payment_method = N'ONLINE' AND o.payment_status IN (N'PENDING', N'FAILED', N'REFUNDED'))`;
 
 async function run(query, { from, to } = {}) {
   const pool = await poolPromise;
@@ -16,11 +18,11 @@ async function run(query, { from, to } = {}) {
 async function getSummary(range) {
   const [row] = await run(`
     SELECT
-      SUM(CASE WHEN o.status <> 'CANCELLED' THEN 1 ELSE 0 END) AS order_count,
-      ISNULL(SUM(CASE WHEN o.status <> 'CANCELLED' THEN o.total END), 0) AS total_sales,
-      ISNULL(AVG(CASE WHEN o.status <> 'CANCELLED' THEN o.total END), 0) AS avg_check,
+      SUM(CASE WHEN ${COUNTED} THEN 1 ELSE 0 END) AS order_count,
+      ISNULL(SUM(CASE WHEN ${COUNTED} THEN o.total END), 0) AS total_sales,
+      ISNULL(AVG(CASE WHEN ${COUNTED} THEN o.total END), 0) AS avg_check,
       SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled_count,
-      ISNULL(SUM(CASE WHEN o.status <> 'CANCELLED' THEN o.discount END), 0) AS total_discount
+      ISNULL(SUM(CASE WHEN ${COUNTED} THEN o.discount END), 0) AS total_discount
     FROM orders o WHERE ${RANGE}
   `, range);
   return {
@@ -36,7 +38,7 @@ async function getDailySales(range) {
   return run(`
     SELECT CONVERT(VARCHAR(10), CAST(${LOCAL} AS DATE), 23) AS day,
            COUNT(*) AS orders, ISNULL(SUM(o.total), 0) AS sales
-    FROM orders o WHERE ${RANGE} AND o.status <> 'CANCELLED'
+    FROM orders o WHERE ${RANGE} AND ${COUNTED}
     GROUP BY CAST(${LOCAL} AS DATE) ORDER BY CAST(${LOCAL} AS DATE)
   `, range);
 }
@@ -44,7 +46,7 @@ async function getDailySales(range) {
 async function getHourly(range) {
   return run(`
     SELECT DATEPART(HOUR, ${LOCAL}) AS hour, COUNT(*) AS orders
-    FROM orders o WHERE ${RANGE} AND o.status <> 'CANCELLED'
+    FROM orders o WHERE ${RANGE} AND ${COUNTED}
     GROUP BY DATEPART(HOUR, ${LOCAL}) ORDER BY hour
   `, range);
 }
@@ -58,7 +60,7 @@ const PRODUCT_SALES = `
   FROM order_items oi
   JOIN orders o ON o.id = oi.order_id
   JOIN products p ON p.id = oi.product_id
-  WHERE ${RANGE} AND o.status <> 'CANCELLED'
+  WHERE ${RANGE} AND ${COUNTED}
   GROUP BY p.id, p.name
 `;
 
@@ -77,7 +79,7 @@ async function getCategorySales(range) {
     JOIN orders o ON o.id = oi.order_id
     JOIN products p ON p.id = oi.product_id
     LEFT JOIN categories c ON c.id = p.category_id
-    WHERE ${RANGE} AND o.status <> 'CANCELLED'
+    WHERE ${RANGE} AND ${COUNTED}
     GROUP BY c.name ORDER BY revenue DESC
   `, range);
 }
@@ -105,6 +107,7 @@ async function getActiveTablesCount() {
   const [row] = await run(`
     SELECT COUNT(DISTINCT table_id) AS active_tables FROM orders
     WHERE table_id IS NOT NULL AND status NOT IN ('COMPLETED', 'CANCELLED', 'DELIVERED')
+      AND NOT (payment_method = N'ONLINE' AND payment_status IN (N'PENDING', N'FAILED'))
   `);
   return row.active_tables;
 }
@@ -118,7 +121,7 @@ async function getLowStock() {
 }
 
 module.exports = {
-  TZ,
+  TZ, COUNTED,
   getSummary, getDailySales, getHourly, getStatusBreakdown, getTopProducts, getLeastProducts,
   getCategorySales, getPromoUsage, getRecentOrders, getActiveTablesCount, getLowStock,
 };

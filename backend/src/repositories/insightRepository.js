@@ -1,4 +1,5 @@
 const { sql, poolPromise } = require('../config/db');
+const { COUNTED } = require('./adminRepository');
 const { TZ } = require('../config/tz');
 
 const LOCAL = `DATEADD(HOUR, ${TZ}, o.created_at)`;
@@ -16,7 +17,7 @@ async function getCustomers({ q } = {}) {
     SELECT TOP 500 o.phone,
            (SELECT TOP 1 x.customer_name FROM orders x WHERE x.phone = o.phone ORDER BY x.created_at DESC) AS name,
            COUNT(*) AS orders_count,
-           ISNULL(SUM(CASE WHEN o.status <> 'CANCELLED' THEN o.total END), 0) AS total_spent,
+           ISNULL(SUM(CASE WHEN ${COUNTED} THEN o.total END), 0) AS total_spent,
            MAX(o.created_at) AS last_order_at
     FROM orders o
     GROUP BY o.phone
@@ -69,7 +70,7 @@ async function exportProductSales({ from, to }) {
     JOIN orders o ON o.id = oi.order_id
     JOIN products p ON p.id = oi.product_id
     LEFT JOIN categories c ON c.id = p.category_id
-    WHERE CAST(${LOCAL} AS DATE) BETWEEN @from AND @to AND o.status <> 'CANCELLED'
+    WHERE CAST(${LOCAL} AS DATE) BETWEEN @from AND @to AND ${COUNTED}
     GROUP BY p.id, p.name, c.name
     ORDER BY revenue DESC
   `);
