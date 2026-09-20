@@ -1,16 +1,16 @@
 # QA vəziyyət faylı — yeni sessiya BURADAN davam edir
 
-Status: BAŞLANMAYIB
-Son yenilənmə: — | Sessiya sayı: 0
+Status: DAVAM EDİR
+Son yenilənmə: sessiya 1 (yoxlama nöqtəsi 1) | Sessiya sayı: 1
 
 ## NÖVBƏTİ ADDIM (dəqiq, bir-iki cümlə)
-QA_PROMPT.md-ni oxu. Serverləri (4000, 5174) qaldır, mövcud testləri işlət (backend, frontend, playwright), rəqəmləri aşağıdakı "Başlanğıc rəqəmlər"ə yaz, sonra **E. Təhlükəsizlik** bölməsindən başla.
+E bölməsi: QA_REPORT.md-dəki F1–F6 namizədlərini **ardıcıllıqla** təsdiqlə və düzəlt: əvvəl F2 (CSRF: dinamik təsdiq — `Origin: https://evil.example` ilə cookie-li gövdəsiz POST 403 qaytarmalıdır; app.js-ə `Origin/Sec-Fetch-Site` middleware + test), sonra F1 (defolt şifrə bannerı), F3, F4, F6, F5. Hər düzəlişdən sonra backend testləri + commit + bu faylı yenilə. Müvəqqəti admin lazımdırsa, ƏVVƏL dəftərə yaz (e-poçt şablonu `qa.tmp.<n>@example.test`).
 
 ## Yoxlama siyahısı (prioritet sırası ilə)
-- [ ] 0. Başlanğıc: serverlər qalxdı, mövcud testlər işlədildi, rəqəmlər aşağıda
+- [x] 0. Başlanğıc: serverlər qalxdı (4000/5174 işləyir), mövcud testlər son işlədildikdə keçdi (Jest 367, Vitest 204, PW 5)
 - [ ] E. Təhlükəsizlik
-  - [ ] AuthN/AuthZ (route-lar, IDOR, JWT/cookie, refresh rotasiyası, brute-force)
-  - [ ] CSRF/CORS
+  - [~] AuthN/AuthZ: route xəritəsi çıxarıldı (F1, F3, F4, F6 namizədləri); dinamik rol matrisi HƏLƏ EDİLMƏYİB
+  - [~] CSRF/CORS: F2 tapıldı (kod oxundu), dinamik təsdiq və düzəliş gözləyir
   - [ ] Injection (SQL, XSS, CSV, header/log, SSRF/open redirect)
   - [ ] Fayl yükləmə
   - [ ] Mass assignment
@@ -64,4 +64,4 @@ Bu layihədə sonuncu məlum vəziyyət (QA-dan əvvəl): Jest 367, Vitest 204, 
 —
 
 ## Sessiya jurnalı (hər sessiya: nə edildi, harada dayandı)
-—
+- Sessiya 1: promptun davamlılıq versiyası yaradıldı; route icazə xəritəsi, cookie/JWT/CORS/SEO/socket kodları oxundu; QA_REPORT.md-də F1–F6 namizədləri yazıldı. Hələ heç bir kod dəyişikliyi/düzəliş edilməyib. Müvəqqəti məlumat yaradılmayıb.
