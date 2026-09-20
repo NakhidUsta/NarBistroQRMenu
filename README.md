@@ -102,6 +102,8 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 
 ## E-poçt / Gmail (şifrə sıfırlama və e-poçt təsdiqi)
 
+> **Ən asan yol (fayl redaktəsi və yenidən başlatma yoxdur):** Admin (OWNER) → **Ayarlar → "E-poçt (Gmail)"** bölməsində Gmail ünvanını və App Password-u yazıb **"Yoxla və saxla"** basın. Sistem Gmail-ə həqiqətən daxil olmağa çalışır (yanlışdırsa saxlamır), şifrəni bazada **şifrələnmiş** saxlayır (AES-256-GCM, açar `JWT_SECRET`-dən), heç vaxt geri göstərmir və dərhal işə salır. Eyni bölmədə "Sınaq məktubu" və "Bağlantını sil" var. Panel `.env`-dən üstündür. Aşağıdakı `.env` üsulu isə əvəzedici yoldur.
+
 > **İlk addım — real e-poçt:** admin hesabının e-poçtu defolt olaraq saxta `admin@qrmenu.local`-dır, sıfırlama məktubu ora getmir. Admin → **Hesabım → "E-poçtu dəyiş"** ilə real ünvanınızı yazın (cari şifrə lazımdır); yeni ünvana təsdiq məktubu gəlir. Köhnə ünvana verilmiş açıq linklər avtomatik ləğv edilir.
 
 > Qurulumu terminaldan yoxlamaq üçün: `cd backend && npm run mail:test -- sizin@gmail.com` (`.env`-dəki `SMTP_USER`/`SMTP_PASS` ilə sınaq məktubu göndərir və səhv olarsa səbəbini yazır).

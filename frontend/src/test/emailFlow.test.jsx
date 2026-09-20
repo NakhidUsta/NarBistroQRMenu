@@ -176,7 +176,7 @@ describe('AccountAdmin: e-poçt bölməsi', () => {
   })
 
   it('OWNER "Sınaq məktubu" ilə SMTP-ni yoxlayır; Gmail xətası səbəbi ilə göstərilir', async () => {
-    authApi.testMail.mockRejectedValue(httpError(502, 'Gmail girişi qəbul olunmadı — SMTP_PASS Google "Tətbiq şifrəsi" olmalıdır'))
+    authApi.testMail.mockRejectedValue(httpError(502, 'Gmail girişi qəbul olunmadı — şifrə Google "Tətbiq şifrəsi" olmalıdır'))
     renderAccount({ id: 1, email: 'o@x.az', role: 'OWNER', email_verified: true })
     await userEvent.click(screen.getByRole('button', { name: /Sınaq məktubu göndər/ }))
     await waitFor(() => expect(toasts().some((m) => m.includes('Tətbiq şifrəsi'))).toBe(true))

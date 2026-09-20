@@ -11,37 +11,76 @@ const logger = require('../utils/logger');
 
 let transporter = null;
 let transporterKey = null;
+// Admin paneldən daxil edilmiş Gmail girişi (bazada şifrələnmiş; server açılanda mailSettingsService.load() yükləyir). .env-dən üstündür.
+let storedConfig = null;
 
 const driver = () => (process.env.MAIL_DRIVER || '').toLowerCase();
 
-function isConfigured() {
-  return driver() === 'console' || !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+// Hazırda istifadə olunan giriş: əvvəl panel, sonra .env
+function credentials() {
+  if (storedConfig?.user && storedConfig?.pass) return storedConfig;
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) return { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS };
+  return null;
 }
 
-function getTransport() {
-  const key = [process.env.SMTP_HOST, process.env.SMTP_PORT, process.env.SMTP_USER, process.env.SMTP_PASS].join('|');
-  if (transporter && key === transporterKey) return transporter;
+function isConfigured() {
+  return driver() === 'console' || !!credentials();
+}
+
+// 'console' | 'panel' | 'env' | null
+function configSource() {
+  if (driver() === 'console') return 'console';
+  if (storedConfig?.user && storedConfig?.pass) return 'panel';
+  return credentials() ? 'env' : null;
+}
+
+function buildTransport({ user, pass }) {
   const port = Number(process.env.SMTP_PORT) || 465;
-  transporter = nodemailer.createTransport({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port,
     secure: port === 465, // 465 = birbaşa TLS; 587 = STARTTLS
-    auth: { user: process.env.SMTP_USER, pass: String(process.env.SMTP_PASS).replace(/\s+/g, '') }, // Google şifrəni boşluqlarla göstərir
+    auth: { user, pass: String(pass).replace(/\s+/g, '') }, // Google şifrəni boşluqlarla göstərir
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
     socketTimeout: 15_000,
   });
+}
+
+function getTransport() {
+  const creds = credentials();
+  const key = [process.env.SMTP_HOST, process.env.SMTP_PORT, creds?.user, creds?.pass].join('|');
+  if (transporter && key === transporterKey) return transporter;
+  transporter = buildTransport(creds);
   transporterKey = key;
   return transporter;
 }
 
 const fromAddress = (senderName) =>
-  process.env.MAIL_FROM || `"${String(senderName || 'QR Menu').replace(/["\r\n]/g, '')}" <${process.env.SMTP_USER}>`;
+  process.env.MAIL_FROM || `"${String(senderName || 'QR Menu').replace(/["\r\n]/g, '')}" <${credentials()?.user}>`;
+
+// Giriş məlumatlarını SAXLAMADAN yoxlayır (Gmail-ə həqiqətən daxil olmağa cəhd). Uğursuzdursa dostcasına xəta atır.
+async function verifyCredentials(creds) {
+  const probe = buildTransport(creds);
+  try {
+    await probe.verify();
+  } catch (err) {
+    logger.warn(`SMTP girişi yoxlanılmadı: ${err.code || err.message}`);
+    throw friendlyError(err);
+  } finally {
+    probe.close();
+  }
+}
+
+function setStoredConfig(config) {
+  storedConfig = config;
+  resetTransport();
+}
 
 // SMTP xətasını istifadəçiyə başa düşülən mesaja çevirir (texniki detal jurnala yazılır)
 function friendlyError(err) {
   if (err?.code === 'EAUTH' || err?.responseCode === 535) {
-    return new AppError(502, 'Gmail girişi qəbul olunmadı — SMTP_PASS Google "Tətbiq şifrəsi" olmalıdır (adi şifrə işləmir) və 2 addımlı doğrulama aktiv olmalıdır');
+    return new AppError(502, 'Gmail girişi qəbul olunmadı — Gmail ünvanı düz olmalı və şifrə Google-un "Tətbiq şifrəsi" (App Password) olmalıdır (adi Gmail şifrəsi işləmir; 2 addımlı doğrulama açıq olmalıdır)');
   }
   if (['ETIMEDOUT', 'ECONNECTION', 'ESOCKET', 'ECONNREFUSED', 'EDNS'].includes(err?.code)) {
     return new AppError(502, 'SMTP serverinə qoşulmaq mümkün olmadı — internet bağlantısını və SMTP_HOST/SMTP_PORT-u yoxlayın');
@@ -71,4 +110,4 @@ const resetTransport = () => {
   transporterKey = null;
 };
 
-module.exports = { send, isConfigured, resetTransport, friendlyError };
+module.exports = { send, isConfigured, configSource, verifyCredentials, setStoredConfig, resetTransport, friendlyError };

@@ -124,6 +124,14 @@ export const ordersApi = {
   updateStatus: (id, status, note) => unwrap(apiClient.put(`/orders/${id}`, { status, note })),
 }
 
+// Gmail (SMTP) ayarları — yalnız OWNER; şifrə heç vaxt geri qaytarılmır
+export const mailSettingsApi = {
+  get: () => unwrap(apiClient.get('/mail-settings')),
+  save: ({ smtp_user, smtp_pass }) => unwrap(apiClient.put('/mail-settings', { smtp_user, smtp_pass })),
+  remove: () => unwrap(apiClient.delete('/mail-settings')),
+  test: () => unwrap(apiClient.post('/mail-settings/test')),
+}
+
 export const paymentsApi = {
   // Müştəri (sifariş tokeni ilə): onlayn ödənişi başlat → provayderin ödəniş səhifəsi
   start: (orderId, token, language) => unwrap(apiClient.post(`/payments/orders/${orderId}/start`, { token, language })),

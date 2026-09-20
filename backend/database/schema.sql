@@ -10,6 +10,7 @@ GO
 
 -- ============ CƏDVƏLLƏR ============
 
+IF OBJECT_ID('mail_settings', 'U') IS NOT NULL DROP TABLE mail_settings;
 IF OBJECT_ID('payments', 'U') IS NOT NULL DROP TABLE payments;
 IF OBJECT_ID('email_tokens', 'U') IS NOT NULL DROP TABLE email_tokens;
 IF OBJECT_ID('refresh_tokens', 'U') IS NOT NULL DROP TABLE refresh_tokens;
@@ -119,6 +120,16 @@ CREATE TABLE email_tokens (
     CONSTRAINT UQ_email_tokens_hash UNIQUE (token_hash)
 );
 CREATE INDEX IX_email_tokens_user ON email_tokens (admin_user_id, purpose, created_at);
+GO
+
+-- E-poçt (Gmail) ayarları admin paneldən; App Password AES-256-GCM ilə şifrələnmiş
+CREATE TABLE mail_settings (
+    id            INT NOT NULL PRIMARY KEY CHECK (id = 1),
+    smtp_user     NVARCHAR(150) NOT NULL,
+    smtp_pass_enc NVARCHAR(600) NOT NULL,
+    updated_by    INT NULL FOREIGN KEY REFERENCES admin_users(id) ON DELETE SET NULL,
+    updated_at    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
 GO
 
 CREATE TABLE categories (

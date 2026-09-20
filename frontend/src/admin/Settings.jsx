@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useRestaurantStore } from '../store/restaurantStore'
 import { useUiStore } from '../store/uiStore'
 import Button from '../components/Button'
+import MailSettings from './MailSettings'
+import { useAuthStore } from '../store/authStore'
 import ImageUploadField from './ImageUploadField'
 import TranslationTabs from './TranslationTabs'
 import { parseTheme, DEFAULT_THEME, FONT_OPTIONS, applyFavicon } from '../lib/theme'
@@ -137,6 +139,7 @@ function Settings() {
   const showToast = useUiStore((s) => s.showToast)
   const [form, setForm] = useState(null)
   const [saving, setSaving] = useState(false)
+  const isOwner = useAuthStore((s) => s.admin?.role) === 'OWNER'
 
   useEffect(() => {
     fetchRestaurant()
@@ -225,6 +228,8 @@ function Settings() {
 
         <Button type="submit" disabled={saving}>{saving ? 'Saxlanılır...' : 'Saxla'}</Button>
       </form>
+
+      {isOwner && <MailSettings />}
 
       <InstagramBioLink />
     </div>

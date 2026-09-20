@@ -15,6 +15,7 @@ const productRoutes = require('./routes/products');
 const tableRoutes = require('./routes/tables');
 const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payments');
+const mailSettingsRoutes = require('./routes/mailSettings');
 const adminRoutes = require('./routes/admin');
 const notificationRoutes = require('./routes/notifications');
 const promoRoutes = require('./routes/promos');
@@ -94,7 +95,7 @@ const emailFlowLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Çox sayda sorğu göndərildi, 15 dəqiqə sonra yenidən cəhd edin' },
 });
-app.use(['/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/test-mail', '/api/auth/send-verification', '/api/auth/change-email'], emailFlowLimiter);
+app.use(['/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/test-mail', '/api/auth/send-verification', '/api/auth/change-email', '/api/mail-settings'], emailFlowLimiter);
 
 app.get('/api/health', async (req, res) => {
   const started = Date.now();
@@ -121,6 +122,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/tables', tableRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/mail-settings', mailSettingsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/promos', promoRoutes);
 app.use('/api/audit-logs', auditRoutes);
