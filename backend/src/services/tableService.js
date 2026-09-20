@@ -6,6 +6,14 @@ const { emitTableUpdated } = require('../sockets/emit');
 
 const DEFAULT_RESTAURANT_ID = 1;
 
+// Sabit vaxtlı müqayisə: QR tokeni cavab vaxtı fərqi ilə təxmin edilməsin
+function tokenMatches(expected, given) {
+  if (typeof expected !== 'string' || typeof given !== 'string') return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(given);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 function generateToken() {
   return crypto.randomBytes(16).toString('hex');
 }
@@ -59,7 +67,7 @@ async function regenerateQr(id) {
 async function scanTable(code, token) {
   const table = await tableRepository.findByCode(code);
   if (!table || !table.is_active) throw new AppError(404, 'Masa tapılmadı və ya aktiv deyil');
-  if (table.qr_token !== token) throw new AppError(400, 'QR kod etibarsızdır — masa sahibindən yeni QR istəyin');
+  if (!tokenMatches(table.qr_token, token)) throw new AppError(400, 'QR kod etibarsızdır — masa sahibindən yeni QR istəyin');
 
   const updated = await tableRepository.registerScan(code);
   emitTableUpdated(updated, 'scanned');
@@ -72,9 +80,17 @@ async function deleteTable(id) {
   emitTableUpdated({ id }, 'deleted');
 }
 
-async function callWaiter(code) {
+// Çağırış/hesab istəyi yalnız masadakı QR-i oxutmuş adama açıqdır: masa kodu (table_001) təxmin edilə bilər, QR tokeni isə yox.
+// Yoxsa kənardan istənilən masaya saxta ofisiant çağırışı göndərmək olardı.
+async function findTableForRequest(code, token) {
   const table = await tableRepository.findByCode(code);
-  if (!table) throw new AppError(404, 'Masa tapılmadı');
+  if (!table || !table.is_active) throw new AppError(404, 'Masa tapılmadı');
+  if (!tokenMatches(table.qr_token, token)) throw new AppError(403, 'QR kod etibarsızdır — masadakı QR kodu yenidən oxudun');
+  return table;
+}
+
+async function callWaiter(code, token) {
+  const table = await findTableForRequest(code, token);
   return notificationService.createOnce({
     type: 'call_waiter',
     title: `${table.label} — Ofisiant çağırılır`,
@@ -83,9 +99,8 @@ async function callWaiter(code) {
   });
 }
 
-async function requestBill(code) {
-  const table = await tableRepository.findByCode(code);
-  if (!table) throw new AppError(404, 'Masa tapılmadı');
+async function requestBill(code, token) {
+  const table = await findTableForRequest(code, token);
   return notificationService.createOnce({
     type: 'request_bill',
     title: `${table.label} — hesab istəyir`,

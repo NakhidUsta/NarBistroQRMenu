@@ -15,10 +15,11 @@ function TableActions() {
   async function trigger(kind, action, successMessage) {
     setBusy(kind)
     try {
-      await action(table.code)
+      await action(table.code, table.token)
       showToast(successMessage)
-    } catch {
-      showToast(t('request_failed'), 'error')
+    } catch (err) {
+      // 403: QR tokeni yoxdur/etibarsızdır (köhnə sessiya və ya dəyişdirilmiş QR) — QR-i yenidən oxutmaq lazımdır
+      showToast(err.response?.status === 403 ? t('qr_rescan') : t('request_failed'), 'error')
     } finally {
       setBusy(null)
     }

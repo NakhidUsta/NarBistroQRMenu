@@ -58,9 +58,9 @@ exports.deleteTable = asyncHandler(async (req, res) => {
 });
 
 exports.callWaiter = asyncHandler(async (req, res) => {
-  res.status(201).json(await tableService.callWaiter(req.params.code));
+  res.status(201).json(await tableService.callWaiter(req.params.code, req.body?.token));
 });
 
 exports.requestBill = asyncHandler(async (req, res) => {
-  res.status(201).json(await tableService.requestBill(req.params.code));
+  res.status(201).json(await tableService.requestBill(req.params.code, req.body?.token));
 });

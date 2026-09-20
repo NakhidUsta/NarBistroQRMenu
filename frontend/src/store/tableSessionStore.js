@@ -15,11 +15,11 @@ try {
 export const useTableSessionStore = create(
   persist(
     (set) => ({
-      table: null, // { code, label } — QR skan edildikdən sonra doldurulur
+      table: null, // { code, label, token } — QR skan edildikdən sonra doldurulur (token: ofisiant çağırışı üçün, sessionStorage-də)
 
       async scan(code, token) {
         const table = await tablesApi.scan(code, token)
-        set({ table: { code: table.code, label: table.label } })
+        set({ table: { code: table.code, label: table.label, token } })
         return table
       },
 

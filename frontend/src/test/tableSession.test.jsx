@@ -16,7 +16,7 @@ beforeEach(() => {
 describe('masa sessiyası: yalnız QR ilə açılışda', () => {
   it('QR skanından sonra masa səhifə sessiyasında (sessionStorage) saxlanılır, localStorage-də yox', async () => {
     await useTableSessionStore.getState().scan('table_001', 'tok')
-    expect(useTableSessionStore.getState().table).toEqual({ code: 'table_001', label: 'Masa 1' })
+    expect(useTableSessionStore.getState().table).toEqual({ code: 'table_001', label: 'Masa 1', token: 'tok' })
     expect(JSON.parse(sessionStorage.getItem('qrmenu_table_session')).state.table.code).toBe('table_001')
     expect(localStorage.getItem('qrmenu_table_session')).toBeNull()
   })

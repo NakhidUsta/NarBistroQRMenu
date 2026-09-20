@@ -98,8 +98,9 @@ export const tablesApi = {
   regenerate: (id) => unwrap(apiClient.post(`/tables/${id}/regenerate`)),
   remove: (id) => apiClient.delete(`/tables/${id}`),
   scan: (code, token) => unwrap(apiClient.post(`/tables/${code}/scan`, { token })),
-  callWaiter: (code) => unwrap(apiClient.post(`/tables/${code}/call-waiter`)),
-  requestBill: (code) => unwrap(apiClient.post(`/tables/${code}/request-bill`)),
+  // QR tokeni lazımdır: masa kodu təxmin edilə bilər, token isə yalnız masadakı QR-də var
+  callWaiter: (code, token) => unwrap(apiClient.post(`/tables/${code}/call-waiter`, { token })),
+  requestBill: (code, token) => unwrap(apiClient.post(`/tables/${code}/request-bill`, { token })),
 }
 
 // Kursor səhifələmə cavabı: gövdə massivdir, "daha var" məlumatı X-Has-More başlığındadır

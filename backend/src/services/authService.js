@@ -110,7 +110,7 @@ async function sessionIsActive(sid) {
 async function authenticate(token) {
   let payload;
   try {
-    payload = jwt.verify(token, process.env.JWT_SECRET);
+    payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] }); // alqoritm sabitdir (alg-confusion/none hücumlarına qarşı)
   } catch {
     throw new AppError(401, 'Sessiya etibarsızdır, yenidən daxil olun');
   }

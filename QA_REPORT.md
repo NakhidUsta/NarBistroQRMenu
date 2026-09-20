@@ -1,4 +1,4 @@
-# QA hesabatı (işləyərkən doldurulur)
+| F6 | undefined| DÜZƏLDİLDİ |undefined| `jwt.verify(..., { algorithms: ['HS256'] })` | `qaSecurity.test.js` (HS512, none, yanlış imza, saxta rol, vaxtı keçmiş → 401) || F4 | undefined| DÜZƏLDİLDİ |undefined| `GET /api/tables`, `/:id` → authorize OWNER/MANAGER/WAITER | `qaSecurity.test.js` || F3 | undefined| DÜZƏLDİLDİ |undefined| QR tokeni tələb olunur (sabit vaxtlı müqayisə, deaktiv masa 404); frontend token sessionStorage-də saxlayıb göndərir, 403-də "QR-i yenidən oxudun" | `backend/tests/qaSecurity.test.js`, `frontend/src/test/tableActions.test.jsx` (düzəlişdən əvvəl uğursuz idi). Canlı: tokensiz 403 |# QA hesabatı (işləyərkən doldurulur)
 
 Son yenilənmə: sessiya 1. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: TƏSDİQ GÖZLƏYİR (namizəd) | TƏSDİQLƏNDİ | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
 
@@ -23,3 +23,8 @@ Son yenilənmə: sessiya 1. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəzi
 ## Test nəticələri
 Başlanğıc (QA-dan əvvəl): Jest 367, Vitest 204, Playwright 5 keçir (+PWA atlanır).
 Yoxlama nöqtəsi 2: Jest 372 (20 dəst), Playwright 5 keçir.
+Yoxlama nöqtəsi 3: Jest 378 (21 dəst), Vitest 208 (24 fayl).
+
+
+## Əlavə tapıntı (F3 ilə birlikdə düzəldildi)
+- F7 (Aşağı, DÜZƏLDİLDİ): `scanTable` QR tokenini `!==` ilə müqayisə edirdi (vaxt fərqi ilə təxmin) → `crypto.timingSafeEqual`.
