@@ -45,29 +45,31 @@ beforeEach(() => {
 })
 
 describe('Login: "Şifrəni unutdunuz?"', () => {
-  it('e-poçt xidməti qurulubsa link göstərilir və unutdum səhifəsinə aparır', async () => {
-    authApi.config.mockResolvedValue({ password_reset: true })
+  it('link HƏMİŞƏ görünür (e-poçt xidməti qurulub-qurulmamasından asılı olmayaraq) və unutdum səhifəsinə aparır', () => {
     at('/admin/login', <Login />)
-    const link = await screen.findByRole('link', { name: 'Şifrəni unutdunuz?' })
+    const link = screen.getByRole('link', { name: 'Şifrəni unutdunuz?' })
     expect(link).toHaveAttribute('href', '/admin/forgot-password')
-  })
-
-  it('qurulmayıbsa (və ya konfiqurasiya alınmadısa) link yox, administratora yönləndirən izahat var', async () => {
-    authApi.config.mockResolvedValue({ password_reset: false })
-    at('/admin/login', <Login />)
-    expect(await screen.findByText(/sistem administratoru ilə əlaqə/)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Şifrəni unutdunuz?' })).toBeNull()
-  })
-
-  it('config sorğusu uğursuz olsa da giriş formu işləyir (link göstərilmir)', async () => {
-    authApi.config.mockRejectedValue(new Error('offline'))
-    at('/admin/login', <Login />)
-    expect(await screen.findByText(/sistem administratoru ilə əlaqə/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Daxil ol' })).toBeEnabled()
   })
 })
 
 describe('ForgotPassword', () => {
+  beforeEach(() => authApi.config.mockResolvedValue({ password_reset: true }))
+
+  it('e-poçt xidməti qurulmayıbsa izahat göstərilir və göndərmə düyməsi bağlıdır', async () => {
+    authApi.config.mockResolvedValue({ password_reset: false })
+    at('/admin/forgot-password', <ForgotPassword />)
+    expect(await screen.findByTestId('mail-unavailable')).toHaveTextContent('E-poçt xidməti hələ qurulmayıb')
+    expect(screen.getByRole('button', { name: 'Sıfırlama linki göndər' })).toBeDisabled()
+  })
+
+  it('xidmət qurulubsa izahat yoxdur, düymə aktivdir; config alınmasa da (offline) forma işləyir', async () => {
+    at('/admin/forgot-password', <ForgotPassword />)
+    await waitFor(() => expect(authApi.config).toHaveBeenCalled())
+    expect(screen.queryByTestId('mail-unavailable')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sıfırlama linki göndər' })).toBeEnabled()
+  })
+
   it('e-poçt göndərir və serverin (hesabı açıqlamayan) mesajını göstərir', async () => {
     authApi.forgotPassword.mockResolvedValue({ message: 'Bu e-poçt ünvanı qeydiyyatlıdırsa, link göndərildi.' })
     at('/admin/forgot-password', <ForgotPassword />)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authApi } from '../lib/api'
 import Button from '../components/Button'
@@ -10,6 +10,12 @@ function ForgotPassword() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState('')
   const [error, setError] = useState('')
+  // e-poçt xidməti (Gmail SMTP) qurulubmu: null = hələ yoxlanılır, false = qurulmayıb
+  const [available, setAvailable] = useState(null)
+
+  useEffect(() => {
+    authApi.config().then((c) => setAvailable(!!c.password_reset)).catch(() => setAvailable(null))
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -31,6 +37,13 @@ function ForgotPassword() {
         <h1 className="font-display text-[22px] font-semibold text-ink mb-1">Şifrəni unutdunuz?</h1>
         <p className="text-[13px] text-muted mb-6">E-poçt ünvanınızı yazın — şifrəni sıfırlamaq üçün link göndərək.</p>
 
+        {available === false && !done && (
+          <div role="note" data-testid="mail-unavailable" className="bg-gold/15 border border-gold/40 rounded-xl px-4 py-3.5 text-[13px] text-ink mb-5">
+            <p className="font-semibold mb-1">E-poçt xidməti hələ qurulmayıb</p>
+            <p className="text-muted">Şifrəni e-poçtla sıfırlamaq üçün sistem administratoru Gmail (SMTP) ayarlarını qurmalıdır. O vaxta qədər şifrəni server administratoru sıfırlaya bilər.</p>
+          </div>
+        )}
+
         {done ? (
           <div role="status" className="bg-success/10 border border-success/30 rounded-xl px-4 py-3.5 text-[13.5px] text-ink mb-5">{done}</div>
         ) : (
@@ -38,7 +51,7 @@ function ForgotPassword() {
             <label htmlFor="forgot-email" className="text-[12.5px] font-semibold text-muted mb-1 block">E-poçt</label>
             <input id="forgot-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputCls} mb-4`} />
             {error && <p role="alert" className="text-[13px] text-danger mb-4">{error}</p>}
-            <Button type="submit" disabled={submitting} className="w-full">{submitting ? 'Göndərilir...' : 'Sıfırlama linki göndər'}</Button>
+            <Button type="submit" disabled={submitting || available === false} className="w-full">{submitting ? 'Göndərilir...' : 'Sıfırlama linki göndər'}</Button>
           </form>
         )}
 

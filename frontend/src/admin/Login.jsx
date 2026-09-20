@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { authApi } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import Button from '../components/Button'
 import { homeFor } from './AdminLayout'
@@ -12,13 +11,6 @@ function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  // e-poçt xidməti (Gmail SMTP) qurulubsa "Şifrəni unutdunuz?" görünür; qurulmayıbsa yalnız server administratoru sıfırlaya bilər
-  const [resetAvailable, setResetAvailable] = useState(null)
-
-  useEffect(() => {
-    authApi.config().then((c) => setResetAvailable(!!c.password_reset)).catch(() => setResetAvailable(false))
-  }, [])
-
   async function handleSubmit(e) {
     e.preventDefault()
     setSubmitting(true)
@@ -66,12 +58,8 @@ function Login() {
           {submitting ? 'Yoxlanılır...' : 'Daxil ol'}
         </Button>
 
-        {resetAvailable === true && (
-          <Link to="/admin/forgot-password" className="block text-center text-[13px] font-semibold text-burgundy mt-4">Şifrəni unutdunuz?</Link>
-        )}
-        {resetAvailable === false && (
-          <p className="text-center text-[12px] text-muted mt-4">Şifrəni unutmusunuzsa, sistem administratoru ilə əlaqə saxlayın.</p>
-        )}
+        {/* Link həmişə görünür; e-poçt xidməti qurulmayıbsa səhifənin özü bunu izah edir */}
+        <Link to="/admin/forgot-password" className="block text-center text-[13px] font-semibold text-burgundy mt-4">Şifrəni unutdunuz?</Link>
       </form>
     </div>
   )
