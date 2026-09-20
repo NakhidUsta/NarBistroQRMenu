@@ -46,6 +46,41 @@ function signAccess(admin, sessionId) {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: ACCESS_EXPIRY });
 }
 
+// Layihə ilə gələn məlum defolt şifrələr (README, .env.example, testlər) — hamıya məlumdur, canlıda təhlükəlidir
+const KNOWN_DEFAULT_PASSWORDS = () => ['ChangeMe123!', 'change-this-password', process.env.SEED_ADMIN_PASSWORD].filter(Boolean);
+const isKnownDefaultPassword = (plain) => KNOWN_DEFAULT_PASSWORDS().includes(String(plain));
+
+// Hesab hazırda məlum defolt şifrədən istifadə edirmi (şifrənin özü saxlanmır — hash ilə müqayisə). Nəticə qısa müddət keşlənir.
+const defaultPasswordCache = new Map();
+const DEFAULT_PW_TTL_MS = 60_000;
+async function usesDefaultPassword(adminId, email) {
+  const hit = defaultPasswordCache.get(adminId);
+  if (hit && Date.now() - hit.at < DEFAULT_PW_TTL_MS) return hit.value;
+  const full = await adminUserRepository.findByEmail(email);
+  let value = false;
+  if (full?.password_hash) {
+    for (const candidate of KNOWN_DEFAULT_PASSWORDS()) {
+      if (await bcrypt.compare(candidate, full.password_hash)) {
+        value = true;
+        break;
+      }
+    }
+  }
+  if (defaultPasswordCache.size > 200) defaultPasswordCache.clear();
+  defaultPasswordCache.set(adminId, { value, at: Date.now() });
+  return value;
+}
+
+// Server açılanda: əsas admin hələ defolt şifrədədirsə jurnala xəbərdarlıq yazır (şifrəni DƏYİŞMİR — bunu sahib etməlidir)
+async function warnIfDefaultAdminPassword() {
+  const email = process.env.SEED_ADMIN_EMAIL || 'admin@qrmenu.local';
+  const full = await adminUserRepository.findByEmail(email);
+  if (!full) return false;
+  const insecure = await usesDefaultPassword(full.id, email);
+  if (insecure) logger.warn(`TƏHLÜKƏSİZLİK: ${email} hesabı hələ də məlum defolt şifrədədir — Admin → Hesabım → "Şifrəni dəyiş" ilə dərhal dəyişin.`);
+  return insecure;
+}
+
 function publicAdmin(admin) {
   return { id: admin.id, email: admin.email, role: admin.role, restaurant_id: admin.restaurant_id, email_verified: !!admin.email_verified_at };
 }
@@ -208,6 +243,7 @@ async function changePassword(adminId, currentPassword, newPassword, meta = {}) 
     throw new AppError(400, 'Cari şifrə yanlışdır');
   }
 
+  defaultPasswordCache.delete(adminId);
   const token_version = await adminUserRepository.updatePassword(adminId, await bcrypt.hash(newPassword, 10));
   await sessionRepository.revokeAllForUser(adminId);
   revokeSessions(adminId);
@@ -219,6 +255,7 @@ async function changePassword(adminId, currentPassword, newPassword, meta = {}) 
 // E-poçtla şifrə sıfırlama: cari şifrəni bilmədən yenisini təyin edir, bütün sessiyaları bağlayır, bloku götürür
 async function resetPasswordByEmail(adminId, newPassword) {
   if (!newPassword || newPassword.length < 8) throw new AppError(400, 'Yeni şifrə ən azı 8 simvol olmalıdır');
+  defaultPasswordCache.delete(adminId);
   await adminUserRepository.updatePassword(adminId, await bcrypt.hash(newPassword, 10)); // token versiyasını da artırır
   await sessionRepository.revokeAllForUser(adminId);
   revokeSessions(adminId);
@@ -233,5 +270,5 @@ async function logoutEverywhere(adminId) {
 
 module.exports = {
   login, refresh, logout, authenticate, changePassword, resetPasswordByEmail, logoutEverywhere, listSessions, revokeSession,
-  invalidate, revokeSessions, SESSION_HOURS, ACCESS_MINUTES, SESSION_MAX_DAYS, REUSE_GRACE_MS, hashToken,
+  invalidate, revokeSessions, isKnownDefaultPassword, usesDefaultPassword, warnIfDefaultAdminPassword, SESSION_HOURS, ACCESS_MINUTES, SESSION_MAX_DAYS, REUSE_GRACE_MS, hashToken,
 };

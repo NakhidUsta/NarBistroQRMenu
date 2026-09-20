@@ -118,6 +118,12 @@ function AdminLayout() {
       </aside>
 
       <div className="flex-1 min-w-0">
+        {admin?.default_password && (
+          <div role="alert" data-testid="default-password-warning" className="bg-danger text-white px-4 py-2.5 text-[13px] font-semibold flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+            <span>⚠ Hesabınız hələ də məlum defolt şifrədədir — kim isə bu şifrəni bilir. Dərhal dəyişin!</span>
+            <NavLink to="/admin/account" className="underline">Şifrəni dəyiş →</NavLink>
+          </div>
+        )}
         <header className="h-16 flex items-center justify-between md:justify-end gap-3 md:gap-5 px-4 md:px-6 border-b border-border bg-panel sticky top-0 z-20">
           <button
             type="button"

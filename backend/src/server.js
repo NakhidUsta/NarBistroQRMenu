@@ -4,6 +4,7 @@ const { initSockets } = require('./sockets');
 const systemAlertService = require('./services/systemAlertService');
 const logger = require('./utils/logger');
 const paymentService = require('./services/paymentService');
+const authService = require('./services/authService');
 const mailSettingsService = require('./services/mailSettingsService');
 
 const server = http.createServer(app);
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`QR Menu backend http://localhost:${PORT} ünvanında işləyir`);
   systemAlertService.startMonitor();
+  authService.warnIfDefaultAdminPassword().catch(() => {}); // defolt admin şifrəsi xəbərdarlığı
   mailSettingsService.load(); // paneldən daxil edilmiş Gmail girişini yaddaşa yüklə
   paymentService.startExpirySweeper(); // ödənilməyən onlayn sifarişləri vaxtında ləğv edir, stoku qaytarır
 });

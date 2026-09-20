@@ -4,12 +4,12 @@ Status: DAVAM EDİR
 Son yenilənmə: sessiya 1 (yoxlama nöqtəsi 1) | Sessiya sayı: 1
 
 ## NÖVBƏTİ ADDIM (dəqiq, bir-iki cümlə)
-F2, F3, F4, F6, F7 BİTDİ. Qalan: F1 (defolt `ChangeMe123!` ilə girişdə admin panel bannerı + server açılışında xəbərdarlıq; şifrəni dəyişmə!), F5 (HSTS production-da; CSP ehtiyatla). Sonra E-nin qalan alt-bəndləri: dinamik rol matrisi (4 müvəqqəti rol — ƏVVƏL dəftərə yaz), injection (dinamik SQL/XSS probları), fayl yükləmə, mass assignment, rate limit, məlumat sızması (xəta mesajları, socket, git tarixçəsində sirlər), npm audit, socket. Sonra C → D → B → A ...
+F1, F2, F3, F4, F6, F7 BİTDİ. Qalan: F5 (HSTS production-da; CSP ehtiyatla — inline splash, Google Fonts, Unsplash şəkilləri, socket). Sonra E-nin qalan alt-bəndləri: **dinamik rol matrisi** (4 müvəqqəti rol hesabı — ƏVVƏL dəftərə yaz, e-poçt `qa.tmp.<n>@example.test`), injection (dinamik SQL/XSS probları, SEO), fayl yükləmə (magic bytes, SVG/HTML, traversal), mass assignment, rate limit (login 5, general 3000, forgot), məlumat sızması (xəta mesajları, socket otaqları, git tarixçəsində sirlər: `git log -p -S`), `npm audit` (backend+frontend), socket. Sonra C → D → B → A → F → G → H → K → I → J.
 
 ## Yoxlama siyahısı (prioritet sırası ilə)
 - [x] 0. Başlanğıc: serverlər qalxdı (4000/5174 işləyir), mövcud testlər son işlədildikdə keçdi (Jest 367, Vitest 204, PW 5)
 - [ ] E. Təhlükəsizlik
-  - [~] AuthN/AuthZ: route xəritəsi + F3/F4/F6/F7 düzəldildi; F1 gözləyir; dinamik rol matrisi HƏLƏ EDİLMƏYİB
+  - [~] AuthN/AuthZ: route xəritəsi + F1/F3/F4/F6/F7 düzəldildi; dinamik rol matrisi HƏLƏ EDİLMƏYİB
   - [x] CSRF/CORS: F2 düzəldildi və canlı təsdiqləndi (csrfGuard). CORS origin sabit — problem yoxdur
   - [ ] Injection (SQL, XSS, CSV, header/log, SSRF/open redirect)
   - [ ] Fayl yükləmə
@@ -61,9 +61,10 @@ Bu layihədə sonuncu məlum vəziyyət (QA-dan əvvəl): Jest 367, Vitest 204, 
 | — | — | — | — |
 
 ## Qərarımı tələb edən / düzəldilməyən məsələlər
-—
+- Admin şifrəsi hələ də defoltdur — SAHİB dəyişməlidir (QA dəyişmir).
 
 ## Sessiya jurnalı (hər sessiya: nə edildi, harada dayandı)
+- Sessiya 1 (nöqtə 4): F1 (defolt admin şifrəsi bannerı + server xəbərdarlığı; canlı təsdiq: real admin defolt şifrədədir) düzəldildi. Jest 382, Vitest 210. Backend yenidən başladıldı.
 - Sessiya 1 (nöqtə 3): F3 (QR tokeni çağırışlarda), F4 (GET /tables rolları), F6 (JWT HS256), F7 (timingSafeEqual) düzəldildi; testlər: Jest 378, Vitest 208. Backend yenidən başladıldı.
 - Sessiya 1 (nöqtə 2): F2 CSRF düzəldildi (csrfGuard + 5 test), backend yenidən başladıldı, E2E keçdi. Commit: "QA: CSRF guard".
 - Sessiya 1: promptun davamlılıq versiyası yaradıldı; route icazə xəritəsi, cookie/JWT/CORS/SEO/socket kodları oxundu; QA_REPORT.md-də F1–F6 namizədləri yazıldı. Hələ heç bir kod dəyişikliyi/düzəliş edilməyib. Müvəqqəti məlumat yaradılmayıb.

@@ -53,3 +53,18 @@ describe('AdminLayout (mobil çəkməcə)', () => {
     expect(screen.getByRole('link', { name: /Sifarişlər/ })).toBeInTheDocument()
   })
 })
+
+describe('AdminLayout: defolt şifrə xəbərdarlığı (QA F1)', () => {
+  it('hesab məlum defolt şifrədədirsə (default_password) qırmızı xəbərdarlıq və "Şifrəni dəyiş" linki göstərilir', () => {
+    useAuthStore.setState({ admin: { id: 1, email: 'o@x.az', role: 'OWNER', default_password: true } })
+    renderLayout()
+    const warning = screen.getByTestId('default-password-warning')
+    expect(warning).toHaveTextContent('defolt şifrədədir')
+    expect(screen.getByRole('link', { name: /Şifrəni dəyiş/ })).toHaveAttribute('href', '/admin/account')
+  })
+
+  it('bayraq yoxdursa (güclü şifrə) xəbərdarlıq göstərilmir', () => {
+    renderLayout()
+    expect(screen.queryByTestId('default-password-warning')).toBeNull()
+  })
+})

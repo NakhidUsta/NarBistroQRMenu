@@ -36,7 +36,9 @@ exports.login = asyncHandler(async (req, res) => {
   req.admin = session.admin;
   await auditService.log(req, 'auth.login', 'admin_users', session.admin.id, null, { email: session.admin.email });
   setSessionCookies(res, session);
-  res.json({ admin: session.admin });
+  // defolt şifrə ilə girişdə panel xəbərdarlıq göstərir (şifrə əsla saxlanmır/qaytarılmır, yalnız bayraq)
+  const admin = authService.isKnownDefaultPassword(password) ? { ...session.admin, default_password: true } : session.admin;
+  res.json({ admin });
 });
 
 // Access token vaxtı bitəndə səssiz yenilənmə: yeni access + ROTASİYA olunmuş yeni refresh token
@@ -58,9 +60,10 @@ exports.logout = asyncHandler(async (req, res) => {
   res.json({ message: 'Çıxış edildi' });
 });
 
-exports.me = (req, res) => {
-  res.json({ admin: req.admin });
-};
+exports.me = asyncHandler(async (req, res) => {
+  const default_password = await authService.usesDefaultPassword(req.admin.id, req.admin.email);
+  res.json({ admin: default_password ? { ...req.admin, default_password: true } : req.admin });
+});
 
 exports.changePassword = asyncHandler(async (req, res) => {
   const { current_password, new_password } = req.body;
