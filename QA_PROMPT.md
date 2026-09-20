@@ -26,7 +26,7 @@ Sən təcrübəli **senior developer + QA mühəndisi + təhlükəsizlik auditor
 
 ## 3. Proses
 1. Layihəni oxu, serverləri qaldır, mövcud testləri işlət — **başlanğıc vəziyyəti** qeyd et.
-2. Aşağıdakı bölmələri **ayrı-ayrı** yoxla (A → J). Hər bölmədə: yoxla → səhv tap → reproduksiya et → kök səbəbi tap → düzəlt → test yaz → dəstləri işlət.
+2. Aşağıdakı bölmələri **ayrı-ayrı** yoxla (A → K). Hər bölmədə: yoxla → səhv tap → reproduksiya et → kök səbəbi tap → düzəlt → test yaz → dəstləri işlət.
 3. Real brauzerdə yoxla (Playwright və ya daxili brauzer): masaüstü (1280), planşet (768), telefon (375) enlərində. Konsol xətalarına, şəbəkə xətalarına, layout pozulmalarına bax.
 4. `QA_REPORT.md` yarat və işləyərkən doldur: tapıntı | ciddilik (Kritik/Yüksək/Orta/Aşağı) | harada | necə reproduksiya olunur | düzəliş | test.
 5. Sonda: bütün test dəstləri yaşıl, temp məlumat silinib, commit-lər hazır, hesabatda **düzəltmədiyin/qərarımı tələb edən** məsələlər ayrıca siyahıdadır.
@@ -85,7 +85,27 @@ Sən təcrübəli **senior developer + QA mühəndisi + təhlükəsizlik auditor
 ### J. Canlıya hazırlıq (deploy)
 - Production build (`vite build`) və backend-in `dist`-i təqdim etməsi, SEO injection; `.env.example`-ın tamlığı (bütün dəyişənlər sənədləşib?); `NODE_ENV=production` davranışları (test ödəniş provayderi söndürülür, secure cookie, `trust proxy`); `DEPLOY.md` addımlarının doğruluğu; backup skripti; jurnal qovluğu; defolt admin şifrəsi/`JWT_SECRET` xəbərdarlığı; HTTPS tələbi; `PUBLIC_URL` olmadıqda e-poçt/ödəniş linklərinin `localhost`-a getməsi barədə xəbərdarlıq.
 
+### K. YÜK və dözümlülük testi — 300 sifariş (sayt çökür, yavaşlayır, məlumat pozulur?)
+Məqsəd: sistemin real yük altında **çökmədiyini, məlumatı pozmadığını və yavaşlamadığını** sübut etmək. Yalnız **lokal** DB və backend üzərində işlə (heç vaxt production-a qarşı yox), ödəniş üçün `PAYMENT_PROVIDER=test`.
+
+**Hazırlıq.** Node skripti yaz (fayla, `node` ilə işlət; `fetch` + Promise hovuzu). Bütün test sifarişlərini tanımaq üçün **işarə** qoy: `customer_name` = `LOADTEST-<nömrə>`, telefon = `+99400000<5 rəqəm>` (real telefonlarla qarışmasın). `backend/src/config/db.js`-də bağlantı hovuzunun (pool) ölçüsünə və `app.js`-dəki rate limit-lərə bax, test nəticəsini onlarla əlaqələndir.
+
+**Mərhələlər** (hər mərhələdə vaxtı, status kodlarının bölgüsünü, gecikməni p50/p95/p99, backend prosesinin yaddaş (RSS) və CPU-sunu əvvəl/sonra ölç):
+1. **300 ardıcıl sifariş** (baza xətti).
+2. **300 paralel sifariş**, paralellik 10 → 25 → 50 (bir restoran Wi-Fi-ı = bir IP). Ümumi rate limit-in (defolt 3000/15 dəq/IP) bu yükü qəbul edib-etmədiyini müşahidə et; 429 çıxırsa, bunun real restoran üçün yetərli olub-olmadığını qiymətləndir (test üçün RATE_LIMIT_GENERAL artırmaq olar, amma production defoltunu əsassız dəyişmə).
+3. **Qarışıq ssenari** (300 sifarişin içində): NAĞD / KARTLA MASADA / ONLAYN (saxta provayderlə `/pay/test` tamamlama, bir hissəsi rədd), masa ilə və masasız, promo kodlu, `quote` sorğuları, sifariş statusu dəyişmələri, bildiriş yaranması.
+4. **Yarış halları:** (a) stok izlənən məhsuldan stok N ikən paralel N+20 sifariş → **tam N uğurlu**, stok heç vaxt mənfi olmamalı; (b) eyni `client_request_id` ilə **eyni anda** təkrar göndərmə (offline növbə/qoşa klik) → yalnız **bir** sifariş; (c) limitli promo kodun paralel istifadəsi limiti aşmamalı; (d) eyni sifarişə paralel iki ödəniş callback-i/geri qaytarma → bir dəfə tətbiq olunmalı.
+5. **Qiymət manipulyasiyası** yük altında: brauzerdən gələn `total/price/status/payment_status` göndərən sorğular → hamısı serverdə düzəldilməli/rədd edilməli.
+6. **Real-time:** 300 sifariş gedərkən 2-3 admin socket-i və KDS açıq olsun → hər `order-created` hadisəsi hər birinə **itmədən və təkrarlanmadan** çatmalı; bağlantı qopub-qoşulanda (recovery) sifariş itməməli.
+7. **Yükdən sonra admin panel və müştəri saytı:** 300+ sifarişlə Sifarişlər siyahısı (kursor səhifələmə, "daha köhnələri göstər"), Mətbəx ekranı (render sürəti, brauzer donması), Dashboard və Hesabat sorğularının vaxtı, CSV ixracı, bildirişlər səhifəsi (səhifələmə), müştəri menyusu — yavaşlıq və konsol xətaları yoxlanmalı.
+
+**Bütövlük yoxlaması (yükdən sonra, SQL ilə):** yaradılan sifariş sayı = uğurlu HTTP cavabların sayı; `client_request_id` üzrə dublikat yoxdur; hər sifarişin `total` = `order_items` cəmi + haqlar (yenidən hesabla); `payment_status`/`payments` uyğunluğu (PAID ↔ SUCCESS cəhd, PENDING onlayn sifarişlər admin/mətbəxə düşməyib); stok mənfi deyil və `stock_movements` ilə uyğundur; heç bir yetim sətir (order_items/payments/notifications) yoxdur; backend jurnalında gözlənilməz xəta/unhandledRejection yoxdur; proses çökməyib və hovuz tükənməyib.
+
+**Qəbul meyarı:** gözlənilməz 5xx = 0; proses çökmür; yaddaş yük bitəndən sonra sabitləşir (davamlı artım yoxdur); paralellik 25-də p95 gecikmə məntiqi həddədir (~1 san və ya səbəbi izah olunub); itmiş/təkrarlanmış sifariş yoxdur; bütövlük yoxlamaları keçir. Meyar pozularsa **darboğazı tap** (yavaş sorğu/indeks, N+1, hovuz ölçüsü, event-loop bloklanması, tranzaksiya kilidi, socket yayımı), düzəlt, testi yenidən işlət və **əvvəl/sonra** rəqəmləri hesabata yaz.
+
+**Təmizlik (MÜTLƏQ):** yükdən sonra bütün `LOADTEST-` sifarişlərini və onlara bağlı sətirləri (order_items, order_status_history, payments, notifications, stock_movements, promo istifadə qeydləri) sil; sifarişlərlə azalmış stoku və promo sayğacını **əvvəlki dəyərinə qaytar**; `sqlcmd`-də `-I` bayrağını unutma; sonda real sifarişin (+994508263979), məhsul/kateqoriya sayının və restoran ayarlarının **toxunulmaz** qaldığını sayla yoxla.
+
 ## 5. Yekun təhvil
-- `QA_REPORT.md`: ümumi xülasə, ciddiliyə görə tapıntılar cədvəli (düzəldilənlər və düzəldilməyənlər), test nəticələri (əvvəl/sonra sayları), qalan risklər, canlıya çıxmazdan əvvəl **mənim** etməli olduqlarım (domen, Epoint açarları, Gmail App Password, `.env` sirləri).
+- `QA_REPORT.md`: ümumi xülasə, ciddiliyə görə tapıntılar cədvəli (düzəldilənlər və düzəldilməyənlər), test nəticələri (əvvəl/sonra sayları), yük testinin rəqəmləri (K bölməsi: uğur %, gecikmə p50/p95/p99, yaddaş, tapılan darboğazlar), qalan risklər, canlıya çıxmazdan əvvəl **mənim** etməli olduqlarım (domen, Epoint açarları, Gmail App Password, `.env` sirləri).
 - Bütün dəyişikliklər yerli git commit-lərində; iş qovluğu təmiz; müvəqqəti fayl/hesab/məlumat silinib; serverlər (4000, 5174) işləyir vəziyyətdə qalıb.
 - Sonda mənə Azərbaycan dilində **qısa** yekun yaz: neçə səhv tapdın, neçəsini düzəltdin, nə qaldı, mənim növbəti addımlarım.
