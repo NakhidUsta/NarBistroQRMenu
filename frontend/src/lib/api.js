@@ -182,6 +182,7 @@ export const authApi = {
   verifyEmail: (token) => unwrap(apiClient.post('/auth/verify-email', { token })),
   sendVerification: () => unwrap(apiClient.post('/auth/send-verification')),
   testMail: () => unwrap(apiClient.post('/auth/test-mail')),
+  changeEmail: (new_email, current_password) => unwrap(apiClient.post('/auth/change-email', { new_email, current_password })),
   sessions: () => unwrap(apiClient.get('/auth/sessions')),
   revokeSession: (id) => apiClient.delete(`/auth/sessions/${id}`),
   me: () => unwrap(apiClient.get('/auth/me')),

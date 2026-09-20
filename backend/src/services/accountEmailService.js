@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const adminUserRepository = require('../repositories/adminUserRepository');
 const emailTokenRepository = require('../repositories/emailTokenRepository');
 const authService = require('./authService');
@@ -96,6 +97,35 @@ async function verifyEmail(rawToken) {
   return { id: row.admin_user_id, email: row.email };
 }
 
+// Öz e-poçtunu dəyişir (şifrəni unutdda məktub real ünvana getsin). Cari şifrə tələb olunur (oğurlanmış sessiya ünvanı dəyişib hesabı
+// ələ keçirməsin). Köhnə ünvana verilmiş bütün açıq linklər (sıfırlama/təsdiq) ləğv edilir; yeni ünvan təsdiqlənənə qədər "təsdiqlənməyib".
+async function changeEmail(adminId, currentPassword, newEmailRaw) {
+  const newEmail = String(newEmailRaw || '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(newEmail) || newEmail.length > 150) throw new AppError(400, 'Düzgün e-poçt ünvanı yazın');
+  const state = await adminUserRepository.findAuthState(adminId);
+  if (!state) throw new AppError(404, 'İstifadəçi tapılmadı');
+  const full = await adminUserRepository.findByEmail(state.email);
+  if (!full || !(await bcrypt.compare(String(currentPassword || ''), full.password_hash))) throw new AppError(400, 'Cari şifrə yanlışdır');
+  if (newEmail.toLowerCase() === String(state.email).toLowerCase()) throw new AppError(400, 'Bu artıq sizin e-poçtunuzdur');
+  if (await adminUserRepository.findByEmail(newEmail)) throw new AppError(409, 'Bu e-poçt artıq başqa hesabda istifadə olunur');
+
+  await adminUserRepository.updateEmail(adminId, newEmail);
+  await emailTokenRepository.invalidateOpen(adminId, 'reset');
+  await emailTokenRepository.invalidateOpen(adminId, 'verify');
+
+  // Yeni ünvana təsdiq məktubu (xidmət qurulmayıbsa və ya xəta olarsa e-poçt yenə də dəyişilib, sonra "Təsdiq məktubu göndər" ilə təkrar olunur)
+  let verificationSent = false;
+  if (mailService.isConfigured()) {
+    try {
+      await sendVerification(adminId);
+      verificationSent = true;
+    } catch (err) {
+      logger.error('Yeni e-poçta təsdiq məktubu göndərilmədi', err);
+    }
+  }
+  return { email: newEmail, previous: state.email, verificationSent };
+}
+
 // SMTP ayarlarının düzgünlüyünü yoxlamaq üçün: sınaq məktubu öz ünvanına
 async function sendTestMail(adminId) {
   const state = await adminUserRepository.findAuthState(adminId);
@@ -106,6 +136,6 @@ async function sendTestMail(adminId) {
 }
 
 module.exports = {
-  isAvailable, requestPasswordReset, resetPassword, sendVerification, verifyEmail, sendTestMail,
+  isAvailable, requestPasswordReset, resetPassword, sendVerification, verifyEmail, sendTestMail, changeEmail,
   hashToken, RESET_MINUTES, VERIFY_HOURS, MAX_TOKENS_PER_HOUR,
 };

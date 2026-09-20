@@ -38,6 +38,15 @@ async function setEmailVerified(id) {
   await pool.request().input('id', sql.Int, id).query('UPDATE admin_users SET email_verified_at = COALESCE(email_verified_at, SYSUTCDATETIME()) WHERE id = @id');
 }
 
+// E-poçtu dəyişir; yeni ünvan təsdiqlənənə qədər "təsdiqlənməyib" olur
+async function updateEmail(id, email) {
+  const pool = await poolPromise;
+  await pool.request()
+    .input('id', sql.Int, id)
+    .input('email', sql.NVarChar(150), email)
+    .query('UPDATE admin_users SET email = @email, email_verified_at = NULL WHERE id = @id');
+}
+
 async function resetFailures(id) {
   const pool = await poolPromise;
   await pool.request().input('id', sql.Int, id)
@@ -128,6 +137,7 @@ async function countByRole(role) {
 }
 
 module.exports = {
+  updateEmail,
   findByEmail, findById, findAuthState, findAll, create, update, remove, countByRole,
   registerFailure, resetFailures, updatePassword, bumpTokenVersion, setEmailVerified,
 };

@@ -94,7 +94,7 @@ const emailFlowLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Çox sayda sorğu göndərildi, 15 dəqiqə sonra yenidən cəhd edin' },
 });
-app.use(['/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/test-mail', '/api/auth/send-verification'], emailFlowLimiter);
+app.use(['/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/test-mail', '/api/auth/send-verification', '/api/auth/change-email'], emailFlowLimiter);
 
 app.get('/api/health', async (req, res) => {
   const started = Date.now();

@@ -118,6 +118,19 @@ exports.sendVerification = asyncHandler(async (req, res) => {
   res.json({ message: 'Təsdiq məktubu göndərildi — e-poçtunuzu yoxlayın.' });
 });
 
+exports.changeEmail = asyncHandler(async (req, res) => {
+  const { new_email, current_password } = req.body || {};
+  const { email, previous, verificationSent } = await accountEmailService.changeEmail(req.admin.id, current_password, new_email);
+  await auditService.log(req, 'auth.email_change', 'admin_users', req.admin.id, { email: previous }, { email });
+  res.json({
+    email,
+    verification_sent: verificationSent,
+    message: verificationSent
+      ? 'E-poçt dəyişdirildi. Yeni ünvana təsdiq məktubu göndərildi — linkə basıb təsdiqləyin.'
+      : 'E-poçt dəyişdirildi. Təsdiq üçün "Təsdiq məktubu göndər" düyməsinə basın (e-poçt xidməti qurulandan sonra).',
+  });
+});
+
 exports.verifyEmail = asyncHandler(async (req, res) => {
   const user = await accountEmailService.verifyEmail(req.body?.token);
   req.admin = { id: user.id, email: user.email };

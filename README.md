@@ -102,6 +102,8 @@ Admin → **Media** (OWNER/MANAGER). Hər yüklənən şəkil (`POST /api/upload
 
 ## E-poçt / Gmail (şifrə sıfırlama və e-poçt təsdiqi)
 
+> **İlk addım — real e-poçt:** admin hesabının e-poçtu defolt olaraq saxta `admin@qrmenu.local`-dır, sıfırlama məktubu ora getmir. Admin → **Hesabım → "E-poçtu dəyiş"** ilə real ünvanınızı yazın (cari şifrə lazımdır); yeni ünvana təsdiq məktubu gəlir. Köhnə ünvana verilmiş açıq linklər avtomatik ləğv edilir.
+
 > Qurulumu terminaldan yoxlamaq üçün: `cd backend && npm run mail:test -- sizin@gmail.com` (`.env`-dəki `SMTP_USER`/`SMTP_PASS` ilə sınaq məktubu göndərir və səhv olarsa səbəbini yazır).
 
 Sistem məktubları **Gmail SMTP** ilə göndərir. Gmail adi şifrə qəbul etmir — 16 simvollu **Tətbiq şifrəsi** (App Password) lazımdır:

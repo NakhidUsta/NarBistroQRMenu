@@ -9,6 +9,7 @@ router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/send-verification', requireAdmin, authController.sendVerification);
+router.post('/change-email', requireAdmin, authController.changeEmail);
 router.post('/test-mail', requireAdmin, authorize('OWNER'), authController.testMail);
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);

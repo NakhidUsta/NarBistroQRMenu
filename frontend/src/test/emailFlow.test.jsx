@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
@@ -10,7 +10,7 @@ vi.mock('../lib/api', async (importOriginal) => {
     authApi: {
       config: vi.fn(), login: vi.fn(), forgotPassword: vi.fn(), resetPassword: vi.fn(), verifyEmail: vi.fn(),
       sendVerification: vi.fn(), testMail: vi.fn(), sessions: vi.fn().mockResolvedValue([]), revokeSession: vi.fn(),
-      changePassword: vi.fn(), logoutAll: vi.fn(), me: vi.fn(), logout: vi.fn(), refresh: vi.fn(),
+      changePassword: vi.fn(), changeEmail: vi.fn(), logoutAll: vi.fn(), me: vi.fn(), logout: vi.fn(), refresh: vi.fn(),
     },
   }
 })
@@ -179,5 +179,33 @@ describe('AccountAdmin: e-poçt bölməsi', () => {
     await userEvent.click(screen.getByRole('button', { name: /Sınaq məktubu göndər/ }))
     await waitFor(() => expect(toasts().some((m) => m.includes('Tətbiq şifrəsi'))).toBe(true))
     expect(useUiStore.getState().toasts.at(-1).variant).toBe('error')
+  })
+})
+
+describe('AccountAdmin: e-poçtu dəyiş', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ admin: { id: 1, email: 'admin@qrmenu.local', role: 'OWNER', email_verified: false }, fetchMe: vi.fn().mockResolvedValue() })
+  })
+
+  it('yeni e-poçt və cari şifrə serverə göndərilir, uğur mesajı göstərilir, sahələr təmizlənir', async () => {
+    authApi.changeEmail.mockResolvedValue({ email: 'yeni@gmail.com', message: 'E-poçt dəyişdirildi. Yeni ünvana təsdiq məktubu göndərildi — linkə basıb təsdiqləyin.' })
+    at('/admin/account', <AccountAdmin />)
+    const form = await screen.findByTestId('change-email-form')
+    await userEvent.type(form.querySelector('input[type=email]'), 'yeni@gmail.com')
+    await userEvent.type(form.querySelector('input[type=password]'), 'CariSifre123')
+    await userEvent.click(within(form).getByRole('button', { name: 'E-poçtu dəyiş' }))
+    await waitFor(() => expect(authApi.changeEmail).toHaveBeenCalledWith('yeni@gmail.com', 'CariSifre123'))
+    await waitFor(() => expect(toasts().join(' ')).toContain('təsdiq məktubu göndərildi'))
+    expect(form.querySelector('input[type=email]')).toHaveValue('')
+  })
+
+  it('yanlış şifrədə serverin xətası göstərilir', async () => {
+    authApi.changeEmail.mockRejectedValue(httpError(400, 'Cari şifrə yanlışdır'))
+    at('/admin/account', <AccountAdmin />)
+    const form = await screen.findByTestId('change-email-form')
+    await userEvent.type(form.querySelector('input[type=email]'), 'yeni@gmail.com')
+    await userEvent.type(form.querySelector('input[type=password]'), 'yanlis')
+    await userEvent.click(within(form).getByRole('button', { name: 'E-poçtu dəyiş' }))
+    await waitFor(() => expect(toasts()).toContain('Cari şifrə yanlışdır'))
   })
 })

@@ -208,3 +208,47 @@ describe('authService.resetPasswordByEmail', () => {
     expect(users.updatePassword).not.toHaveBeenCalled();
   });
 });
+
+describe('changeEmail (öz e-poçtunu dəyiş)', () => {
+  const hash = bcrypt.hashSync('DogruSifre123', 4);
+  beforeEach(() => {
+    users.findByEmail.mockImplementation(async (email) => (email === 'owner@savora.az' ? { ...admin, password_hash: hash } : null));
+    users.updateEmail.mockResolvedValue();
+  });
+
+  it('uğurlu: cari şifrə düzgündür → e-poçt dəyişir, köhnə reset/verify tokenləri ləğv edilir, yeni ünvana təsdiq məktubu gedir', async () => {
+    users.findAuthState.mockResolvedValueOnce({ ...admin, email_verified_at: null, token_version: 0 }); // changeEmail
+    users.findAuthState.mockResolvedValueOnce({ ...admin, email: 'yeni@gmail.com', email_verified_at: null, token_version: 0 }); // sendVerification (yenilənmiş)
+    const out = await service.changeEmail(7, 'DogruSifre123', '  Yeni@Gmail.com ');
+    expect(out).toMatchObject({ email: 'Yeni@Gmail.com', previous: 'owner@savora.az', verificationSent: true });
+    expect(users.updateEmail).toHaveBeenCalledWith(7, 'Yeni@Gmail.com');
+    expect(tokens.invalidateOpen).toHaveBeenCalledWith(7, 'reset');
+    expect(tokens.invalidateOpen).toHaveBeenCalledWith(7, 'verify');
+    expect(mail.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'yeni@gmail.com' }));
+  });
+
+  it('yanlış cari şifrə 400 — e-poçt dəyişmir, heç məktub getmir', async () => {
+    await expect(service.changeEmail(7, 'yanlis', 'yeni@gmail.com')).rejects.toMatchObject({ status: 400 });
+    expect(users.updateEmail).not.toHaveBeenCalled();
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it('yanlış format 400; eyni ünvan 400; başqa hesabda olan ünvan 409', async () => {
+    await expect(service.changeEmail(7, 'DogruSifre123', 'bu-email-deyil')).rejects.toMatchObject({ status: 400 });
+    await expect(service.changeEmail(7, 'DogruSifre123', 'OWNER@savora.az')).rejects.toMatchObject({ status: 400 });
+    users.findByEmail.mockImplementation(async (email) => (email === 'owner@savora.az' ? { ...admin, password_hash: hash } : { id: 99 }));
+    await expect(service.changeEmail(7, 'DogruSifre123', 'baska@gmail.com')).rejects.toMatchObject({ status: 409 });
+    expect(users.updateEmail).not.toHaveBeenCalled();
+  });
+
+  it('e-poçt xidməti qurulmayıbsa e-poçt yenə də dəyişir (verificationSent=false); məktub xətası dəyişikliyi pozmur', async () => {
+    mail.isConfigured.mockReturnValue(false);
+    expect(await service.changeEmail(7, 'DogruSifre123', 'yeni@gmail.com')).toMatchObject({ verificationSent: false });
+    expect(users.updateEmail).toHaveBeenCalledTimes(1);
+
+    mail.isConfigured.mockReturnValue(true);
+    mail.send.mockRejectedValue(new Error('smtp down'));
+    expect(await service.changeEmail(7, 'DogruSifre123', 'yeni2@gmail.com')).toMatchObject({ verificationSent: false });
+    expect(users.updateEmail).toHaveBeenCalledTimes(2);
+  });
+});

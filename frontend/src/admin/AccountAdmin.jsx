@@ -23,6 +23,8 @@ function AccountAdmin() {
   const [saving, setSaving] = useState(false)
   const [sessions, setSessions] = useState([])
   const [mailBusy, setMailBusy] = useState('')
+  const [emailForm, setEmailForm] = useState({ email: '', password: '' })
+  const [emailSaving, setEmailSaving] = useState(false)
 
   // E-poçt təsdiqi və SMTP sınağı (Gmail). Xəta mesajı serverdən gəlir (məs. "Tətbiq şifrəsi lazımdır")
   async function mailAction(kind) {
@@ -34,6 +36,22 @@ function AccountAdmin() {
       showToast(err.response?.data?.error || 'E-poçt göndərilmədi', 'error')
     } finally {
       setMailBusy('')
+    }
+  }
+
+  // Öz e-poçtunu dəyiş: cari şifrə lazımdır; yeni ünvana təsdiq məktubu gedir
+  async function changeEmail(e) {
+    e.preventDefault()
+    setEmailSaving(true)
+    try {
+      const { message } = await authApi.changeEmail(emailForm.email, emailForm.password)
+      setEmailForm({ email: '', password: '' })
+      await useAuthStore.getState().fetchMe()
+      showToast(message)
+    } catch (err) {
+      showToast(err.response?.data?.error || 'E-poçt dəyişmədi', 'error')
+    } finally {
+      setEmailSaving(false)
     }
   }
 
@@ -105,6 +123,20 @@ function AccountAdmin() {
           )}
         </div>
       </div>
+
+      <form onSubmit={changeEmail} className="bg-panel rounded-2xl border border-border/60 p-5 flex flex-col gap-3 mb-5" data-testid="change-email-form">
+        <h2 className="font-semibold text-[15px]">E-poçtu dəyiş</h2>
+        <p className="text-[12px] text-muted">Şifrəni unutduqda sıfırlama linki bu ünvana gəlir — buna görə real, çıxışınız olan ünvan (məs. Gmail) yazın.</p>
+        <div>
+          <label className="text-[12px] font-semibold text-muted mb-1 block">Yeni e-poçt</label>
+          <input required type="email" autoComplete="email" value={emailForm.email} onChange={(e) => setEmailForm({ ...emailForm, email: e.target.value })} className={inputCls} placeholder="sizin@gmail.com" />
+        </div>
+        <div>
+          <label className="text-[12px] font-semibold text-muted mb-1 block">Cari şifrə (təsdiq üçün)</label>
+          <input required type="password" autoComplete="current-password" value={emailForm.password} onChange={(e) => setEmailForm({ ...emailForm, password: e.target.value })} className={inputCls} />
+        </div>
+        <Button type="submit" disabled={emailSaving}>{emailSaving ? 'Saxlanılır...' : 'E-poçtu dəyiş'}</Button>
+      </form>
 
       <form onSubmit={changePassword} className="bg-panel rounded-2xl border border-border/60 p-5 flex flex-col gap-3 mb-5">
         <h2 className="font-semibold text-[15px]">Şifrəni dəyiş</h2>
