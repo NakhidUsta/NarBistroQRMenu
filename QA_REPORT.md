@@ -1,6 +1,6 @@
 # QA hesabatı (işləyərkən doldurulur)
 
-Son yenilənmə: sessiya 1, yoxlama nöqtəsi 4. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
+Son yenilənmə: sessiya 1, yoxlama nöqtəsi 5. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
 
 ## Tapıntılar
 
@@ -13,8 +13,11 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 4. Ciddilik: Kritik / Yüksək / O
 | F5 | Orta | NAMİZƏD | `backend/src/app.js` | CSP və HSTS başlıqları yoxdur (yalnız nosniff/X-Frame-Options/Referrer-Policy) | Planlaşdırılıb: production-da HSTS; CSP diqqətlə (inline splash, Google Fonts, Unsplash şəkilləri, socket) | — |
 | F6 | Aşağı | DÜZƏLDİLDİ | `authService.js` | `jwt.verify` alqoritmi sabitləmirdi | `jwt.verify(..., { algorithms: ['HS256'] })` | `qaSecurity.test.js` (HS512, `none`, yanlış imza, saxta rol, vaxtı keçmiş → 401) |
 | F7 | Aşağı | DÜZƏLDİLDİ | `tableService.scanTable` | QR tokeni `!==` ilə müqayisə olunurdu (vaxt fərqi ilə təxmin) | `crypto.timingSafeEqual` | `qaSecurity.test.js` |
+| F8 | Yüksək (canlıda) | DÜZƏLDİLDİ (sahibin açarı dəyişməsi qalır) | `backend/.env` `JWT_SECRET` | Açar 36 simvoldur, lakin `secret` və `12345` ehtiva edir (təxmin edilə bilən). JWT_SECRET həm giriş tokenlərini imzalayır, həm də bazada saxlanan Gmail App Password-un şifrələmə açarıdır | `config/secretsCheck.js`: production-da zəif/qısa/söz ehtiva edən açarla server BAŞLAMIR (inkişafda xəbərdarlıq); PUBLIC_URL/`PAYMENT_PROVIDER=test` xəbərdarlıqları. **QA `.env`-i dəyişmədi** | `backend/tests/secretsCheck.test.js`. Canlı: `NODE_ENV=production` ilə server imtina etdi |
 
 ## Yoxlanıb, problem YOXDUR (sübutla)
+- `npm audit --omit=dev`: backend 0, frontend 0 zəiflik.
+- Git tarixçəsində `.env` və ya sirr yoxdur (`.env` heç vaxt commit olunmayıb; yalnız `.example` faylları və test sirri `test-secret`). Koda sərt kodlanmış parol/açar yoxdur.
 - SEO inyeksiyası: `escapeHtml` + `safeJson` (`<`, `>`, `&` escape) — JSON-LD/meta XSS yoxdur (kod oxundu; dinamik test hələ də edilməlidir).
 - Cookie bayraqları: httpOnly, `secure` production-da, refresh cookie yalnız `/api/auth` yoluna (kod oxundu).
 - CORS: `origin` sabit (`CLIENT_ORIGIN`), yansıdılmır.
@@ -26,6 +29,8 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 4. Ciddilik: Kritik / Yüksək / O
 - Yoxlama nöqtəsi 2: Jest 372 (20 dəst), Playwright 5 keçir.
 - Yoxlama nöqtəsi 3: Jest 378 (21 dəst), Vitest 208 (24 fayl).
 - Yoxlama nöqtəsi 4: Jest 382 (22 dəst), Vitest 210 (24 fayl).
+- Yoxlama nöqtəsi 5: Jest 387 (23 dəst).
 
 ## Sahibin (istifadəçinin) etməli olduqları — QA-dan
+2. **`JWT_SECRET`-i canlıya çıxmadan yeni təsadüfi açarla əvəz edin**: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` → `backend/.env`. (Canlıda zəif açarla server artıq başlamayacaq.)
 1. **Admin şifrəsini DƏRHAL dəyişin** (Admin → Hesabım → Şifrəni dəyiş). Hazırkı şifrə defoltdur və README/testlərdə yazılıb.

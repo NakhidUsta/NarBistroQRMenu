@@ -4,7 +4,7 @@ Status: DAVAM EDİR
 Son yenilənmə: sessiya 1 (yoxlama nöqtəsi 1) | Sessiya sayı: 1
 
 ## NÖVBƏTİ ADDIM (dəqiq, bir-iki cümlə)
-F1, F2, F3, F4, F6, F7 BİTDİ. Qalan: F5 (HSTS production-da; CSP ehtiyatla — inline splash, Google Fonts, Unsplash şəkilləri, socket). Sonra E-nin qalan alt-bəndləri: **dinamik rol matrisi** (4 müvəqqəti rol hesabı — ƏVVƏL dəftərə yaz, e-poçt `qa.tmp.<n>@example.test`), injection (dinamik SQL/XSS probları, SEO), fayl yükləmə (magic bytes, SVG/HTML, traversal), mass assignment, rate limit (login 5, general 3000, forgot), məlumat sızması (xəta mesajları, socket otaqları, git tarixçəsində sirlər: `git log -p -S`), `npm audit` (backend+frontend), socket. Sonra C → D → B → A → F → G → H → K → I → J.
+F1–F4, F6–F8 BİTDİ; npm audit təmiz; git-də sirr yoxdur. Qalan: **dinamik rol matrisi** (ƏVVƏL dəftərə yaz; 4 müvəqqəti hesab `qa.tmp.<n>@example.test`, hər rol üçün giriş edib bütün endpoint-ləri yoxla; `qa/rbac-matrix.js` skripti yaz, `--cleanup` rejimi ilə), sonra injection/XSS dinamik problar, fayl yükləmə probları, mass assignment, rate limit, məlumat sızması (xəta mesajları, socket otaqları), F5 (HSTS/CSP). Sonra C → D → B → A → F → G → H → K → I → J.
 
 ## Yoxlama siyahısı (prioritet sırası ilə)
 - [x] 0. Başlanğıc: serverlər qalxdı (4000/5174 işləyir), mövcud testlər son işlədildikdə keçdi (Jest 367, Vitest 204, PW 5)
@@ -15,10 +15,10 @@ F1, F2, F3, F4, F6, F7 BİTDİ. Qalan: F5 (HSTS production-da; CSP ehtiyatla —
   - [ ] Fayl yükləmə
   - [ ] Mass assignment
   - [ ] Rate limiting və DoS
-  - [ ] Məlumat sızması (xətalar, token, PII, loglar, git tarixçəsi)
+  - [~] Məlumat sızması: git tarixçəsi/sirlər yoxlandı (təmiz), F8 (zəif JWT_SECRET) düzəldildi; xəta mesajları/socket/PII HƏLƏ yoxlanmayıb
   - [ ] Başlıqlar/transport
   - [ ] Yarış halları
-  - [ ] Asılılıqlar (npm audit)
+  - [x] Asılılıqlar (npm audit): backend 0, frontend 0 zəiflik
   - [ ] Socket.io
 - [ ] C. Ödəniş sistemi
 - [ ] D. E-poçt / şifrə bərpası
@@ -62,8 +62,10 @@ Bu layihədə sonuncu məlum vəziyyət (QA-dan əvvəl): Jest 367, Vitest 204, 
 
 ## Qərarımı tələb edən / düzəldilməyən məsələlər
 - Admin şifrəsi hələ də defoltdur — SAHİB dəyişməlidir (QA dəyişmir).
+- `.env` JWT_SECRET zəifdir (secret/12345) — canlıdan əvvəl SAHİB yeni açar yaratmalıdır.
 
 ## Sessiya jurnalı (hər sessiya: nə edildi, harada dayandı)
+- Sessiya 1 (nöqtə 5): npm audit (0/0), git sirr axtarışı (təmiz), F8 zəif JWT_SECRET → secretsCheck (production-da server imtina edir). Jest 387.
 - Sessiya 1 (nöqtə 4): F1 (defolt admin şifrəsi bannerı + server xəbərdarlığı; canlı təsdiq: real admin defolt şifrədədir) düzəldildi. Jest 382, Vitest 210. Backend yenidən başladıldı.
 - Sessiya 1 (nöqtə 3): F3 (QR tokeni çağırışlarda), F4 (GET /tables rolları), F6 (JWT HS256), F7 (timingSafeEqual) düzəldildi; testlər: Jest 378, Vitest 208. Backend yenidən başladıldı.
 - Sessiya 1 (nöqtə 2): F2 CSRF düzəldildi (csrfGuard + 5 test), backend yenidən başladıldı, E2E keçdi. Commit: "QA: CSRF guard".

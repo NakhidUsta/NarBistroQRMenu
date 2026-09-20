@@ -1,4 +1,15 @@
+require('dotenv').config(); // sirlər yoxlanılmazdan əvvəl .env yüklənməlidir
 const http = require('http');
+const { assertSecrets } = require('./config/secretsCheck');
+
+// Zəif JWT_SECRET ilə production-da server başlamır (inkişafda yalnız xəbərdarlıq)
+try {
+  for (const warning of assertSecrets()) console.warn(`[XƏBƏRDARLIQ] ${warning}`);
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}
+
 const app = require('./app');
 const { initSockets } = require('./sockets');
 const systemAlertService = require('./services/systemAlertService');
