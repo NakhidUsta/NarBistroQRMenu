@@ -303,25 +303,60 @@ async function listOrders(filters) {
   return orderRepository.findAll(pool, filters);
 }
 
-async function updateStatus(id, status, adminId, note) {
-  const pool = await poolPromise;
+// Status keçid qaydaları (QA: ləğv edilmiş sifariş yenidən açılırdı; ödənilmiş onlayn sifariş refund olmadan ləğv edilirdi)
+function assertTransitionAllowed(current, status) {
+  if (current.status === 'CANCELLED' && status !== 'CANCELLED') {
+    throw new AppError(409, 'Ləğv edilmiş sifarişin statusu dəyişdirilə bilməz — müştəri yeni sifariş verməlidir');
+  }
+  const online = current.payment_method === 'ONLINE';
   // Onlayn ödənişi təsdiqlənməyən sifariş hazırlanmağa göndərilə bilməz (yalnız ləğv edilə bilər)
-  const current = await orderRepository.findById(pool, id);
-  if (current && current.payment_method === 'ONLINE' && ['PENDING', 'FAILED'].includes(current.payment_status) && status !== 'CANCELLED') {
+  if (online && ['PENDING', 'FAILED'].includes(current.payment_status) && status !== 'CANCELLED') {
     throw new AppError(409, 'Onlayn ödəniş hələ təsdiqlənməyib — sifariş yalnız ləğv edilə bilər');
   }
+  // Pul artıq alınıbsa əvvəl geri qaytarılmalıdır, əks halda müştərinin pulu ləğv olunmuş sifarişdə qalır
+  if (online && current.payment_status === 'PAID' && status === 'CANCELLED') {
+    throw new AppError(409, 'Ödənilmiş onlayn sifarişi ləğv etməzdən əvvəl ödənişi geri qaytarın (Sifarişlər → Geri qaytar)');
+  }
+}
+
+async function updateStatus(id, status, adminId, note) {
+  const pool = await poolPromise;
   let transaction;
+  const restored = [];
   try {
     transaction = new sql.Transaction(pool);
     await transaction.begin();
+
+    // Kilidli oxuma: qərar ilə yeniləmə arasında paralel ödəniş/ləğv sifarişi dəyişə bilməz
+    const current = await orderRepository.findStateForUpdate(transaction, id);
+    if (!current) throw new AppError(404, 'Sifariş tapılmadı');
+    assertTransitionAllowed(current, status);
+
+    if (current.status === 'CANCELLED') {
+      // artıq ləğvdir: təkrar ləğv nə stoku ikinci dəfə qaytarır, nə də tarixçəyə təkrar yazır
+      await transaction.commit();
+      return await orderRepository.updateStatus(pool, id, 'CANCELLED');
+    }
 
     const order = await orderRepository.updateStatus(transaction, id, status);
     if (!order) throw new AppError(404, 'Sifariş tapılmadı');
 
     await orderRepository.insertStatusHistory(transaction, { order_id: id, status, changed_by: adminId, note });
 
+    // Ləğv → sifarişdəki stok izlənən məhsulların sayı qaytarılır (əvvəllər həmişəlik itirdi)
+    if (status === 'CANCELLED') {
+      for (const item of await orderRepository.findItemsTx(transaction, id)) {
+        const product = await orderRepository.restoreStockTx(transaction, item.product_id, item.quantity);
+        if (product) {
+          restored.push(product);
+          await orderRepository.insertStockMovementTx(transaction, { product_id: item.product_id, change_qty: item.quantity, reason: 'order_cancelled', order_id: id });
+        }
+      }
+    }
+
     await transaction.commit();
     emitOrderStatusUpdated(order);
+    restored.forEach((p) => emitProductUpdated(p, 'updated'));
     return order;
   } catch (err) {
     if (transaction) {

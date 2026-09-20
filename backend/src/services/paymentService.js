@@ -325,6 +325,12 @@ async function expireUnpaidOnlineOrders() {
     try {
       tx = new sql.Transaction(pool);
       await tx.begin();
+      // Siyahı seçildikdən sonra müştəri ödəyə bilərdi: kilidli yenidən yoxlama (ödənilmiş sifariş heç vaxt ləğv edilmir)
+      const state = await orderRepository.findStateForUpdate(tx, id);
+      if (!state || state.status !== 'NEW' || !['PENDING', 'FAILED'].includes(state.payment_status)) {
+        await tx.rollback();
+        continue;
+      }
       const order = await orderRepository.updateStatus(tx, id, 'CANCELLED');
       await orderRepository.insertStatusHistory(tx, { order_id: id, status: 'CANCELLED', note: 'Onlayn ödəniş vaxtında edilmədi' });
       const restored = [];

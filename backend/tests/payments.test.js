@@ -179,10 +179,63 @@ describe('orderService: ödəniş üsulu', () => {
   });
 
   it('onlayn ödənişi təsdiqlənməyən sifariş mətbəxə keçirilə bilməz, yalnız ləğv edilə bilər', async () => {
-    orderRepository.findById.mockResolvedValue(order({ payment_status: 'PENDING' }));
+    orderRepository.findStateForUpdate.mockResolvedValue({ id: 10, status: 'NEW', payment_method: 'ONLINE', payment_status: 'PENDING' });
+    orderRepository.findItemsTx.mockResolvedValue([]);
     await expect(orderService.updateStatus(10, 'PREPARING', 1)).rejects.toMatchObject({ status: 409 });
     orderRepository.updateStatus.mockResolvedValue(order({ status: 'CANCELLED' }));
     await expect(orderService.updateStatus(10, 'CANCELLED', 1)).resolves.toMatchObject({ status: 'CANCELLED' });
+  });
+});
+
+// QA (ödəniş probları): ləğv stoku qaytarmırdı; ləğv edilmiş sifariş yenidən açılırdı; ödənilmiş onlayn sifariş refund olmadan ləğv edilirdi
+describe('orderService.updateStatus: ləğv və status keçid qaydaları', () => {
+  const state = (over = {}) => ({ id: 10, status: 'NEW', payment_method: 'CASH', payment_status: 'UNPAID', ...over });
+  beforeEach(() => {
+    orderRepository.findItemsTx.mockResolvedValue([{ product_id: 1, quantity: 3 }, { product_id: 2, quantity: 1 }]);
+    orderRepository.restoreStockTx.mockImplementation(async (db, productId) => (productId === 1 ? { id: 1, stock_quantity: 9 } : null)); // 2-ci məhsul stok izləmir
+    orderRepository.updateStatus.mockImplementation(async (db, id, status) => order({ status }));
+  });
+
+  it('ləğv: stok izlənən məhsulların sayı qaytarılır, hərəkət yazılır, tranzaksiya commit olunur, məhsul hadisəsi göndərilir', async () => {
+    orderRepository.findStateForUpdate.mockResolvedValue(state());
+    const before = sql.Transaction.instances.length;
+    await orderService.updateStatus(10, 'CANCELLED', 1, 'müştəri getdi');
+    expect(orderRepository.restoreStockTx).toHaveBeenCalledWith(expect.anything(), 1, 3);
+    expect(orderRepository.restoreStockTx).toHaveBeenCalledWith(expect.anything(), 2, 1);
+    expect(orderRepository.insertStockMovementTx).toHaveBeenCalledTimes(1); // yalnız izlənən məhsul üçün
+    expect(orderRepository.insertStockMovementTx).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ product_id: 1, change_qty: 3, reason: 'order_cancelled', order_id: 10 }));
+    expect(sql.Transaction.instances[before].commit).toHaveBeenCalled();
+    expect(require('../src/sockets/emit').emitProductUpdated).toHaveBeenCalledWith({ id: 1, stock_quantity: 9 }, 'updated');
+  });
+
+  it('ləğv edilməyən keçidlər (CONFIRMED, PREPARING…) stoka toxunmur', async () => {
+    orderRepository.findStateForUpdate.mockResolvedValue(state());
+    await orderService.updateStatus(10, 'PREPARING', 1);
+    expect(orderRepository.restoreStockTx).not.toHaveBeenCalled();
+  });
+
+  it('artıq ləğv edilmiş sifarişi başqa statusa keçirmək olmaz (409, heç nə yazılmır); təkrar ləğv stoku ikinci dəfə qaytarmır', async () => {
+    orderRepository.findStateForUpdate.mockResolvedValue(state({ status: 'CANCELLED' }));
+    await expect(orderService.updateStatus(10, 'PREPARING', 1)).rejects.toMatchObject({ status: 409 });
+    expect(orderRepository.insertStatusHistory).not.toHaveBeenCalled();
+    await orderService.updateStatus(10, 'CANCELLED', 1);
+    expect(orderRepository.restoreStockTx).not.toHaveBeenCalled();
+    expect(orderRepository.insertStatusHistory).not.toHaveBeenCalled();
+  });
+
+  it('ödənilmiş onlayn sifariş refund olmadan ləğv edilə bilməz; refund-dan sonra (REFUNDED) ləğv olunur; nağd ödənilmiş sifariş ləğv olunur', async () => {
+    orderRepository.findStateForUpdate.mockResolvedValue(state({ payment_method: 'ONLINE', payment_status: 'PAID' }));
+    await expect(orderService.updateStatus(10, 'CANCELLED', 1)).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/geri qaytarın/) });
+    expect(orderRepository.restoreStockTx).not.toHaveBeenCalled();
+    orderRepository.findStateForUpdate.mockResolvedValue(state({ payment_method: 'ONLINE', payment_status: 'REFUNDED' }));
+    await expect(orderService.updateStatus(10, 'CANCELLED', 1)).resolves.toMatchObject({ status: 'CANCELLED' });
+    orderRepository.findStateForUpdate.mockResolvedValue(state({ payment_method: 'CASH', payment_status: 'PAID' }));
+    await expect(orderService.updateStatus(10, 'CANCELLED', 1)).resolves.toMatchObject({ status: 'CANCELLED' });
+  });
+
+  it('mövcud olmayan sifariş 404', async () => {
+    orderRepository.findStateForUpdate.mockResolvedValue(null);
+    await expect(orderService.updateStatus(999, 'CANCELLED', 1)).rejects.toMatchObject({ status: 404 });
   });
 });
 
@@ -345,6 +398,7 @@ describe('paymentService: yoxlama, əllə ödəniş, vaxt aşımı', () => {
 
   it('vaxtı keçmiş ödənilməmiş onlayn sifariş ləğv olunur, stok geri qaytarılır, açıq cəhdlər bağlanır', async () => {
     orderRepository.findExpiredUnpaidOnline.mockResolvedValue([10]);
+    orderRepository.findStateForUpdate.mockResolvedValue({ id: 10, status: 'NEW', payment_method: 'ONLINE', payment_status: 'PENDING' });
     orderRepository.updateStatus.mockResolvedValue(order({ status: 'CANCELLED' }));
     orderRepository.findItemsTx.mockResolvedValue([{ product_id: 1, quantity: 2 }]);
     orderRepository.restoreStockTx.mockResolvedValue({ id: 1, stock_quantity: 5 });
@@ -354,6 +408,44 @@ describe('paymentService: yoxlama, əllə ödəniş, vaxt aşımı', () => {
     expect(orderRepository.insertStockMovementTx).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ change_qty: 2, reason: 'order_expired' }));
     expect(paymentRepository.failOpenForOrder).toHaveBeenCalledWith(expect.anything(), 10, expect.any(String));
     expect(sql.Transaction.instances[0].commit).toHaveBeenCalled();
+  });
+
+  // Siyahı seçildikdən sonra müştəri ödəyə bilərdi — ödənilmiş sifariş HEÇ VAXT ləğv edilməməlidir
+  it('sweeper: siyahıdan sonra ödənilmiş (və ya artıq ləğv/hazırlanan) sifariş ləğv edilmir, rollback olur, stok toxunulmaz', async () => {
+    orderRepository.findExpiredUnpaidOnline.mockResolvedValue([10]);
+    for (const race of [{ payment_status: 'PAID' }, { status: 'PREPARING' }, { status: 'CANCELLED' }]) {
+      jest.clearAllMocks();
+      sql.Transaction.instances.length = 0;
+      orderRepository.findExpiredUnpaidOnline.mockResolvedValue([10]);
+      orderRepository.findStateForUpdate.mockResolvedValue({ id: 10, status: 'NEW', payment_method: 'ONLINE', payment_status: 'PENDING', ...race });
+      expect(await paymentService.expireUnpaidOnlineOrders()).toBe(0);
+      expect(orderRepository.updateStatus).not.toHaveBeenCalled();
+      expect(orderRepository.restoreStockTx).not.toHaveBeenCalled();
+      expect(sql.Transaction.instances[0].rollback).toHaveBeenCalled();
+      expect(sql.Transaction.instances[0].commit).not.toHaveBeenCalled();
+    }
+  });
+});
+
+describe('sxema ilə kod uyğunluğu (unit testlər DB-ni mock etdiyi üçün CHECK pozuntusunu görmürdü)', () => {
+  it("koddakı stock_movements `reason` dəyərlərinin hamısı schema.sql və 019 miqrasiyasındakı CHECK-də var", () => {
+    const fs = require('fs');
+    const path = require('path');
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+    const src = path.join(__dirname, '..', 'src');
+    const used = new Set();
+    for (const file of walk(src).filter((f) => f.endsWith('.js'))) {
+      const text = fs.readFileSync(file, 'utf8');
+      for (const m of text.matchAll(/insertStockMovementTx\([^)]*reason:\s*'(\w+)'/g)) used.add(m[1]);
+      for (const m of text.matchAll(/\.input\('reason',\s*sql\.NVarChar\(\d+\),\s*'(\w+)'\)/g)) used.add(m[1]);
+    }
+    expect([...used].length).toBeGreaterThan(0);
+    const schema = fs.readFileSync(path.join(__dirname, '..', 'database', 'schema.sql'), 'utf8');
+    const migration = fs.readFileSync(path.join(__dirname, '..', 'database', 'migrations', '019_stock_movement_reasons.sql'), 'utf8');
+    for (const reason of used) {
+      expect(schema).toContain(`N'${reason}'`);
+      expect(migration).toContain(`N'${reason}'`);
+    }
   });
 });
 

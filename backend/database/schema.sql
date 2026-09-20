@@ -379,7 +379,7 @@ CREATE TABLE stock_movements (
     id         INT IDENTITY(1,1) PRIMARY KEY,
     product_id INT NOT NULL FOREIGN KEY REFERENCES products(id),
     change_qty INT NOT NULL,
-    reason     NVARCHAR(30) NOT NULL CHECK (reason IN (N'restock', N'order', N'manual_adjustment')),
+    reason     NVARCHAR(30) NOT NULL CONSTRAINT CK_stock_movements_reason CHECK (reason IN (N'restock', N'order', N'manual_adjustment', N'order_expired', N'order_cancelled')),
     order_id   INT NULL FOREIGN KEY REFERENCES orders(id),
     created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );

@@ -124,6 +124,14 @@ async function setPaymentTx(db, orderId, { payment_status, payment_method, paid_
   return result.recordset[0] || null;
 }
 
+// Status/ödəniş vəziyyətini KİLİDLƏ oxuyur (UPDLOCK): keçid qərarı ilə yeniləmə arasında paralel ödəniş/ləğv sifarişi dəyişməsin
+async function findStateForUpdate(db, orderId) {
+  const result = await new sql.Request(db)
+    .input('id', sql.Int, orderId)
+    .query('SELECT id, status, payment_method, payment_status FROM orders WITH (UPDLOCK, ROWLOCK) WHERE id = @id');
+  return result.recordset[0] || null;
+}
+
 // Vaxtı keçmiş, ödənilməmiş onlayn sifarişlər (stok bloklanıb qalmasın deyə ləğv edilir)
 async function findExpiredUnpaidOnline(pool, minutes) {
   const result = await pool.request().input('m', sql.Int, minutes).query(`
@@ -248,6 +256,7 @@ module.exports = {
   insertStatusHistory,
   updateStatus,
   setPaymentTx,
+  findStateForUpdate,
   findExpiredUnpaidOnline,
   findItemsTx,
   restoreStockTx,
