@@ -181,6 +181,8 @@ async function verifyOrderPayment(orderId, token) {
       for (const attempt of attempts.slice(0, 3)) {
         try {
           const result = await provider.fetchStatus({ transaction: attempt.provider_transaction });
+          // "Uğurlu" cavabda məbləğ mütləq olmalıdır (Epoint get-status məbləği qaytarır) — yoxdursa təsdiqləmirik, callback gözlənilir
+          if (result && result.status === 'success' && result.amount == null) continue;
           if (result && result.status !== 'pending') {
             await applyProviderResult({ ...result, providerOrderId: attempt.provider_order_id });
             if (result.status === 'success') break;
@@ -256,6 +258,56 @@ async function markPaidManually(orderId, adminId, method) {
   }
 }
 
+// Onlayn ödənişi provayder vasitəsilə TAM geri qaytarır (OWNER/MANAGER). Ardıcıllıq ikiqat kliklə iki dəfə pul qaytarmasın deyə
+// əvvəl bazada "REFUNDED" edilir (yalnız PAID → REFUNDED keçidi), sonra provayder çağırılır; provayder rədd edərsə dəyişiklik geri alınır.
+async function refundOrder(orderId, adminId) {
+  const pool = await poolPromise;
+  const order = await orderRepository.findById(pool, orderId);
+  if (!order) throw new AppError(404, 'Sifariş tapılmadı');
+  if (order.payment_method !== 'ONLINE') throw new AppError(409, 'Yalnız onlayn ödənişlər buradan geri qaytarılır (nağd/kart masada — kassadan)');
+  if (order.payment_status === 'REFUNDED') throw new AppError(409, 'Ödəniş artıq geri qaytarılıb');
+  if (order.payment_status !== 'PAID') throw new AppError(409, 'Yalnız ödənilmiş sifariş geri qaytarıla bilər');
+  const payment = await paymentRepository.findSuccessfulByOrder(pool, orderId);
+  if (!payment) throw new AppError(409, 'Uğurlu ödəniş qeydi tapılmadı');
+  const provider = PROVIDERS[payment.provider];
+  if (!provider || !provider.isConfigured() || !provider.refund) throw new AppError(503, 'Ödəniş provayderi qoşulmayıb');
+
+  let tx;
+  let refunded;
+  try {
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+    await paymentRepository.update(tx, payment.id, { status: 'REFUNDED' });
+    refunded = await orderRepository.setPaymentTx(tx, orderId, { payment_status: 'REFUNDED', allowedFrom: ['PAID'] });
+    if (!refunded) throw new AppError(409, 'Ödəniş artıq geri qaytarılıb');
+    await tx.commit();
+  } catch (err) {
+    await rollbackQuietly(tx);
+    throw err;
+  }
+
+  try {
+    await provider.refund({ transaction: payment.provider_transaction, amount: Number(payment.amount), currency: payment.currency });
+  } catch (err) {
+    // Provayder rədd etdi — vəziyyəti əvvəlki hala qaytarırıq ki, işçi yenidən cəhd edə bilsin
+    console.error('Geri qaytarma alınmadı:', err.message);
+    let undo;
+    try {
+      undo = new sql.Transaction(pool);
+      await undo.begin();
+      await paymentRepository.update(undo, payment.id, { status: 'SUCCESS' });
+      await orderRepository.setPaymentTx(undo, orderId, { payment_status: 'PAID', allowedFrom: ['REFUNDED'] });
+      await undo.commit();
+    } catch (undoErr) {
+      await rollbackQuietly(undo);
+      systemAlertService.report(`refund-undo-${orderId}`, 'Geri qaytarma vəziyyəti yoxlanılmalıdır', `Sifariş #${orderId}: provayder rədd etdi, lakin bazada status geri qaytarıla bilmədi (${undoErr.message}). Epoint kabinetində yoxlayın.`).catch(() => {});
+    }
+    throw new AppError(502, `Geri qaytarma alınmadı: ${err.message}`);
+  }
+  emitOrderStatusUpdated(refunded);
+  return { before: order, order: refunded, adminId };
+}
+
 async function listPayments(orderId) {
   const pool = await poolPromise;
   return paymentRepository.listByOrder(pool, orderId);
@@ -311,6 +363,7 @@ module.exports = {
   verifyOrderPayment,
   completeTestPayment,
   markPaidManually,
+  refundOrder,
   listPayments,
   expireUnpaidOnlineOrders,
   startExpirySweeper,

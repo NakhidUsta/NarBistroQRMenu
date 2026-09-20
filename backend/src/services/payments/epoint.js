@@ -1,11 +1,15 @@
 // Epoint.az (Azərbaycan) — kart ödənişi. Kart səhifəsi Epoint-də açılır: kart nömrəsi/CVV bizim serverdən KEÇMİR (PCI yükü yoxdur).
 //
-// Protokol (epoint.az API v1):
-//   sorğu  : POST {apiBase}/request  form: data = base64(JSON), signature = base64(sha1(private_key + data + private_key))
-//   cavab  : { status: "success", transaction, redirect_url }
-//   callback: Epoint merchant panelində göstərilən "Result URL"-ə POST (data, signature) — eyni imza sxemi ilə yoxlanılır
-//   status : POST {apiBase}/get-status  data = { public_key, transaction }
-// DİQQƏT: bu adapter Epoint sənədinə görə yazılıb; canlıya çıxmazdan əvvəl öz sandbox/açarlarınızla bir test ödənişi edin.
+// Epoint rəsmi sənədinə (API Epoint EN, version 1.0.3) görə yazılıb və ona qarşı yoxlanılıb:
+//   sorğu   : POST https://epoint.az/api/1/request  — data = base64(JSON), signature = base64(sha1(private_key + data + private_key), binary)
+//             cavab: { status: "success"|"error", transaction, redirect_url }  (redirect_url-ə yönləndirilir)
+//   callback: Epoint sizin qeydiyyatdan keçirdiyiniz "result_url"-ə POST (data, signature) göndərir; imza eyni sxemlə yoxlanılır.
+//             result_url SORĞUDA deyil, merchant qurulanda Epoint-ə bildirilir (success_url / error_url da)
+//   status  : POST /get-status  data = { public_key, transaction } → new | success | returned | error | server_error
+//   geri qaytarma: POST /reverse  data = { public_key, language, transaction, amount?, currency } → { status, message }
+//   sağlamlıq: GET https://epoint.az/api/heartbeat → { status: "ok" }
+// Valyuta yalnız AZN, dil az|en|ru, order_id ≤ 255 simvol, description ≤ 1000 simvol.
+// Kart səhifəsi Epoint-dədir: kart nömrəsi/CVV bizim serverdən keçmir.
 const crypto = require('crypto');
 const paymentsConfig = require('../../config/payments');
 
@@ -83,13 +87,14 @@ function normalizeResult(d) {
 }
 
 async function createPayment({ providerOrderId, amount, currency, description, language, successUrl, errorUrl, resultUrl }) {
+  if (currency !== 'AZN') throw new Error('Epoint yalnız AZN valyutasını qəbul edir (Ayarlar → Valyuta kodu AZN olmalıdır)');
   const payload = {
     public_key: cfg().publicKey,
     amount: Number(Number(amount).toFixed(2)),
     currency,
     language: ['az', 'en', 'ru'].includes(language) ? language : 'az',
     order_id: providerOrderId,
-    description: String(description || '').slice(0, 250),
+    description: String(description || '').slice(0, 1000),
     success_redirect_url: successUrl,
     error_redirect_url: errorUrl,
   };
@@ -119,4 +124,22 @@ async function fetchStatus({ transaction }) {
   return normalizeResult({ ...json, transaction: json.transaction || transaction });
 }
 
-module.exports = { name: 'epoint', isConfigured, createPayment, parseCallback, fetchStatus, sign, assertSafeRedirect };
+// Tam geri qaytarma (Epoint "reverse"): tranzaksiya ID-si ilə. Uğursuzluqda xəta atır.
+async function refund({ transaction, amount, currency, language }) {
+  if (!transaction) throw new Error('Tranzaksiya ID-si yoxdur');
+  const payload = { public_key: cfg().publicKey, language: ['az', 'en', 'ru'].includes(language) ? language : 'az', transaction, currency: currency || 'AZN' };
+  if (amount != null) payload.amount = Number(Number(amount).toFixed(2));
+  const json = await post('reverse', payload);
+  if (String(json.status).toLowerCase() !== 'success') throw new Error(json.message || 'Epoint geri qaytarmanı qəbul etmədi');
+  return { ok: true };
+}
+
+// Epoint əlçatandırmı (hazırlıq yoxlaması üçün) — imza tələb etmir
+async function heartbeat() {
+  const base = cfg().apiBase.replace(/\/api\/1$/, '');
+  const res = await fetch(`${base}/api/heartbeat`, { signal: AbortSignal.timeout(10000) });
+  const json = await res.json().catch(() => ({}));
+  return res.ok && json.status === 'ok';
+}
+
+module.exports = { name: 'epoint', isConfigured, createPayment, parseCallback, fetchStatus, refund, heartbeat, sign, assertSafeRedirect };

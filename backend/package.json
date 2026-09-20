@@ -11,6 +11,8 @@
     "backup": "node scripts/backup.js",
     "reset-password": "node scripts/resetAdminPassword.js",
     "mail:test": "node scripts/testMail.js",
+    "payment:check": "node scripts/paymentCheck.js",
+    "payment:simulate": "node scripts/simulateCallback.js",
     "media:import": "node scripts/importLegacyMedia.js",
     "migrate:ingredients": "node scripts/migrateIngredients.js"
   },

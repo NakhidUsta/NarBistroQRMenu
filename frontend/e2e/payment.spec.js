@@ -73,9 +73,17 @@ test('ödəniş: onlayn (rədd → təkrar → uğurlu) və nağd', async ({ bro
     await admin.goto('/admin/orders')
     await expect(admin.locator('div.rounded-2xl', { hasText: `#${orderId}` }).first().getByTestId('order-payment')).toContainText('Ödənilib')
 
+    // Admin (OWNER) ödənilmiş onlayn sifarişi geri qaytarır → hər iki tərəfdə "Geri qaytarılıb"
+    const paidCard = admin.locator('div.rounded-2xl', { hasText: `#${orderId}` }).first()
+    admin.once('dialog', (d) => d.accept())
+    await paidCard.getByRole('button', { name: 'Pulu geri qaytar' }).click()
+    await expect(paidCard.getByTestId('order-payment')).toContainText('Geri qaytarılıb')
+    await expect(paidCard.getByRole('button', { name: 'Pulu geri qaytar' })).toHaveCount(0)
+    await expect(customer.getByTestId('payment-panel')).toHaveAttribute('data-state', 'refunded')
+
     // Səhifəni yeniləsək də status serverdən gəlir (URL-dəki pay=success tək başına heç nə sübut etmir)
     await customer.goto(`/order/${orderId}?token=${new URL(customer.url()).searchParams.get('token')}&pay=success`)
-    await expect(customer.getByTestId('payment-panel')).toHaveAttribute('data-state', 'paid')
+    await expect(customer.getByTestId('payment-panel')).toHaveAttribute('data-state', 'refunded') // geri qaytarılıb — URL-dəki pay=success bunu "ödənilib"ə çevirmir
 
     // ---- Nağd: yeni sifariş dərhal mətbəxə/adminə çatır, işçi "Nağd alındı" edir
     await customer.goto(`/product/${product.id}`)

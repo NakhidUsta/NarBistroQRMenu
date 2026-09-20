@@ -8,7 +8,7 @@ vi.mock('../lib/api', async (importOriginal) => {
   return {
     ...actual,
     ordersApi: { create: vi.fn(), quote: vi.fn().mockResolvedValue(null), get: vi.fn(), list: vi.fn(), listPage: vi.fn(), updateStatus: vi.fn() },
-    paymentsApi: { start: vi.fn(), verify: vi.fn(), testComplete: vi.fn(), markPaid: vi.fn(), list: vi.fn() },
+    paymentsApi: { start: vi.fn(), verify: vi.fn(), testComplete: vi.fn(), markPaid: vi.fn(), refund: vi.fn(), list: vi.fn() },
   }
 })
 
@@ -21,6 +21,7 @@ import { useMyOrdersStore } from '../store/myOrdersStore'
 import { useLocaleStore } from '../store/localeStore'
 import { useOrderStore } from '../store/orderStore'
 import { useOutboxStore } from '../store/outboxStore'
+import { useAuthStore } from '../store/authStore'
 import { enabledMethods, awaitingOnlinePayment } from '../lib/payment'
 import Cart from '../pages/Cart'
 import PaymentPanel from '../components/PaymentPanel'
@@ -244,5 +245,48 @@ describe('OrdersAdmin: ödəniş', () => {
     expect(within(box).queryByRole('button')).toBeNull()
     expect(screen.queryByRole('button', { name: /→/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Ləğv et' })).toBeInTheDocument()
+  })
+})
+
+describe('OrdersAdmin: geri qaytarma', () => {
+  const paidOnline = { id: 31, customer_name: 'Aygün', phone: '+994', status: 'NEW', total: 30, currency: 'AZN', created_at: new Date().toISOString(), items: [], payment_method: 'ONLINE', payment_status: 'PAID' }
+  beforeEach(() => {
+    window.scrollTo = vi.fn()
+    useOrderStore.setState({ orders: [], hasMore: false, filters: {} })
+  })
+  const renderAdmin = (role) => {
+    useAuthStore.setState({ admin: { id: 1, email: 'a@b.az', role } })
+    ordersApi.listPage.mockResolvedValue({ items: [paidOnline], hasMore: false })
+    return render(<MemoryRouter><OrdersAdmin /></MemoryRouter>)
+  }
+
+  it('OWNER/MENECER ödənilmiş onlayn sifarişi təsdiqlə geri qaytarır → "Geri qaytarılıb"', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    paymentsApi.refund.mockResolvedValue({ id: 31, payment_status: 'REFUNDED' })
+    renderAdmin('OWNER')
+    await userEvent.click(await screen.findByRole('button', { name: 'Pulu geri qaytar' }))
+    await waitFor(() => expect(screen.getByTestId('order-payment')).toHaveTextContent('Geri qaytarılıb'))
+    expect(paymentsApi.refund).toHaveBeenCalledWith(31)
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('30.00'))
+  })
+
+  it('təsdiq verilməsə heç nə göndərilmir; ofisiantda düymə yoxdur', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { unmount } = renderAdmin('MANAGER')
+    await userEvent.click(await screen.findByRole('button', { name: 'Pulu geri qaytar' }))
+    expect(paymentsApi.refund).not.toHaveBeenCalled()
+    unmount()
+    renderAdmin('WAITER')
+    await screen.findByTestId('order-payment')
+    expect(screen.queryByRole('button', { name: 'Pulu geri qaytar' })).toBeNull()
+  })
+
+  it('provayder rədd edərsə xəta göstərilir, status dəyişmir', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    paymentsApi.refund.mockRejectedValue({ response: { data: { error: 'Geri qaytarma alınmadı: Rədd' } } })
+    renderAdmin('OWNER')
+    await userEvent.click(await screen.findByRole('button', { name: 'Pulu geri qaytar' }))
+    await waitFor(() => expect(paymentsApi.refund).toHaveBeenCalled())
+    expect(screen.getByTestId('order-payment')).toHaveTextContent('Ödənilib')
   })
 })

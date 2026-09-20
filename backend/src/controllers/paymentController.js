@@ -49,6 +49,14 @@ exports.markPaid = asyncHandler(async (req, res) => {
   res.json(order);
 });
 
+// OWNER/MANAGER: onlayn ödənişi tam geri qaytar (Epoint "reverse")
+exports.refund = asyncHandler(async (req, res) => {
+  const id = orderIdOf(req);
+  const { before, order } = await paymentService.refundOrder(id, req.admin.id);
+  await auditService.log(req, 'order.refund', 'orders', id, { payment_status: before.payment_status }, { payment_status: order.payment_status, amount: before.paid_amount });
+  res.json(order);
+});
+
 exports.list = asyncHandler(async (req, res) => {
   res.json(await paymentService.listPayments(orderIdOf(req)));
 });

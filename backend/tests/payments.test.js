@@ -310,6 +310,13 @@ describe('paymentService: yoxlama, əllə ödəniş, vaxt aşımı', () => {
     expect(res.access_token).toBeUndefined();
   });
 
+  it('verify: məbləği olmayan "uğurlu" cavab təsdiqlənmir (callback gözlənilir)', async () => {
+    paymentRepository.findPendingWithTransaction.mockResolvedValue([payment({ provider_transaction: 'te1' })]);
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'success', transaction: 'te1' }) }));
+    await paymentService.verifyOrderPayment(10, token);
+    expect(orderRepository.setPaymentTx).not.toHaveBeenCalled();
+  });
+
   it('verify: provayder xətası sifarişi pozmur', async () => {
     paymentRepository.findPendingWithTransaction.mockResolvedValue([payment({ provider_transaction: 'te1' })]);
     global.fetch = jest.fn(async () => { throw new Error('timeout'); });
@@ -405,5 +412,179 @@ describe('HTTP: ödəniş endpoint-ləri', () => {
     const res = await request(app).get('/api/orders/10/payments').set('Cookie', cookieFor('MANAGER'));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
+  });
+});
+
+describe('Epoint sənədinə uyğunluq: geri qaytarma, heartbeat, valyuta', () => {
+  it('geri qaytarma /reverse endpoint-inə tranzaksiya, məbləğ və valyuta ilə imzalı sorğu göndərir', async () => {
+    const calls = [];
+    global.fetch = jest.fn(async (url, opts) => {
+      calls.push({ url, body: opts.body });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ status: 'success' }) };
+    });
+    await expect(epoint.refund({ transaction: 'te123', amount: 57, currency: 'AZN' })).resolves.toEqual({ ok: true });
+    expect(calls[0].url).toBe('https://epoint.az/api/1/reverse');
+    const form = new URLSearchParams(calls[0].body);
+    expect(JSON.parse(Buffer.from(form.get('data'), 'base64').toString())).toEqual({ public_key: 'i000000001', language: 'az', transaction: 'te123', currency: 'AZN', amount: 57 });
+    expect(form.get('signature')).toBe(epoint.sign(form.get('data'), PRIVATE));
+
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'error', message: 'Yetərsiz balans' }) }));
+    await expect(epoint.refund({ transaction: 'te123', amount: 57 })).rejects.toThrow('Yetərsiz balans');
+    await expect(epoint.refund({ amount: 5 })).rejects.toThrow(/Tranzaksiya/);
+  });
+
+  it('ödəniş sorğusu rəsmi ünvana gedir; AZN-dən başqa valyuta göndərilmir; açıqlama 1000 simvola qədər', async () => {
+    const calls = [];
+    global.fetch = jest.fn(async (url, opts) => {
+      calls.push({ url, body: opts.body });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ status: 'success', transaction: 't1', redirect_url: 'https://epoint.az/x' }) };
+    });
+    await epoint.createPayment({ providerOrderId: 'o1', amount: 10, currency: 'AZN', description: 'x'.repeat(1500), language: 'ru' });
+    expect(calls[0].url).toBe('https://epoint.az/api/1/request');
+    const sent = JSON.parse(Buffer.from(new URLSearchParams(calls[0].body).get('data'), 'base64').toString());
+    expect(sent.description).toHaveLength(1000);
+    expect(sent.language).toBe('ru');
+    await expect(epoint.createPayment({ providerOrderId: 'o2', amount: 10, currency: 'USD' })).rejects.toThrow(/AZN/);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('status sorğusu /get-status; server_error və new "gözləyir" sayılır (ödənilmiş SAYILMIR)', async () => {
+    const urls = [];
+    global.fetch = jest.fn(async (url) => {
+      urls.push(url);
+      return { ok: true, status: 200, text: async () => JSON.stringify({ status: 'server_error', order_id: 'o1' }) };
+    });
+    const res = await epoint.fetchStatus({ transaction: 'te1' });
+    expect(urls[0]).toBe('https://epoint.az/api/1/get-status');
+    expect(res.status).toBe('pending');
+  });
+
+  it('heartbeat: status ok → true, əks halda false', async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ status: 'ok' }) }));
+    expect(await epoint.heartbeat()).toBe(true);
+    expect(global.fetch.mock.calls[0][0]).toBe('https://epoint.az/api/heartbeat');
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ status: 'down' }) }));
+    expect(await epoint.heartbeat()).toBe(false);
+  });
+});
+
+describe('paymentService.refundOrder', () => {
+  const paid = (over = {}) => order({ payment_status: 'PAID', paid_amount: 57, ...over });
+  beforeEach(() => {
+    orderRepository.findById.mockResolvedValue(paid());
+    paymentRepository.findSuccessfulByOrder.mockResolvedValue(payment({ status: 'SUCCESS', provider_transaction: 'te1' }));
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'success' }) }));
+  });
+
+  it('ödənilmiş onlayn sifariş: əvvəl baza REFUNDED olur (PAID → REFUNDED), sonra Epoint-ə /reverse göndərilir', async () => {
+    const out = await paymentService.refundOrder(10, 1);
+    expect(out.order.payment_status).toBe('REFUNDED');
+    expect(paymentRepository.update).toHaveBeenCalledWith(expect.anything(), 5, { status: 'REFUNDED' });
+    expect(orderRepository.setPaymentTx).toHaveBeenCalledWith(expect.anything(), 10, expect.objectContaining({ payment_status: 'REFUNDED', allowedFrom: ['PAID'] }));
+    expect(global.fetch.mock.calls[0][0]).toBe('https://epoint.az/api/1/reverse');
+    expect(emitOrderStatusUpdated).toHaveBeenCalled();
+  });
+
+  it('ikiqat klik: ikinci sorğu artıq REFUNDED görür (409) və Epoint-ə heç nə göndərilmir', async () => {
+    orderRepository.setPaymentTx.mockResolvedValue(null); // keçid artıq başqa sorğu tərəfindən edilib
+    await expect(paymentService.refundOrder(10, 1)).rejects.toMatchObject({ status: 409 });
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(sql.Transaction.instances[0].rollback).toHaveBeenCalled();
+  });
+
+  it('Epoint rədd edərsə status geri qaytarılır (PAID) ki, yenidən cəhd olunsun; 502', async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'error', message: 'Rədd' }) }));
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(paymentService.refundOrder(10, 1)).rejects.toMatchObject({ status: 502 });
+    spy.mockRestore();
+    expect(paymentRepository.update).toHaveBeenLastCalledWith(expect.anything(), 5, { status: 'SUCCESS' });
+    expect(orderRepository.setPaymentTx).toHaveBeenLastCalledWith(expect.anything(), 10, expect.objectContaining({ payment_status: 'PAID', allowedFrom: ['REFUNDED'] }));
+  });
+
+  it('onlayn olmayan, ödənilməmiş və artıq qaytarılmış sifarişlər 409; naməlum sifariş 404', async () => {
+    orderRepository.findById.mockResolvedValue(paid({ payment_method: 'CASH' }));
+    await expect(paymentService.refundOrder(10, 1)).rejects.toMatchObject({ status: 409 });
+    orderRepository.findById.mockResolvedValue(order({ payment_status: 'PENDING' }));
+    await expect(paymentService.refundOrder(10, 1)).rejects.toMatchObject({ status: 409 });
+    orderRepository.findById.mockResolvedValue(paid({ payment_status: 'REFUNDED' }));
+    await expect(paymentService.refundOrder(10, 1)).rejects.toMatchObject({ status: 409 });
+    orderRepository.findById.mockResolvedValue(null);
+    await expect(paymentService.refundOrder(10, 1)).rejects.toMatchObject({ status: 404 });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('HTTP: yalnız OWNER/MANAGER geri qaytara bilər (ofisiant/mətbəx 403, girişsiz 401)', async () => {
+    expect((await request(app).post('/api/orders/10/refund')).status).toBe(401);
+    expect((await request(app).post('/api/orders/10/refund').set('Cookie', cookieFor('WAITER'))).status).toBe(403);
+    expect((await request(app).post('/api/orders/10/refund').set('Cookie', cookieFor('KITCHEN'))).status).toBe(403);
+    const ok = await request(app).post('/api/orders/10/refund').set('Cookie', cookieFor('MANAGER'));
+    expect(ok.status).toBe(200);
+    expect(ok.body.payment_status).toBe('REFUNDED');
+  });
+});
+
+describe('Brauzerə etibar edilmir: sifariş və məbləğ yalnız serverdə formalaşır', () => {
+  const evil = {
+    customer_name: 'Hacker',
+    phone: '+994501112233',
+    items: [{ product_id: 1, quantity: 2, price: 0.01, name: 'Bedava' }],
+    payment_method: 'ONLINE',
+    // brauzerin göndərə biləcəyi, lakin server tərəfindən UMUMİYYƏTLƏ oxunmamalı sahələr:
+    total: 0.01, subtotal: 0.01, discount: 999, vat: 0, payment_status: 'PAID', paid_amount: 57, paid_at: '2020-01-01', status: 'COMPLETED', id: 1, access_token: 'oz-tokenim',
+  };
+
+  beforeEach(() => {
+    orderRepository.insertOrder.mockImplementation(async (tx, o) => ({ id: 10, ...o }));
+    orderRepository.findProductPrice.mockResolvedValue({ id: 1, price: 24, is_available: true, track_inventory: false });
+  });
+
+  it('servis: məbləğ bazadakı qiymətdən hesablanır; total/price/status/payment_status/paid_* göndərilsə də nəzərə alınmır, ödəniş PENDING başlayır', async () => {
+    const created = await orderService.createOrder(evil);
+    expect(orderRepository.insertOrder).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subtotal: 48, total: 48, discount: 0, payment_method: 'ONLINE', payment_status: 'PENDING' }));
+    const inserted = orderRepository.insertOrder.mock.calls[0][1];
+    expect(inserted.access_token).not.toBe('oz-tokenim'); // token serverdə təsadüfi yaradılır
+    expect(inserted.status).toBeUndefined(); // status DB defoltudur (NEW)
+    expect(inserted.paid_at).toBeUndefined();
+    expect(inserted.paid_amount).toBeUndefined();
+    expect(created.total).toBe(48);
+    expect(emitOrderCreated).not.toHaveBeenCalled(); // ödəniş təsdiqlənməyib
+  });
+
+  it('HTTP: POST /api/orders eyni saxta sahələrlə göndərilsə də sifariş bazadakı qiymətlə, PENDING yaranır', async () => {
+    const res = await request(app).post('/api/orders').send(evil);
+    expect(res.status).toBe(201);
+    expect(res.body.total).toBe(48);
+    expect(res.body.payment_status).toBe('PENDING');
+    expect(res.body.status).toBeUndefined();
+  });
+
+  it('gözlənilən məbləğ (expected_total) yalnız uyğunluq yoxlamasıdır: fərqlidirsə sifariş YARANMIR (409), məbləğ kimi istifadə olunmur', async () => {
+    await expect(orderService.createOrder({ ...evil, expected_total: 0.01 })).rejects.toMatchObject({ status: 409 });
+    expect(orderRepository.insertOrder).not.toHaveBeenCalled();
+  });
+
+  it('ödəniş başlayanda provayderə gedən məbləğ DB-dəki sifariş məbləğidir; sorğu gövdəsindəki amount/total nəzərə alınmır', async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'success', transaction: 't', redirect_url: 'https://epoint.az/p' }) }));
+    const res = await request(app).post('/api/payments/orders/10/start').send({ token: 'tok-1234567890abcdef', amount: 0.01, total: 0.01, currency: 'USD', payment_status: 'PAID' });
+    expect(res.status).toBe(200);
+    const sent = JSON.parse(Buffer.from(new URLSearchParams(global.fetch.mock.calls[0][1].body).get('data'), 'base64').toString());
+    expect(sent.amount).toBe(57);
+    expect(sent.currency).toBe('AZN');
+    expect(paymentRepository.create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amount: 57, currency: 'AZN' }));
+  });
+
+  it('"ödənilib" statusunu brauzer təyin edə bilməz: yalnız imzalı callback, provayder status sorğusu və ya işçi (nağd)', async () => {
+    // müştəri tərəfli heç bir endpoint payment_status qəbul etmir
+    paymentRepository.findPendingWithTransaction.mockResolvedValue([payment({ provider_transaction: 'te1' })]);
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'new', order_id: 'o10-abc' }) })); // Epoint: ödəniş hələ tamamlanmayıb
+    const v = await request(app).post('/api/payments/orders/10/verify').send({ token: 'tok-1234567890abcdef', payment_status: 'PAID', status: 'success' });
+    expect(v.status).toBe(200);
+    expect(orderRepository.setPaymentTx).not.toHaveBeenCalled(); // provayder statusu "pending" olduğu üçün heç nə dəyişmədi
+    // imzasız callback
+    const cb = await request(app).post('/api/payments/epoint/callback').type('form').send({ data: b64({ order_id: 'o10-abc', status: 'success', amount: 57 }), signature: '' });
+    expect(cb.status).toBe(400);
+    // əllə "ödənildi" yalnız girişli işçiyə
+    expect((await request(app).post('/api/orders/10/payment').send({ payment_status: 'PAID' })).status).toBe(401);
+    expect(orderRepository.setPaymentTx).not.toHaveBeenCalled();
   });
 });

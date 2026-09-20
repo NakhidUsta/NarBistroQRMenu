@@ -2,6 +2,7 @@ import { METHOD_LABELS, PAY_STATUS, awaitingOnlinePayment } from '../lib/payment
 import { paymentsApi } from '../lib/api'
 import { useEffect, useRef, useState } from 'react'
 import { useOrderStore } from '../store/orderStore'
+import { useAuthStore } from '../store/authStore'
 import { useUiStore } from '../store/uiStore'
 import { useSentinel } from '../lib/useInfinite'
 import LoadMore from '../components/LoadMore'
@@ -30,6 +31,7 @@ function OrdersAdmin() {
   const sentinelRef = useSentinel(loadMore, { enabled: hasMore })
   const changeStatus = useOrderStore((s) => s.changeStatus)
   const updateOrder = useOrderStore((s) => s.updateOrder)
+  const role = useAuthStore((s) => s.admin?.role)
   const showToast = useUiStore((s) => s.showToast)
 
   const [q, setQ] = useState('')
@@ -53,6 +55,17 @@ function OrdersAdmin() {
       showToast(`Sifariş #${order.id}: ödəniş qeyd edildi`)
     } catch (err) {
       showToast(err.response?.data?.error || 'Ödəniş qeyd edilmədi', 'error')
+    }
+  }
+
+  // Onlayn ödənilmiş sifarişin pulunu kartına geri qaytarır (Epoint). Geri qaytarılandan sonra əməliyyat dönməzdir.
+  async function refund(order) {
+    if (!confirm(`Sifariş #${order.id}: ${Number(order.total).toFixed(2)} ₼ müştərinin kartına geri qaytarılsın? Bu əməliyyat geri alınmır.`)) return
+    try {
+      updateOrder(await paymentsApi.refund(order.id))
+      showToast(`Sifariş #${order.id}: ödəniş geri qaytarıldı`)
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Geri qaytarma alınmadı', 'error')
     }
   }
 
@@ -141,6 +154,9 @@ function OrdersAdmin() {
                 <span className={`px-2.5 py-0.5 rounded-full font-bold ${(PAY_STATUS[order.payment_status] || PAY_STATUS.UNPAID).cls}`}>
                   {(PAY_STATUS[order.payment_status] || PAY_STATUS.UNPAID).label}
                 </span>
+                {order.payment_status === 'PAID' && order.payment_method === 'ONLINE' && ['OWNER', 'MANAGER'].includes(role) && (
+                  <button onClick={() => refund(order)} className="ml-auto font-semibold bg-danger/10 text-danger rounded-full px-3 py-1">Pulu geri qaytar</button>
+                )}
                 {order.payment_status === 'UNPAID' && order.status !== 'CANCELLED' && order.payment_method !== 'ONLINE' && (
                   <span className="flex gap-1.5 ml-auto">
                     <button onClick={() => markPaid(order, 'CASH')} className="font-semibold bg-success/15 text-success rounded-full px-3 py-1">Nağd alındı</button>

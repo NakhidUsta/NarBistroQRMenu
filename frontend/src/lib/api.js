@@ -132,6 +132,8 @@ export const paymentsApi = {
   testComplete: (body) => unwrap(apiClient.post('/payments/test/complete', body)),
   // Admin/ofisiant: nağd / kartla masada ödənişi qeyd et
   markPaid: (orderId, method) => unwrap(apiClient.post(`/orders/${orderId}/payment`, method ? { method } : {})),
+  // OWNER/MANAGER: onlayn ödənişi provayder vasitəsilə tam geri qaytar
+  refund: (orderId) => unwrap(apiClient.post(`/orders/${orderId}/refund`)),
   list: (orderId) => unwrap(apiClient.get(`/orders/${orderId}/payments`)),
 }
 

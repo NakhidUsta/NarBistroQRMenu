@@ -24,4 +24,4 @@ async function createPayment({ providerOrderId }) {
   return { redirectUrl: url, transaction: `test-${providerOrderId}` };
 }
 
-module.exports = { name: 'test', isConfigured, createPayment, verifySig, signOrder, parseCallback: () => ({ valid: false }), fetchStatus: async () => null };
+module.exports = { name: 'test', isConfigured, createPayment, verifySig, signOrder, parseCallback: () => ({ valid: false }), fetchStatus: async () => null, refund: async () => ({ ok: true }) };

@@ -75,6 +75,12 @@ async function findPendingWithTransaction(db, orderId) {
   return result.recordset;
 }
 
+// Sifarişin uğurlu (ödənilmiş) cəhdi — geri qaytarma bu tranzaksiyaya edilir
+async function findSuccessfulByOrder(db, orderId) {
+  const result = await req(db).input('id', sql.Int, orderId).query(`SELECT TOP 1 * FROM payments WHERE order_id = @id AND status = N'SUCCESS' ORDER BY paid_at DESC, id DESC`);
+  return result.recordset[0] || null;
+}
+
 // Sifariş ləğv olunanda açıq cəhdlər bağlanır
 async function failOpenForOrder(db, orderId, reason) {
   await req(db)
@@ -83,4 +89,4 @@ async function failOpenForOrder(db, orderId, reason) {
     .query(`UPDATE payments SET status = N'FAILED', failure_reason = @reason, updated_at = SYSUTCDATETIME() WHERE order_id = @id AND status = N'PENDING'`);
 }
 
-module.exports = { create, findByProviderOrderIdForUpdate, findByProviderOrderId, update, listByOrder, findPendingWithTransaction, failOpenForOrder };
+module.exports = { create, findByProviderOrderIdForUpdate, findByProviderOrderId, update, listByOrder, findPendingWithTransaction, findSuccessfulByOrder, failOpenForOrder };

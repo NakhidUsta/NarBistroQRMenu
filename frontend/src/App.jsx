@@ -65,6 +65,9 @@ function App() {
           </Route>
 
           <Route path="/pay/test" element={<TestPay />} />
+          {/* Epoint merchant qeydiyyatında bildirilən ümumi ünvanlar (hər ödəniş öz sifariş linkinə qayıdır, bunlar ehtiyatdır) */}
+          <Route path="/payment/success" element={<Navigate to="/orders" replace />} />
+          <Route path="/payment/error" element={<Navigate to="/orders" replace />} />
 
           <Route path="/admin/login" element={<Login />} />
           <Route path="/admin/forgot-password" element={<ForgotPassword />} />
