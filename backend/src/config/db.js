@@ -1,5 +1,9 @@
 const sql = require('mssql');
 
+// QA K (yük testi) tapıntısı: bağlantı hovuzunun ölçüsü təyin edilmirdi → mssql/tarn defolt max 10 bağlantı istifadə edirdi.
+// Hər sifariş yaradılması bir tranzaksiya ərzində (BEGIN…COMMIT) bir bağlantını tutur; 25+ paralel sifariş 10-luq hovuzu
+// tükədirdi, növbədəki sorğular 30 saniyə gözləyib "operation timed out" ilə 500 qaytarırdı (25/25, 50/50 uğursuz oldu).
+// Restoran həqiqi rejimdə eyni anda bir neçə masa sifariş verə bilər — bu, sadə həndəvər trafikdə belə baş verə bilərdi.
 const config = {
   server: process.env.DB_SERVER,
   database: process.env.DB_NAME,
@@ -8,6 +12,12 @@ const config = {
   options: {
     encrypt: false, // lokal SQL Server üçün
     trustServerCertificate: true,
+  },
+  pool: {
+    max: Number(process.env.DB_POOL_MAX) || 50,
+    min: Number(process.env.DB_POOL_MIN) || 2,
+    idleTimeoutMillis: 30000,
+    acquireTimeoutMillis: 15000, // 30san yox — bağlantı 15san-də tapılmasa tez uğursuz olur, sorğu asılı qalmır
   },
 };
 

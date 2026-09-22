@@ -25,6 +25,7 @@ CLIENT_ORIGIN=https://menu.example.az      # CORS + cookie üçün
 PUBLIC_URL=https://menu.example.az         # OG/sitemap/robots-da real domen
 JWT_SECRET=<uzun təsadüfi sətir: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
 DB_SERVER=...  DB_NAME=qr_menu  DB_USER=qr_menu_app  DB_PASSWORD=...
+DB_POOL_MAX=50                             # defolt 50 kifayətdir (QA yük testi: 50 paralel sifariş problemsiz); çox böyük restoran/bir neçə filial üçün artırın
 TZ_OFFSET_HOURS=4
 ADMIN_SESSION_HOURS=12                     # refresh token-in boş qalma müddəti (saat)
 ADMIN_SESSION_MAX_DAYS=7                   # sessiyanın mütləq ömrü (gün)
@@ -113,6 +114,7 @@ Refresh cookie-si (`qrmenu_refresh`) yalnız `/api/auth` yoluna göndərilir —
 - 15 dəqiqədən sonra admin panel çıxış etdirmir (səssiz refresh işləyir); Hesabım → Aktiv cihazlarda cari cihaz görünür.
 - `npm run backup` əl ilə işlədilir və gündəlik tapşırığa (cron / `schtasks`) əlavə olunur; bir dəfə bərpa sınağı edin.
 - Firewall: yalnız 80/443 açıq; SQL Server (1433) internetə **açıq deyil**.
+- Masaların QR kodlarını PRINT ETMƏZDƏN ƏVVƏL hər birini Admin → Masalar/QR → "Yenilə (regenerate)" ilə YENİDƏN yaradın (nümunə seed məlumatındakı tokenlər kodda görünür, ictimai sayıla bilər).
 
 ## 8. Yeniləmə
 

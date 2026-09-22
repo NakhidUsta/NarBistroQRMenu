@@ -48,6 +48,8 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     await form.locator('input[type=file]').setInputFiles(IMAGE)
     await expect(form.locator('img').first()).toBeVisible()
     await form.getByRole('button', { name: 'Saxla' }).click()
+    // Menyuda çoxlu məhsul ola bilər (səhifələnir) — yeni məhsulu tapmaq üçün axtarışdan istifadə et (səhifəni 1-ə sıfırlayır)
+    await admin.getByPlaceholder('Məhsul axtar').fill(NAME)
     await expect(admin.getByText(NAME)).toBeVisible()
 
     // 7-8. Müştəri səhifəsində məhsul dərhal görünür (yeniləmə yoxdur). Menyu səhifə-səhifə yüklənir (12-lik), ona görə məhsulun kateqoriyasına keçirik
@@ -100,9 +102,12 @@ test('tam axın: admin ↔ müştəri real-time', async ({ browser }) => {
     }
 
     // 16-17. Admin məhsulu "Bitib" edir → müştərinin açıq menyusunda dərhal "Bitib"
+    // Menyu səhifə-səhifə yükləndiyi üçün (çoxlu məhsul var) yenidən kateqoriyaya keçirik ki, yeni məhsul görünsün
     await customer.goto(`/menyu?table=${table.code}&t=${table.qr_token}`)
+    await customer.getByRole('button', { name: category, exact: true }).click()
     await expect(customer.getByText(NAME)).toBeVisible()
     await admin.goto('/admin/menu')
+    await admin.getByPlaceholder('Məhsul axtar').fill(NAME) // yenidən yüklənmə axtarış vəziyyətini sıfırlayır — çoxlu məhsul arasında yeni sətri tapmaq üçün
     const row = admin.locator('div.flex.gap-4', { hasText: NAME }).first()
     await row.getByRole('button', { name: 'Mövcuddur' }).click()
     await expect(customer.getByText(NAME).locator('xpath=ancestor::a')).toContainText('Bitib')
