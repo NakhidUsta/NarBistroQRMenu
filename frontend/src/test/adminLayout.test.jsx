@@ -5,10 +5,17 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 vi.mock('../lib/useAdminSocket', () => ({ useAdminSocket: () => 'connected' }))
 vi.mock('../admin/NotificationBell', () => ({ default: () => <span>bell</span> }))
-vi.mock('../lib/alerts', () => ({ requestNotificationPermission: vi.fn(), installAudioUnlock: vi.fn(), playAlert: vi.fn(), browserNotify: vi.fn() }))
+// `let` ilə: hər testdə audio vəziyyətini dəyişə bilmək üçün (defolt: "running", bloklanma testində "suspended")
+let mockAudioState = { state: 'running' }
+vi.mock('../lib/alerts', () => ({
+  requestNotificationPermission: vi.fn(), installAudioUnlock: vi.fn(), playAlert: vi.fn(), browserNotify: vi.fn(),
+  unlockAudio: vi.fn().mockResolvedValue(true), previewTone: vi.fn().mockResolvedValue(true),
+  useAudioState: Object.assign((sel) => sel(mockAudioState), { getState: () => mockAudioState }),
+}))
 
 import AdminLayout from '../admin/AdminLayout'
 import { useAuthStore } from '../store/authStore'
+import { unlockAudio } from '../lib/alerts'
 
 function renderLayout(path = '/admin/orders') {
   return render(
@@ -23,7 +30,35 @@ function renderLayout(path = '/admin/orders') {
   )
 }
 
-beforeEach(() => useAuthStore.setState({ admin: { id: 1, email: 'o@x.az', role: 'OWNER' } }))
+beforeEach(() => {
+  useAuthStore.setState({ admin: { id: 1, email: 'o@x.az', role: 'OWNER' } })
+  mockAudioState = { state: 'running' }
+})
+
+// QA (istifadəçi bildirişi): "bildirişlərin səsi gəlmir" — səbəb brauzerin AudioContext-i jestsiz "suspended" saxlaması idi;
+// xəbərdarlıq əvvəllər yalnız Bildirişlər səhifəsində idi, admin başqa səhifədə səssiz qalırdı. İndi hər admin səhifəsində göstərilir.
+describe('AdminLayout: səs bloklanma xəbərdarlığı', () => {
+  it('audio "suspended"-dirsə (və səs aktivdirsə) bütün admin səhifələrində xəbərdarlıq göstərilir, "Aktivləşdir" unlockAudio çağırır', async () => {
+    mockAudioState = { state: 'suspended' }
+    renderLayout('/admin/orders')
+    const warning = screen.getByTestId('sound-blocked-warning')
+    expect(warning).toHaveTextContent('Brauzer bildiriş səsini bloklayıb')
+    await userEvent.click(screen.getByRole('button', { name: /Səsi aktivləşdir/ }))
+    expect(unlockAudio).toHaveBeenCalled()
+  })
+
+  it('audio "running"-dirsə xəbərdarlıq yoxdur', () => {
+    renderLayout('/admin/orders')
+    expect(screen.queryByTestId('sound-blocked-warning')).not.toBeInTheDocument()
+  })
+
+  it('KITCHEN rolunda (səs ayarı olmayan rol) "suspended" olsa belə xəbərdarlıq göstərilmir', () => {
+    mockAudioState = { state: 'suspended' }
+    useAuthStore.setState({ admin: { id: 4, email: 'k@x.az', role: 'KITCHEN' } })
+    renderLayout('/admin/orders')
+    expect(screen.queryByTestId('sound-blocked-warning')).not.toBeInTheDocument()
+  })
+})
 
 describe('AdminLayout (mobil çəkməcə)', () => {
   it('hamburger düyməsi çəkməcəni açıb-bağlayır (aria-expanded)', async () => {

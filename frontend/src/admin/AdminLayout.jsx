@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useAdminSocket } from '../lib/useAdminSocket'
-import { installAudioUnlock, requestNotificationPermission } from '../lib/alerts'
+import { installAudioUnlock, requestNotificationPermission, previewTone, unlockAudio, useAudioState } from '../lib/alerts'
 import { useSoundSettings } from '../lib/soundSettings'
 import { useNotificationStore } from '../store/notificationStore'
+import { useUiStore } from '../store/uiStore'
 import Toast from '../components/Toast'
 import NotificationBell from './NotificationBell'
 
@@ -49,6 +50,18 @@ function AdminLayout() {
   const unread = useNotificationStore((s) => s.items.filter((n) => !n.isRead).length)
   const soundOn = useSoundSettings((s) => s.enabled)
   const setSoundOn = useSoundSettings((s) => s.setEnabled)
+  const audioState = useAudioState((s) => s.state)
+  const showToast = useUiStore((s) => s.showToast)
+  // Brauzer AudioContext-i istifadəçi jestindən əvvəl "suspended" saxlayır — səs ayarı aktivdir, amma çalınmır (səssiz uğursuzluq).
+  // İstifadəçi bunu görmür, çünki əvvəllər xəbərdarlıq yalnız Bildirişlər səhifəsində idi — indi hər səhifədə göstərilir.
+  const soundBlocked = soundOn && ['OWNER', 'MANAGER', 'WAITER'].includes(admin?.role) && (audioState === 'suspended' || audioState === 'idle')
+
+  async function enableSound() {
+    if (await unlockAudio()) {
+      await previewTone('bell')
+      showToast('Səs aktivləşdirildi', 'success')
+    }
+  }
 
   useEffect(() => {
     requestNotificationPermission()
@@ -122,6 +135,12 @@ function AdminLayout() {
           <div role="alert" data-testid="default-password-warning" className="bg-danger text-white px-4 py-2.5 text-[13px] font-semibold flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
             <span>⚠ Hesabınız hələ də məlum defolt şifrədədir — kim isə bu şifrəni bilir. Dərhal dəyişin!</span>
             <NavLink to="/admin/account" className="underline">Şifrəni dəyiş →</NavLink>
+          </div>
+        )}
+        {soundBlocked && (
+          <div role="alert" data-testid="sound-blocked-warning" className="bg-gold/25 text-ink px-4 py-2.5 text-[13px] font-semibold flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+            <span>🔇 Brauzer bildiriş səsini bloklayıb — yeni sifariş/çağırış gələndə səs çalınmayacaq.</span>
+            <button type="button" onClick={enableSound} className="underline font-bold">Səsi aktivləşdir →</button>
           </div>
         )}
         <header className="h-16 flex items-center justify-between md:justify-end gap-3 md:gap-5 px-4 md:px-6 border-b border-border bg-panel sticky top-0 z-20">
