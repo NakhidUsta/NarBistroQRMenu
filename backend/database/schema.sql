@@ -421,6 +421,17 @@ CREATE TABLE audit_logs (
 );
 GO
 
+-- ============ PERFORMANS İNDEKSLƏRİ (QA F25) ============
+-- Bu sütunlar admin/mətbəx/müştəri ekranlarının HƏR sorğusunda filtr/join olaraq işlənir.
+CREATE INDEX IX_order_items_order ON order_items (order_id);
+CREATE INDEX IX_orders_status_created ON orders (status, created_at DESC);
+CREATE INDEX IX_orders_table ON orders (table_id) WHERE table_id IS NOT NULL;
+CREATE INDEX IX_products_category ON products (category_id);
+CREATE INDEX IX_notifications_restaurant_read ON notifications (restaurant_id, is_read, created_at DESC);
+CREATE INDEX IX_stock_movements_product ON stock_movements (product_id, created_at DESC);
+CREATE INDEX IX_promo_usage_code ON promo_usage (promo_code_id);
+GO
+
 -- ============ SEED DATA ============
 
 INSERT INTO restaurants (name, phone, whatsapp, address, working_hours, email, about_text, instagram_link, allow_tableless_orders) VALUES

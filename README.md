@@ -18,7 +18,7 @@ sqlcmd -S localhost -E -C -f 65001 -d qr_menu -i backend/database/schema.sql
 
 Seed: 1 restoran, 1 OWNER (`admin@qrmenu.local` / `ChangeMe123!` — **production-da mütləq dəyişdirin**), kateqoriyalar, məhsullar, 3 masa, `XOSGEL10` promo kodu.
 
-Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər, 010 tərkib kataloqu, 011 sifariş idempotency, 012 bildiriş statusu, 013 sessiyalar/refresh token, 014 məhsul görünürlüyü, 015 favicon, 016 e-poçt tokenləri, 017 ödənişlər, 018 e-poçt (Gmail) ayarları, 019 stok hərəkəti səbəbləri — **019 mütləq tətbiq edin**: onsuz vaxtı keçmiş onlayn sifarişlər ləğv edilmir).
+Mövcud bazanı yeniləmək üçün `backend/database/migrations/` fayllarını nömrə ardıcıllığı ilə tətbiq edin (002 promo/inventory, 003 i18n, 004 theme, 005 fees, 006 reviews, 007 session security, 008 media, 009 qalereya + allergenlər, 010 tərkib kataloqu, 011 sifariş idempotency, 012 bildiriş statusu, 013 sessiyalar/refresh token, 014 məhsul görünürlüyü, 015 favicon, 016 e-poçt tokenləri, 017 ödənişlər, 018 e-poçt (Gmail) ayarları, 019 stok hərəkəti səbəbləri — **019 mütləq tətbiq edin**: onsuz vaxtı keçmiş onlayn sifarişlər ləğv edilmir; 020 performans indeksləri).
 
 > Əl ilə `sqlcmd` ilə `orders` cədvəlinə yazı/silmə əməliyyatı edirsinizsə `-I` bayrağı mütləqdir (filtrli unikal indeks `QUOTED_IDENTIFIER ON` tələb edir): `sqlcmd -S localhost -E -I -f 65001 -d qr_menu -Q "..."`. Tətbiqin öz bağlantısı bunu avtomatik edir.
 
