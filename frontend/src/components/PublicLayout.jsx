@@ -111,7 +111,9 @@ function PublicLayout() {
           </div>
         )}
         {!isSubPage && <TableActions />}
-        <Outlet />
+        <main>
+          <Outlet />
+        </main>
         {!isSubPage && <ReviewsSection />}
         {!isSubPage && restaurant && (
           <footer className="px-5 pt-8 pb-8 md:pb-12 text-center text-[12px] md:text-[13px] text-muted">

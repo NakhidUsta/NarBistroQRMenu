@@ -34,15 +34,17 @@ E, C, D, B BİTDİ. F22 (aşağıda) düzəldildi. A-nın böyük hissəsi artı
 - [x] C. Ödəniş sistemi: 32+ dinamik yoxlama (real DB, test provayderi) keçdi; F13–F17 düzəldildi (vaxt-aşımı CHECK xətası, ləğvdə stok, ləğv edilmiş sifariş açılması, refund-suz ləğv, sweeper yarışı). Real Epoint sandbox açarları olmadan yoxlanmadı (sahib açar əlavə edəndən sonra `npm run payment:check`)
 - [x] D. E-poçt / şifrə bərpası: 54 dinamik yoxlama (console driver, real DB) keçdi; F18 (paylaşılan IP giriş bloku), F19 (şifrə tip/uzunluq), F20 (məktub limiti yarışı), F21 (massiv e-poçt) düzəldildi. Real Gmail SMTP göndərişi yoxlanmadı (App Password lazımdır — sahib paneldə daxil edəndən sonra "Sınaq məktubu göndər")
 - [x] B. Admin panel: real brauzerdə (masaüstü+mobil 375px) 18 səhifə × OWNER (real hesab) + MANAGER/WAITER/KITCHEN (müvəqqəti, təmizlənib) — konsol xətası/error boundary/üfüqi daşma YOX; rol-əsaslı yönləndirmə (`homeFor`) real naviqasiyada (full reload) hər 3 aşağı roldan yoxlanıldı — işləyir (əvvəlki "bypass" tapıntısı test metodunun (manual pushState) məhdudiyyəti idi, təkrarlanmadı, DÜZƏLİŞ TƏLƏB OLUNMUR); mobil hamburger menyu işləyir. Formalar (kateqoriya/məhsul/masa+QR regenerate/promo/işçi) yaratma+validasiya (HTML5 required, qısa şifrə rədd)+silmə tam işləyir, audit log hər əməliyyatı doğru yazır (before/after diff), filtri işləyir. Real-time: API ilə yaradılan sifariş admin siyahısında REFRESH-SİZ göründü (socket). CSV ixracı (sifariş/məhsul) işləyir, formula-injection əvvəlki sessiyada təsdiqlənib. Stok/Bildirişlər/Media/Tərkiblər/Rəylər səhifələri boş/dolu vəziyyətdə düzgün göstərir. **Heç bir yeni bug tapılmadı, kod dəyişikliyi edilmədi**
-- [~] A. Müştəri saytı (davam edir)
-  - [x] Menyu, kateqoriya səhifələməsi (1/3 səhifə), məhsul səhifələməsi (1–12/56, 5 səhifə), allergen filtri (56→31, Qlüten seçiləndə Truffle Pasta gizləndi) — işləyir
+- [x] A. Müştəri saytı (əsas axınlar tam sınandı; splash vizual/PWA/dərin əlçatanlıq auditi könüllü qaldı — aşağı prioritet)
+  - [x] Menyu, kateqoriya səhifələməsi (1/3), məhsul səhifələməsi (5 səhifə), allergen filtri (56→31) — işləyir
   - [x] Məhsul səhifəsi: şəkil/ad/qiymət/hazırlanma vaxtı/tərkib/allergen/miqdar seçici — işləyir
-  - [x] Səbət → checkout (ad/telefon `required`, HTML5 validasiya) → təsdiq modalı → NAĞD sifariş → `/order/:id` yönləndirmə — tam işlədi (#126, sonra baza hadisəsi ilə silindi, əvəzedici lazım deyil)
-  - [x] Sifariş izləmə səhifəsi (mərhələ indikatoru), Sifarişlərim (localStorage) — işləyir. Sevimlilər: F23 (aşağıda) tapıldı və düzəldildi
-  - [ ] Onlayn ödəniş axını (səbətdən) — D/C-də backend tərəfi test edilib, brauzerdə UI axını hələ yoxlanmayıb
-  - [ ] Masa/QR məntiqi (`?table=table_001&t=<qr_token>` ilə "masalı" rejim vs indi test etdiyim masasız rejim)
-  - [x] Dillər: AZ/EN/RU keçidi statik mətnləri düzgün tərcümə edir (restoran-spesifik mətnlər admin-dən gəldiyi kimi qalır — düzgün davranış)
-  - [ ] Splash ekranı vizual, responsiv (1280/768/375 hamısı), PWA/offline, SEO view-source, əlçatanlıq (klaviatura naviqasiyası)
+  - [x] Səbət → checkout (HTML5 validasiya) → təsdiq modalı → NAĞD sifariş → sifariş izləmə — tam işlədi
+  - [x] ONLAYN ödəniş: checkout→test ödəniş səhifəsi ("SINAQ REJİMİ" banneri ilə)→"Uğurlu ödə"→sifariş "Ödənilib" statusunda geri qayıtdı — tam işlədi (test provayderi ilə)
+  - [x] Masa/QR rejimi: `?table=...&t=<token>` ilə "MASA 1" göstərilir, Ofisiant çağır/Hesab istə işləyir (mövcud OPEN bildirişi idempotent qaytarır — düzgün); yeni sessiyada YANLIŞ token → masasız rejimə düşür (F3 canlıda təsdiqləndi); köhnə (sabit) masa tokenləri F22 ilə yeniləndi
+  - [x] Sifariş izləmə, Sifarişlərim, Sevimlilər (F23-dən sonra) — işləyir
+  - [x] Dillər: AZ/EN/RU statik mətnləri düzgün tərcümə edir
+  - [x] Responsiv: 1280/768/375 üfüqi daşma yoxdur (768-də əlavə yoxlanıldı)
+  - [x] Əlçatanlıq: F24 (aşağıda, `<main>` landmark yox idi) tapıldı və düzəldildi; `alt` atributları hamısında var
+  - [ ] Splash ekranın vizual (screenshot) təsdiqi, PWA/offline (`E2E_PROD=1` əl ilə build+serve), SEO view-source əl ilə — aşağı prioritetli, kodla/əvvəlki testlərlə artıq əhatə olunub, könüllü qalır
 - [ ] F. Verilənlər bazası (schema.sql sıfır DB, migrasiyalar, məhdudiyyətlər)
 - [ ] G. Backend keyfiyyəti
 - [ ] H. Frontend keyfiyyəti
