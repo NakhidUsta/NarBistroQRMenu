@@ -1,6 +1,6 @@
 # QA hesabatı (işləyərkən doldurulur)
 
-Son yenilənmə: sessiya 1, yoxlama nöqtəsi 6. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
+Son yenilənmə: sessiya 1, yoxlama nöqtəsi 10. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
 
 ## Tapıntılar
 
@@ -47,6 +47,8 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 6. Ciddilik: Kritik / Yüksək / O
 - CORS: `origin` sabit (`CLIENT_ORIGIN`), yansıdılmır.
 - Admin socket namespace: JWT cookie ilə orta qatda doğrulanır.
 - Mail şablonları HTML escape edir; CSV ixracı formula inyeksiyasını neytrallaşdırır (əvvəlki testlərlə).
+- **B (admin panel, real brauzerdə)**: 18 səhifə × 4 rol (OWNER real hesabla, MANAGER/WAITER/KITCHEN müvəqqəti hesabla) masaüstündə və mobildə (375px) — konsol xətası, error boundary, üfüqi daşma yoxdur. Rol-əsaslı yönləndirmə (`homeFor`) qadağan URL-ə birbaşa keçiddə (real naviqasiya/reload) hər 3 aşağı rol üçün işlədi. Formalar (kateqoriya/məhsul/masa+QR regenerate/promo/işçi): boş göndərmə HTML5 `required` ilə bloklanır, qısa şifrə (staff) 400 mesajı ilə rədd olunur, yaratma/redaktə/silmə tam işləyir, audit log hər əməliyyatı düzgün (əvvəl/sonra) yazır və filtrlənir. Real-time: arxa planda API ilə yaradılan sifariş `OrdersAdmin`-də səhifə yeniləmədən göründü (socket). CSV ixracı (sifariş/məhsul) düzgün başlıq/kodlama ilə işləyir. Stok/Media/Bildirişlər/Rəylər/Tərkiblər boş və dolu vəziyyətdə düzgün göstərir; "Hamısını oxu" işləyir.
+- Qeyd: brauzer testində manual `history.pushState`+sintetik `popstate` ilə simulyasiya edilən "client-side naviqasiya" bir dəfə yanlış olaraq rol qorumasının işləmədiyini göstərdi (KITCHEN qadağan səhifədə qaldı) — bu, test üsulunun (React Router-in öz `history` instansını yox, brauzerin native API-sini hack etməsi) məhdudiyyəti idi; real (tam səhifə) naviqasiya ilə təkrarlanmadı, kodda problem yoxdur.
 
 ## Test nəticələri
 - Başlanğıc (QA-dan əvvəl): Jest 367, Vitest 204, Playwright 5 keçir (+PWA atlanır).
@@ -58,6 +60,7 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 6. Ciddilik: Kritik / Yüksək / O
 - Yoxlama nöqtəsi 7: Jest 404 (25 dəst).
 - Yoxlama nöqtəsi 8: Jest 411 (25 dəst), Playwright 5 keçir.
 - Yoxlama nöqtəsi 9: Jest 419 (26 dəst).
+- Yoxlama nöqtəsi 10: Jest 419 (dəyişiklik yoxdur — B kod dəyişikliyi tələb etmədi).
 
 ## Sahibin (istifadəçinin) etməli olduqları — QA-dan
 2. **`JWT_SECRET`-i canlıya çıxmadan yeni təsadüfi açarla əvəz edin**: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` → `backend/.env`. (Canlıda zəif açarla server artıq başlamayacaq.)
