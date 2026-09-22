@@ -1,10 +1,21 @@
 # QA vəziyyət faylı — yeni sessiya BURADAN davam edir
 
 Status: DAVAM EDİR
-Son yenilənmə: sessiya 1 (yoxlama nöqtəsi 10) | Sessiya sayı: 1
+Son yenilənmə: sessiya 1 (yoxlama nöqtəsi 11) | Sessiya sayı: 1
+
+## ⚠ HADİSƏ (sessiya 1, nöqtə 11): baza yanlışlıqla sıfırlandı və bərpa edildi
+A bölməsinə başlayarkən F22 tapıntısını (aşağıda) sınamaq üçün `schema.sql`-i AYRICA sınaq bazasında (`qr_menu_qa_schema_test`) işlətdim. Faylın daxilində sərt yazılmış `USE qr_menu;` (8-ci sətir) mənim verdiyim `-d` bazasını ləğv etdi və **bütün skript əsl `qr_menu` bazasına qarşı işlədi** (DROP+CREATE bütün cədvəllər + yalnız seed data). Nəticə: 56 məhsul→6, bütün sifarişlər/rəylər silindi, 3 admin hesabından biri (`NakhidSafarov@gmail.com`) yoxa çıxdı. Dərhal DAYANDIRILDI, istifadəçiyə bildirildi. SQL Server-in öz backup tarixçəsindən (`msdb.dbo.backupset`) YEGANƏ backup tapıldı: 2026-09-19 14:39 (çox köhnə — miqrasiya 002-019-dan ƏVVƏL, 15 cədvəl əvəzinə tələb olunan 26-dan). İstifadəçinin təsdiqi ilə: (1) bu backup bərpa edildi, (2) miqrasiyalar 002→019 ardıcıl (əlavə-yönlü, DROP DATABASE yox) tətbiq edildi — sxem indi tamdır (26 cədvəl, Jest 419/Vitest 212 keçir), (3) itirilmiş menyu məzmunu (15 yeni kateqoriya, 50 yeni məhsul, "Nar Bistro" brendinqi) bu sessiyada əvvəllər brauzerdə görülmüş real adlar/qiymətlərə əsaslanaraq `qa/recover-menu-content.js` ilə YENİDƏN YARADILDI (dəqiq eyni deyil, oxşar keyfiyyətdə — bax aşağıda "Bərpa qeydləri"). **DƏRS**: bundan sonra `schema.sql`/miqrasiya faylı heç vaxt canlı/dev bazaya `-i` ilə birbaşa işlədilmir — əvvəlcə faylın için `USE` axtarılır, sınaq lazımdırsa fayl KOPYALANIB `USE`-suz versiya ilə test edilir.
+
+## Bərpa qeydləri (istifadəçiyə bildirilməli, işin sonunda təkrar xatırladılsın)
+- Restoran: ad "Nar Bistro", brendinq (rənglər, hero, banner, footer mətni), ünvan, iş saatları — bərpa edildi (əvvəlki brauzer sessiyasından yadda saxlanan mətnlərlə).
+- 19 kateqoriya, 56 məhsul (qiymət/təsvir/şəkil ilə) yenidən yaradıldı — **adlar/təsvirlər orijinaldan fərqli ola bilər** (dəqiq mətn saxlanılmamışdı), şəkillər Unsplash stok fotolarıdır (real deyil).
+- `NakhidSafarov@gmail.com` (OWNER) hesabı YENİ, təsadüfi şifrə ilə yaradıldı — şifrə YALNIZ söhbətdə (bu fayla YAZILMADI, təhlükəsizlik səbəbi) istifadəçiyə deyildi. **İSTİFADƏÇİ BU ŞİFRƏNİ DƏRHAL DƏYİŞMƏLİDİR** (Hesabım → Şifrəni dəyiş).
+- `google_maps_link`, `tiktok_link`, `instagram_link`, `phone`, `whatsapp` sahələri BOŞ buraxıldı (uydurma məlumat yazılmadı) — istifadəçi bunları Ayarlar-dan özü doldurmalıdır.
+- İtirilən, bərpa edilməyən: bütün əvvəlki sifariş tarixçəsi (yalnız 19 sentyabr backup-dakı 5 test sifarişi qaldı), Nahid-in yazdığı rəy, audit log tarixçəsi.
+- Real Epoint/Gmail açarları `.env`-də saxlanılıb (bazada deyil) — TƏSİRLƏNMƏYİB.
 
 ## NÖVBƏTİ ADDIM (dəqiq, bir-iki cümlə)
-E, C, D, B BİTDİ. İNDİ: **A (müştəri saytı)** — real brauzerdə `http://localhost:5174/menyu` (masa QR: `?table=table_001&t=<qr_token>`): menyu+kateqoriya+məhsul səhifələmə/axtarış, məhsul detalı, səbət (miqdar limiti artıq testlidir), tam sifariş axını (nağd/onlayn), Sifarişlərim/Sevimlilər (localStorage), masasız rejim, dillər (AZ/EN/RU), splash, mobil (375/768/1280), SEO meta (kodla təsdiqli, brauzerdə view-source yoxlanmayıb), PWA/offline (`E2E_PROD=1` tələb edir — Playwright pwa.spec skip olunur, əl ilə build+serve ilə yoxlanmalıdır), əlçatanlıq. Sonra F (sxem) → G (backend keyfiyyət) → H (frontend keyfiyyət) → K (300 sifariş yük testi, `LOADTEST-` işarəsi, `qa/loadtest.js` yazılmalıdır) → I (test boşluqları) → J (canlıya hazırlıq) → yekun hesabat.
+E, C, D, B BİTDİ. F22 (aşağıda) düzəldildi. A-nın böyük hissəsi artıq real brauzerdə sınanıb (bax siyahı) — menyu, allergen filtri, dil dəyişimi, məhsul detalı, sevimlilər, səbət, nağd sifariş axını, sifariş izləmə, Sifarişlərim hamısı işlədi, problemsiz. QALIR: masa QR girişi (`?table=table_001&t=<qr_token>`) ilə "masalı" rejim, onlayn ödəniş axını (səbətdən), masasız/QR arasında fərq, splash ekranı vizual, mobil/tablet responsiv (375/768), SEO view-source, PWA (əl ilə build+serve, `E2E_PROD=1`), əlçatanlıq (klaviatura/aria). Sonra F (sxem) → G (backend keyfiyyət) → H (frontend keyfiyyət) → K (300 sifariş yük testi, `LOADTEST-` işarəsi, `qa/loadtest.js` yazılmalıdır) → I (test boşluqları) → J (canlıya hazırlıq) → yekun hesabat.
 
 ## Yoxlama siyahısı (prioritet sırası ilə)
 - [x] 0. Başlanğıc: serverlər qalxdı (4000/5174 işləyir), mövcud testlər son işlədildikdə keçdi (Jest 367, Vitest 204, PW 5)
@@ -23,14 +34,15 @@ E, C, D, B BİTDİ. İNDİ: **A (müştəri saytı)** — real brauzerdə `http:
 - [x] C. Ödəniş sistemi: 32+ dinamik yoxlama (real DB, test provayderi) keçdi; F13–F17 düzəldildi (vaxt-aşımı CHECK xətası, ləğvdə stok, ləğv edilmiş sifariş açılması, refund-suz ləğv, sweeper yarışı). Real Epoint sandbox açarları olmadan yoxlanmadı (sahib açar əlavə edəndən sonra `npm run payment:check`)
 - [x] D. E-poçt / şifrə bərpası: 54 dinamik yoxlama (console driver, real DB) keçdi; F18 (paylaşılan IP giriş bloku), F19 (şifrə tip/uzunluq), F20 (məktub limiti yarışı), F21 (massiv e-poçt) düzəldildi. Real Gmail SMTP göndərişi yoxlanmadı (App Password lazımdır — sahib paneldə daxil edəndən sonra "Sınaq məktubu göndər")
 - [x] B. Admin panel: real brauzerdə (masaüstü+mobil 375px) 18 səhifə × OWNER (real hesab) + MANAGER/WAITER/KITCHEN (müvəqqəti, təmizlənib) — konsol xətası/error boundary/üfüqi daşma YOX; rol-əsaslı yönləndirmə (`homeFor`) real naviqasiyada (full reload) hər 3 aşağı roldan yoxlanıldı — işləyir (əvvəlki "bypass" tapıntısı test metodunun (manual pushState) məhdudiyyəti idi, təkrarlanmadı, DÜZƏLİŞ TƏLƏB OLUNMUR); mobil hamburger menyu işləyir. Formalar (kateqoriya/məhsul/masa+QR regenerate/promo/işçi) yaratma+validasiya (HTML5 required, qısa şifrə rədd)+silmə tam işləyir, audit log hər əməliyyatı doğru yazır (before/after diff), filtri işləyir. Real-time: API ilə yaradılan sifariş admin siyahısında REFRESH-SİZ göründü (socket). CSV ixracı (sifariş/məhsul) işləyir, formula-injection əvvəlki sessiyada təsdiqlənib. Stok/Bildirişlər/Media/Tərkiblər/Rəylər səhifələri boş/dolu vəziyyətdə düzgün göstərir. **Heç bir yeni bug tapılmadı, kod dəyişikliyi edilmədi**
-- [ ] A. Müştəri saytı
-  - [ ] Menyu, kateqoriya/məhsul səhifələməsi, axtarış, filtr
-  - [ ] Məhsul səhifəsi
-  - [ ] Səbət, sifariş, ödəniş axınları
-  - [ ] Sifariş səhifəsi, Sifarişlərim, Sevimlilər
-  - [ ] Masa/QR məntiqi
-  - [ ] Dillər, splash, responsiv (1280/768/375)
-  - [ ] PWA/offline, SEO, əlçatanlıq, performans
+- [~] A. Müştəri saytı (davam edir)
+  - [x] Menyu, kateqoriya səhifələməsi (1/3 səhifə), məhsul səhifələməsi (1–12/56, 5 səhifə), allergen filtri (56→31, Qlüten seçiləndə Truffle Pasta gizləndi) — işləyir
+  - [x] Məhsul səhifəsi: şəkil/ad/qiymət/hazırlanma vaxtı/tərkib/allergen/miqdar seçici — işləyir
+  - [x] Səbət → checkout (ad/telefon `required`, HTML5 validasiya) → təsdiq modalı → NAĞD sifariş → `/order/:id` yönləndirmə — tam işlədi (#126, sonra baza hadisəsi ilə silindi, əvəzedici lazım deyil)
+  - [x] Sifariş izləmə səhifəsi (mərhələ indikatoru), Sifarişlərim (localStorage) — işləyir. Sevimlilər: F23 (aşağıda) tapıldı və düzəldildi
+  - [ ] Onlayn ödəniş axını (səbətdən) — D/C-də backend tərəfi test edilib, brauzerdə UI axını hələ yoxlanmayıb
+  - [ ] Masa/QR məntiqi (`?table=table_001&t=<qr_token>` ilə "masalı" rejim vs indi test etdiyim masasız rejim)
+  - [x] Dillər: AZ/EN/RU keçidi statik mətnləri düzgün tərcümə edir (restoran-spesifik mətnlər admin-dən gəldiyi kimi qalır — düzgün davranış)
+  - [ ] Splash ekranı vizual, responsiv (1280/768/375 hamısı), PWA/offline, SEO view-source, əlçatanlıq (klaviatura naviqasiyası)
 - [ ] F. Verilənlər bazası (schema.sql sıfır DB, migrasiyalar, məhdudiyyətlər)
 - [ ] G. Backend keyfiyyəti
 - [ ] H. Frontend keyfiyyəti
@@ -58,14 +70,19 @@ Bu layihədə sonuncu məlum vəziyyət (QA-dan əvvəl): Jest 367, Vitest 204, 
 | payment-probes.js məlumatı | hesablar `qa.tmp.rbac.*`; məhsul `QA-TMP Stok%` (+stock_movements); sifarişlər `customer_name LIKE 'QA-PAY%'` (+payments cascade); skriptin başladığı andan sonrakı `notifications` | `cd backend && node ../qa/payment-probes.js --cleanup` (bildirişləri əl ilə: `DELETE FROM notifications WHERE created_at > <başlanğıc vaxtı>`) | SİLİNDİ (yoxlanıb: sifariş=0, məhsul=0, hesab=0; probe bildirişləri silindi) |
 | mail-probes.js məlumatı | hesablar `qa.tmp.rbac.owner@` və `qa.tmp.rbac.newmail@example.test` (email_tokens cascade); jurnal faylı scratchpad-də | `cd backend && node ../qa/mail-probes.js --cleanup` | SİLİNDİ (yoxlanıb: qalan=0) |
 | ikinci backend nüsxəsi (port 4001) | proses | portu dinləyən prosesi dayandır | DAYANDIRILDI |
+| A (müştəri saytı) sifariş #126 | NAĞD test sifarişi ("QA-TMP Müştəri A") | — | BAZA HADİSƏSİ İLƏ SİLİNDİ (yuxarıdakı ⚠ bəndinə bax) — əlavə təmizlik lazım deyil |
+| `qr_menu_qa_schema_test` sınaq bazası | boş sınaq bazası | `DROP DATABASE` | SİLİNDİ |
+| `qa/recover-menu-content.js`, `qa/make-role-accounts.js` | bir dəfəlik bərpa/kömək skriptləri | — | SAXLANILIR (repoda qalır, sənədləşdirmə/təkrar istifadə üçün) |
 | B (admin panel, brauzer) müvəqqəti hesabları/məlumatı | hesablar `qa.tmp.rbac.<rol>@example.test` (`qa/make-role-accounts.js` ilə, bilinən şifrə); brauzerdə yaradılan test məlumatı: kateqoriya "QA-TMP Kateqoriya", məhsul "QA-TMP Məhsul", masa "QA-TMP Masa", promo "QATMP10", işçi `qa.tmp.b.formcheck@example.test`, sifariş #125 (API ilə, `client_request_id=qartrealtime000001`) | `cd backend && node ../qa/rbac-matrix.js --cleanup` (hesablar); qalanı brauzerdə UI-nin öz "Sil" düymələri ilə silindi | SİLİNDİ — hamısı sessiya daxilində yaradıldığı kimi UI/skriptlə silindi, SQL ilə yoxlanıb (hesab/kateqoriya/məhsul/masa/promo = 0); sifariş #125 orders cədvəlində CANCELLED olaraq qalır (sifarişlər silinmir, yalnız ləğv edilir — layihənin öz davranışı, E2E testlərinin də #121-124 kimi CANCELLED sifarişləri DB-də qalır) |
 
 ## Qərarımı tələb edən / düzəldilməyən məsələlər
 - Admin şifrəsi hələ də defoltdur — SAHİB dəyişməlidir (QA dəyişmir).
 - `.env` JWT_SECRET zəifdir (secret/12345) — canlıdan əvvəl SAHİB yeni açar yaratmalıdır.
 - Qeyd (dəyişdirilmədi, dizayn): `authenticate` rol/versiya vəziyyətini 10 san keşləyir; rol API ilə (OWNER → Komanda) dəyişəndə keş dərhal silinir (təsdiqləndi). DB-də birbaşa dəyişiklik ≤10 san gecikir.
+- `NakhidSafarov@gmail.com` YENİ şifrə ilə yaradıldı — istifadəçi bu şifrəni dərhal dəyişməlidir (Hesabım → Şifrəni dəyiş). `google_maps_link`/`tiktok_link`/`instagram_link`/`phone`/`whatsapp` boş buraxıldı — sahib özü doldurmalıdır.
 
 ## Sessiya jurnalı (hər sessiya: nə edildi, harada dayandı)
+- Sessiya 1 (nöqtə 11): ⚠ HADİSƏ — `schema.sql`-i sınaq bazasında test edərkən (F22 üçün) faylın daxili `USE qr_menu;` sətri əsl bazanı sıfırladı. İstifadəçiyə dərhal bildirildi. Bərpa: 19 sentyabr backup tapılıb bərpa edildi (istifadəçinin təsdiqi ilə), miqrasiyalar 002→019 əlavə-yönlü tətbiq edildi (sxem tam, 26 cədvəl), menyu məzmunu (19 kateqoriya/56 məhsul/brendinq) `qa/recover-menu-content.js` ilə yenidən yaradıldı, `NakhidSafarov@gmail.com` yeni şifrə ilə bərpa edildi. F22 (QR token seed-də sabit idi) düzəldildi. Jest 419, Vitest 212. A bölməsinin böyük hissəsi brauzerdə sınandı (menyu/filtr/dil/məhsul/səbət/nağd sifariş/izləmə/Sifarişlərim/Sevimlilər) — hamısı işlədi; F23 (FavoriteButton lokallaşdırılmamış aria-label) tapıldı və düzəldildi.
 - Sessiya 1 (nöqtə 10): B bitdi (real brauzer, OWNER+MANAGER+WAITER+KITCHEN, 18 səhifə, masaüstü+mobil). Heç bir yeni bug yoxdur, kod dəyişmədi. Bütün müvəqqəti hesab/məlumat silinib (yoxlanıb). Jest 419 (dəyişiklik yoxdur). Backend/frontend serverləri 4000/5174-də işləyir.
 - Sessiya 1 (nöqtə 9): D bitdi — `qa/mail-probes.js` (54 yoxlama). F18–F21: giriş limiti IP+e-poçt/IP iki qat (paylaşılan Wi-Fi-da hamını bloklamırdı), `passwordPolicy` (8–128 simvol, yalnız mətn), sıfırlama məktubu limiti yarışı, massiv e-poçt qəbulu. Jest 419 (26 dəst). Backend 4000 yenidən başladıldı, 4001 dayandırıldı.
 - Sessiya 1 (nöqtə 8): C bitdi — `qa/payment-probes.js` real DB-də 5 real səhv tapdı: F13 (miqrasiya 019: `order_expired` CHECK pozurdu → vaxtı keçən sifarişlər heç vaxt ləğv olunmurdu), F14 (ləğvdə stok qaytarılmırdı), F15 (ləğv edilmiş sifariş açılırdı), F16 (ödənilmiş onlayn sifariş refund-suz ləğv), F17 (sweeper yarışı). Jest 411, Playwright 5. Backend 4000 yenidən başladıldı (019 tətbiq olunub), 4001 dayandırıldı.

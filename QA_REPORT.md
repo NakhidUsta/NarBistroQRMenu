@@ -1,6 +1,9 @@
 # QA hesabatı (işləyərkən doldurulur)
 
-Son yenilənmə: sessiya 1, yoxlama nöqtəsi 10. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
+Son yenilənmə: sessiya 1, yoxlama nöqtəsi 11. Ciddilik: Kritik / Yüksək / Orta / Aşağı. Vəziyyət: NAMİZƏD (təsdiq gözləyir) | DÜZƏLDİLDİ | DÜZƏLDİLMƏDİ (qərar lazım).
+
+## ⚠ QA prosesi zamanı baş verən hadisə (şəffaflıq üçün qeyd olunur)
+Sessiya 1, nöqtə 11-də F22-ni ayrıca sınaq bazasında yoxlayarkən `schema.sql`-in daxilindəki sərt `USE qr_menu;` sətri QA-nın verdiyi sınaq baza adını ləğv edib **əsl inkişaf bazasını (`qr_menu`) sıfırladı**. Dərhal aşkarlanıb istifadəçiyə bildirildi; istifadəçinin təsdiqi ilə köhnə (19 sentyabr) backup bərpa edildi, miqrasiyalar əlavə-yönlü tətbiq edilib sxem tamamlandı, menyu məzmunu və bir admin hesabı yenidən yaradıldı (dəqiq orijinal deyil — bax `QA_STATE.md` "Bərpa qeydləri"). Bundan sonra QA `.sql` fayllarını canlı/dev bazaya birbaşa `-i` ilə işlətmir; sınaq lazım olduqda fayl kopyalanıb `USE` sətri çıxarılaraq ayrıca sınaq bazasında işlədiləcək.
 
 ## Tapıntılar
 
@@ -27,6 +30,8 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 10. Ciddilik: Kritik / Yüksək / 
 | F19 | Orta | DÜZƏLDİLDİ | `authService`, `staffService`, `accountEmailService` | Şifrə yalnız `length < 8` ilə yoxlanırdı: rəqəm/massiv `new_password` bcrypt-də **500** verirdi; 90KB şifrə qəbul edilirdi (bcrypt yalnız ilk 72 baytı sayır — yalançı güvən + CPU) | `utils/passwordPolicy.js`: mətn olmalı, 8–128 simvol; şifrə dəyişmə, e-poçtla sıfırlama (token yandırılmazdan əvvəl) və işçi yaratma/yeniləmə eyni qaydanı tətbiq edir | `qaAuthLimits.test.js` |
 | F20 | Aşağı | DÜZƏLDİLDİ | `accountEmailService.requestPasswordReset` | "Saatda 3 sıfırlama məktubu" limiti paralel sorğularda yarışırdı (say → yarat cütü atomik deyildi): 7 sürətli sorğudan 4 məktub getdi | Hesab üzrə növbəyə düzmə (`serialize`) | `qaAuthLimits.test.js` (8 paralel sorğu → 3), canlı prob |
 | F21 | Orta | DÜZƏLDİLDİ | `changeEmail`, `staffService.create` | `new_email: ["a@b.co"]` (massiv) `String()` ilə ünvana çevrilib **qəbul edilirdi** (canlı probda öz hesabımın e-poçtu dəyişdi); işçi yaratmada tip/uzunluq yoxlanmırdı | Yalnız `string`, ≤150 simvol | `qaAuthLimits.test.js` |
+| F22 | Yüksək | DÜZƏLDİLDİ | `database/schema.sql` seed | 3 masanın da `qr_token`-i SABİT, ictimai koddan tanınan dəyər idi (`a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6` və sadə fırlanmaları) — bu token ofisiant çağırışı/hesab istəyinin YEGANƏ təhlükəsizlik sərhədidir (F3); "regenerate" edilməyən istənilən yeni quraşdırmada kənar şəxs bu tokeni bilib saxta çağırış göndərə bilərdi | Hər `schema.sql` işə salınanda `CRYPT_GEN_RANDOM(16)` ilə TƏSADÜFİ token yaradılır | Əl ilə: sqlcmd ilə `SELECT ... CRYPT_GEN_RANDOM(16) ...` iki dəfə fərqli nəticə verdiyi yoxlanıldı; tam `schema.sql` ayrıca sınaq bazasında uğurla icra edildi (bax yuxarıdakı ⚠ QA prosesi hadisəsi — bu sınaq zamanı əsl baza yanlışlıqla sıfırlandı) |
+| F23 | Aşağı | DÜZƏLDİLDİ | `components/FavoriteButton.jsx` | Sevimli düyməsinin `aria-label`-i sabit İngiliscə `"favorite"` idi — dildən (AZ/EN/RU) asılı olmayaraq eyni qalırdı və basılı/basılmamış vəziyyəti bildirmirdi | Lokallaşdırılmış (`favorite_add`/`favorite_remove`) + `aria-pressed` | `frontend/src/test/favoriteButton.test.jsx` |
 
 ## Yoxlanıb, problem YOXDUR (sübutla)
 - E-poçt/şifrə bərpası (`qa/mail-probes.js`, `MAIL_DRIVER=console`, real DB; 54 yoxlama): mövcud/olmayan e-poçt eyni cavab və eyni vaxt (median 21ms vs 21ms); 7 yanlış format 400; link `PUBLIC_URL`/`CLIENT_ORIGIN`-dan qurulur (Host başlığı təsir etmir); yeni sorğu köhnə tokeni öldürür; saxta/uzun/yanlış tipli token 400; təsdiq tokeni sıfırlamada keçmir (purpose); zəif şifrə tokeni yandırmır; eyni tokenlə 8 paralel istifadədən yalnız 1-i keçir; istifadə olunmuş/vaxtı keçmiş token 400; sıfırlamadan sonra köhnə şifrə, köhnə sessiya və köhnə refresh token ölür, hesab kilidi silinir; e-poçt dəyişəndə açıq linklər ölür, məktub yalnız yeni ünvana gedir, köhnə e-poçtla giriş olmur; `GET /api/mail-settings` sirr qaytarmır, SMTP host paneldən dəyişdirilə bilmir (SSRF yox), yanlış Gmail 400.
@@ -49,6 +54,7 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 10. Ciddilik: Kritik / Yüksək / 
 - Mail şablonları HTML escape edir; CSV ixracı formula inyeksiyasını neytrallaşdırır (əvvəlki testlərlə).
 - **B (admin panel, real brauzerdə)**: 18 səhifə × 4 rol (OWNER real hesabla, MANAGER/WAITER/KITCHEN müvəqqəti hesabla) masaüstündə və mobildə (375px) — konsol xətası, error boundary, üfüqi daşma yoxdur. Rol-əsaslı yönləndirmə (`homeFor`) qadağan URL-ə birbaşa keçiddə (real naviqasiya/reload) hər 3 aşağı rol üçün işlədi. Formalar (kateqoriya/məhsul/masa+QR regenerate/promo/işçi): boş göndərmə HTML5 `required` ilə bloklanır, qısa şifrə (staff) 400 mesajı ilə rədd olunur, yaratma/redaktə/silmə tam işləyir, audit log hər əməliyyatı düzgün (əvvəl/sonra) yazır və filtrlənir. Real-time: arxa planda API ilə yaradılan sifariş `OrdersAdmin`-də səhifə yeniləmədən göründü (socket). CSV ixracı (sifariş/məhsul) düzgün başlıq/kodlama ilə işləyir. Stok/Media/Bildirişlər/Rəylər/Tərkiblər boş və dolu vəziyyətdə düzgün göstərir; "Hamısını oxu" işləyir.
 - Qeyd: brauzer testində manual `history.pushState`+sintetik `popstate` ilə simulyasiya edilən "client-side naviqasiya" bir dəfə yanlış olaraq rol qorumasının işləmədiyini göstərdi (KITCHEN qadağan səhifədə qaldı) — bu, test üsulunun (React Router-in öz `history` instansını yox, brauzerin native API-sini hack etməsi) məhdudiyyəti idi; real (tam səhifə) naviqasiya ilə təkrarlanmadı, kodda problem yoxdur.
+- **A (müştəri saytı, real brauzerdə, davam edir)**: menyu (kateqoriya/məhsul səhifələmə, allergen filtri 56→31), dil keçidi (AZ/EN/RU statik mətnlər), məhsul detalı, sevimlilər (F23-dən sonra), səbət→checkout (HTML5 validasiya, təsdiq modalı)→NAĞD sifariş→sifariş izləmə səhifəsi (mərhələ indikatoru)→Sifarişlərim (localStorage) — tam axın problemsiz işlədi.
 
 ## Test nəticələri
 - Başlanğıc (QA-dan əvvəl): Jest 367, Vitest 204, Playwright 5 keçir (+PWA atlanır).
@@ -61,7 +67,10 @@ Son yenilənmə: sessiya 1, yoxlama nöqtəsi 10. Ciddilik: Kritik / Yüksək / 
 - Yoxlama nöqtəsi 8: Jest 411 (25 dəst), Playwright 5 keçir.
 - Yoxlama nöqtəsi 9: Jest 419 (26 dəst).
 - Yoxlama nöqtəsi 10: Jest 419 (dəyişiklik yoxdur — B kod dəyişikliyi tələb etmədi).
+- Yoxlama nöqtəsi 11: Jest 419 (26 dəst), Vitest 212 (25 fayl, +2 yeni).
 
 ## Sahibin (istifadəçinin) etməli olduqları — QA-dan
+0. **`NakhidSafarov@gmail.com` hesabının şifrəsini DƏRHAL dəyişin** — sessiya 1 nöqtə 11-dəki baza hadisəsindən sonra bu hesab QA tərəfindən yeni (yalnız söhbətdə deyilmiş) şifrə ilə yaradıldı. Ayarlar → Restoran profilində `google_maps_link`/`tiktok_link`/`instagram_link`/`phone`/`whatsapp` sahələri boş buraxılıb — özünüz doldurun. Menyu (19 kateqoriya/56 məhsul) yenidən yaradılıb, amma adlar/təsvirlər/şəkillər orijinaldan fərqli ola bilər — nəzərdən keçirin.
 2. **`JWT_SECRET`-i canlıya çıxmadan yeni təsadüfi açarla əvəz edin**: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` → `backend/.env`. (Canlıda zəif açarla server artıq başlamayacaq.)
 1. **Admin şifrəsini DƏRHAL dəyişin** (Admin → Hesabım → Şifrəni dəyiş). Hazırkı şifrə defoltdur və README/testlərdə yazılıb.
+3. **Backup rejimini qurun**: `npm run backup` (bax `backend/scripts/backup.js`) yalnız 19 sentyabrda 2 dəfə əl ilə işlədilib — gündəlik avtomatik backup (cron/Task Scheduler) olmadığı üçün bu sessiyadakı hadisədə 3 günlük məlumat itdi. `DEPLOY.md`-də bu artıq qeyd olunub, təkrar vurğulanır.

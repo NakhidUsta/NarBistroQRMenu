@@ -2,6 +2,12 @@
 -- İstifadə (SSMS-də və ya sqlcmd ilə):
 --   1) Boş bir "qr_menu" bazası yaradın (CREATE DATABASE qr_menu;)
 --   2) sqlcmd -S localhost -E -C -f 65001 -d qr_menu -i schema.sql
+--
+-- ⚠ DİQQƏT: aşağıdakı `USE qr_menu;` SƏRTDİR — bu skript HƏMİŞƏ `qr_menu` bazasına qarşı işləyir,
+-- `sqlcmd -d BAŞQA_AD` ilə çağırsanız belə (o, yalnız ilkin bağlantı üçündür, `USE` onu dərhal ləğv edir).
+-- Bu skript BÜTÜN CƏDVƏLLƏRİ SİLİB YENİDƏN YARADIR. Başqa (sınaq) bazada işlətmək istəsəniz,
+-- əvvəlcə faylı kopyalayıb bu `USE qr_menu;` sətrini silin/dəyişin — əks halda əsl `qr_menu`
+-- bazanız sıfırlanacaq (bu, bir QA sessiyasında faktiki baş verib, bax QA_REPORT.md).
 
 SET QUOTED_IDENTIFIER ON; -- filtrli unikal indeks üçün lazımdır (sqlcmd defoltda OFF)
 GO
@@ -475,10 +481,15 @@ JOIN products p ON p.name = m.product_name
 JOIN allergens a ON a.code = m.allergen_code;
 GO
 
+-- QA F22: bu sətirlər əvvəllər SABİT (a1b2c3.../b2c3d4.../c3d4e5... — bir-birinin sadə fırlanması) demo qr_token-lər yazırdı.
+-- Bu token ofisiant çağırışı/hesab istəyi üçün TƏK təhlükəsizlik sərhədidir (bax: F3, tableService.findTableForRequest) —
+-- kod ictimai (koddan/GitHub-dan) tanınan sabit dəyərlə hər YENİ (sıfırdan qurulan) restoranın Masa 1-i eyni token alırdı;
+-- "regenerate" edilməyibsə kənar şəxs bu tokeni bilib saxta çağırış/hesab bildirişi göndərə bilərdi. İndi hər `schema.sql`
+-- işə salınanda `CRYPT_GEN_RANDOM` ilə TƏSADÜFİ (16 bayt) token yaradılır — hər fresh DB fərqli.
 INSERT INTO restaurant_tables (restaurant_id, label, code, capacity, qr_token) VALUES
-(1, N'Masa 1', N'table_001', 2, N'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6'),
-(1, N'Masa 2', N'table_002', 4, N'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a1'),
-(1, N'Masa 3', N'table_003', 4, N'c3d4e5f6a7b8c9d0e1f2a3b4c5d6a1b2');
+(1, N'Masa 1', N'table_001', 2, LOWER(CONVERT(NVARCHAR(32), CRYPT_GEN_RANDOM(16), 2))),
+(1, N'Masa 2', N'table_002', 4, LOWER(CONVERT(NVARCHAR(32), CRYPT_GEN_RANDOM(16), 2))),
+(1, N'Masa 3', N'table_003', 4, LOWER(CONVERT(NVARCHAR(32), CRYPT_GEN_RANDOM(16), 2)));
 GO
 
 INSERT INTO promo_codes (restaurant_id, code, discount_type, discount_value, min_order_amount) VALUES

@@ -1,13 +1,16 @@
 import { useFavoritesStore } from '../store/favoritesStore'
+import { useT } from '../lib/i18n'
 
 function FavoriteButton({ productId, className = '' }) {
   const active = useFavoritesStore((s) => s.ids.includes(productId))
   const toggle = useFavoritesStore((s) => s.toggle)
+  const t = useT()
 
   return (
     <button
       type="button"
-      aria-label="favorite"
+      aria-label={active ? t('favorite_remove') : t('favorite_add')}
+      aria-pressed={active}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
